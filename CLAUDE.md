@@ -329,6 +329,7 @@ Even when all code and configuration above is correct, the returned MCP token ma
 | HITL consent, 428 enforcement, Phase 170 | `hitl-consent` |
 | Pre-edit discipline, §1/§4, pre-deploy checklist | `regression-guard` |
 | TS/JS style in this monorepo | `typescript-banking` |
+| Agent mode selection, Helix/heuristic fallback, five-mode picker, agent does nothing | `agent-mode-routing` |
 
 ---
 

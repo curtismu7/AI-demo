@@ -34,6 +34,9 @@ export default function AgentModeSelector({ compact = false, onChange }) {
 
   if (loading || modeOptions.length === 0) return null;
 
+  // Show only the three Helix/Heuristics modes (exclude external provider modes).
+  const coreOptions = modeOptions.filter((m) => !m.external);
+
   const current = modeOptions.find((m) => m.id === mode);
   const isExternal = !!current && current.external;
   const showDegraded = isExternal && externalWiring === "platform";
@@ -49,7 +52,7 @@ export default function AgentModeSelector({ compact = false, onChange }) {
           onChange={(e) => setMode(e.target.value, externalWiring)}
           className="ams-select"
         >
-          {modeOptions.map((m) => (
+          {coreOptions.map((m) => (
             <option key={m.id} value={m.id}>
               {m.label}
             </option>

@@ -660,6 +660,29 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
     const { runReasonLoop } = require('./agentReasoningClient');
     const { provider, model } = resolveLlmProvider(langchainConfig);
 
+    // If the resolved provider is Helix but no Helix credentials are configured,
+    // fall back to the heuristics-only catalog message rather than attempting a
+    // doomed Helix call that returns reasoning_unavailable.
+    // "Configured" = helix_api_key is present (it's the only required secret;
+    // helix_base_url has a default and helix_agent_id defaults to 'LLM2').
+    if (provider === 'helix') {
+      const helixCfg = extractHelixConfig(langchainConfig);
+      const helixApiKey = helixCfg.helix_api_key || configStore.getEffective('helix_api_key') || '';
+      if (!helixApiKey) {
+        console.log('[processAgentMessage] Helix not configured (no API key) — returning catalog message (heuristic floor)');
+        if (req) req.agentPath = 'heuristic';
+        return {
+          reply: buildCatalogMessage(),
+          success: true,
+          toolsCalled: [],
+          tokensUsed: 0,
+          requiresConsent: false,
+          agentConfigured: true,
+          tokenEvents: req?.tokenEvents || [],
+        };
+      }
+    }
+
     // Best-effort agent-path attribution: any tool the reason loop drives via
     // executeBffTool → /api/mcp/tool will carry this in the delegation audit.
     if (req) req.agentPath = 'reason_loop_3006';

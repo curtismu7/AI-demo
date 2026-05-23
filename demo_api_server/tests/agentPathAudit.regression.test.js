@@ -20,7 +20,7 @@
  * delegationAuditLogger middleware are mocked. Deterministic, no network.
  */
 
-const TEST_CONFIG = { ff_heuristic_enabled: 'true' };
+const TEST_CONFIG = { ff_heuristic_enabled: 'true', helix_api_key: 'test-key' };
 
 jest.mock('../services/configStore', () => ({
   getEffective: jest.fn((key) => TEST_CONFIG[key] ?? null),
