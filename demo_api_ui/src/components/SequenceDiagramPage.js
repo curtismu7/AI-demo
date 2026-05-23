@@ -3411,7 +3411,7 @@ export default function SequenceDiagramPage() {
   };
 
   return (
-    <div style={{ padding: "1rem", background: "#fff" }}>
+    <div style={{ padding: "1rem", background: "#fff", display: "flex", flexDirection: "column", height: "100%" }}>
       {showMermaid && (
         <MermaidSourceModal onClose={() => setShowMermaid(false)} />
       )}
@@ -3760,9 +3760,9 @@ export default function SequenceDiagramPage() {
           border: "1px solid #e2e8f0",
           borderRadius: 8,
           background: "#f8fafc",
-          minHeight: "800px",
+          flex: 1,
+          minHeight: 0,
           position: "relative",
-          maxHeight: "90vh",
           overflow: "hidden",
         }}
       >
