@@ -101,18 +101,24 @@ const TOKEN_FLOW_SIMULATE_STEPS = [
     regionIds: ["olb-application"],
     colorClass: "active",
     label: "User sends request",
+    // U → CB  (i6, y=407)
+    stepArrow: { yPct: 8.2, xMinPct: 3.7, xMaxPct: 19.5 },
     token: null,
   },
   {
     regionIds: ["olb-application", "chatbot"],
     colorClass: "active",
     label: "Chatbot receives message",
+    // CB → A  (i7, y=451)
+    stepArrow: { yPct: 9.0, xMinPct: 19.7, xMaxPct: 28.0 },
     token: null,
   },
   {
     regionIds: ["olb-application", "pingone-aic"],
     colorClass: "active",
     label: "OAuth 2.0 PKCE login",
+    // WA → PID  (i39, y=1997)
+    stepArrow: { yPct: 39.3, xMinPct: 12.2, xMaxPct: 40.4 },
     token: {
       type: "Authorization Code Request",
       _type: "oauth",
@@ -127,6 +133,8 @@ const TOKEN_FLOW_SIMULATE_STEPS = [
     regionIds: ["pingone-aic", "chatbot"],
     colorClass: "active",
     label: "IdP issues ID Token + Access Token (with may_act)",
+    // PID → WA  (i40, y=2041)
+    stepArrow: { yPct: 40.2, xMinPct: 12.1, xMaxPct: 40.6 },
     token: {
       type: "ID Token (OIDC)",
       _type: "idtoken",
@@ -153,6 +161,8 @@ const TOKEN_FLOW_SIMULATE_STEPS = [
     regionIds: ["chatbot", "agent1"],
     colorClass: "active",
     label: "Agent takes over — BFF holds access token",
+    // CB → A  (i42, y=2129)
+    stepArrow: { yPct: 41.9, xMinPct: 19.7, xMaxPct: 28.0 },
     token: {
       type: "Access Token (held by BFF)",
       _type: "oauth",
@@ -168,6 +178,8 @@ const TOKEN_FLOW_SIMULATE_STEPS = [
     regionIds: ["agent1", "llm"],
     colorClass: "active",
     label: "LLM processes intent → selects tool",
+    // A → LLM  (i28, y=1441)
+    stepArrow: { yPct: 28.4, xMinPct: 28.2, xMaxPct: 35.6 },
     token: {
       type: "LLM Reasoning",
       _type: "mcp",
@@ -182,6 +194,8 @@ const TOKEN_FLOW_SIMULATE_STEPS = [
     colorClass: "active",
     label: "RFC 8693 Exchange #1: user token → delegation token",
     isTokenExchange: true,
+    // A → PID  (i44, y=2222)
+    stepArrow: { yPct: 43.7, xMinPct: 28.2, xMaxPct: 40.4 },
     token: {
       type: "User Access Token (subject)",
       _type: "oauth",
@@ -207,6 +221,8 @@ const TOKEN_FLOW_SIMULATE_STEPS = [
     regionIds: ["pingone-aic", "token-exchange-box"],
     colorClass: "active",
     label: "Delegation token in transit",
+    // PID → A  (i45, y=2266)
+    stepArrow: { yPct: 44.6, xMinPct: 28.1, xMaxPct: 40.6 },
     token: {
       type: "Delegated Token (active)",
       _type: "oauth",
@@ -222,6 +238,8 @@ const TOKEN_FLOW_SIMULATE_STEPS = [
     regionIds: ["token-exchange-box", "mcp-gateway-tf"],
     colorClass: "active",
     label: "Delegated token arrives at MCP Gateway",
+    // A → AG  (i48, y=2427)
+    stepArrow: { yPct: 47.8, xMinPct: 28.2, xMaxPct: 54.1 },
     token: {
       type: "Delegated Token (inbound at gateway)",
       _type: "oauth",
@@ -237,6 +255,8 @@ const TOKEN_FLOW_SIMULATE_STEPS = [
     regionIds: ["mcp-gateway-tf", "pingauthorize-tf"],
     colorClass: "active",
     label: "PingAuthorize: McpToolsList + McpToolCall checks",
+    // AG → PA  (i50, y=2520)
+    stepArrow: { yPct: 49.6, xMinPct: 54.3, xMaxPct: 66.7 },
     token: {
       type: "PingAuthorize Request",
       _type: "mcp",
@@ -253,6 +273,8 @@ const TOKEN_FLOW_SIMULATE_STEPS = [
     regionIds: ["pingauthorize-tf"],
     colorClass: "active-permit",
     label: "PERMIT — tool call allowed",
+    // PA → AG  (i61, y=3030)
+    stepArrow: { yPct: 59.6, xMinPct: 54.3, xMaxPct: 66.8 },
     token: {
       type: "Authorization Decision",
       _type: "permit",
@@ -266,6 +288,8 @@ const TOKEN_FLOW_SIMULATE_STEPS = [
     regionIds: ["mcp-gateway-tf", "mcp-olb"],
     colorClass: "active",
     label: "RFC 8693 Exchange #2: scope-narrowed → MCP Server",
+    // AG → PID  (i82, y=3934)
+    stepArrow: { yPct: 77.3, xMinPct: 40.6, xMaxPct: 54.3 },
     isTokenExchange: true,
     token: {
       type: "Delegated Token (subject)",
@@ -292,6 +316,8 @@ const TOKEN_FLOW_SIMULATE_STEPS = [
     regionIds: ["mcp-olb", "oauth-rs"],
     colorClass: "active",
     label: "MCP Server validates token → calls Banking API",
+    // AG → MCP  (i85, y=4090)
+    stepArrow: { yPct: 80.3, xMinPct: 54.3, xMaxPct: 77.0 },
     token: {
       type: "Resource Token (Banking API)",
       _type: "oauth",
@@ -307,6 +333,8 @@ const TOKEN_FLOW_SIMULATE_STEPS = [
     regionIds: ["mcp-invest", "oauth-rs"],
     colorClass: "active",
     label: "Investments API called (same token)",
+    // MCP → RS  (i89, y=4271)
+    stepArrow: { yPct: 83.9, xMinPct: 77.3, xMaxPct: 91.9 },
     token: {
       type: "Resource Token (Investments API)",
       _type: "oauth",
@@ -322,6 +350,8 @@ const TOKEN_FLOW_SIMULATE_STEPS = [
     regionIds: ["chatbot"],
     colorClass: "active",
     label: "Results returned to user",
+    // A → CB  (i98, y=4691)
+    stepArrow: { yPct: 92.1, xMinPct: 19.7, xMaxPct: 28.1 },
     token: {
       type: "API Response",
       _type: "mcp",

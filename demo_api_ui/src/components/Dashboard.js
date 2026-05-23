@@ -24,10 +24,27 @@ import { useAgentUiMode } from "../context/AgentUiModeContext";
 import ApiCallsModal from "./ApiCallsModal";
 
 import DashboardHeader from "./DashboardHeader";
+import UserTokenStatusBar from "./UserTokenStatusBar";
+import OAuthTokenDisplayPage from "./OAuthTokenDisplayPage";
 import WebMcpPanel from "./WebMcpPanel";
 import ConfirmModal from "./ConfirmModal";
 import ThresholdControls from "./ThresholdControls";
 import ThemePicker from "./ThemePicker";
+
+// Decode a JWT into { header, payload, raw } — pure function, no component deps
+function decodeToken(token) {
+  try {
+    if (!token) return null;
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const header = JSON.parse(atob(parts[0]));
+    const payload = JSON.parse(atob(parts[1]));
+    return { header, payload, raw: token };
+  } catch (error) {
+    console.error("Error decoding token:", error);
+    return null;
+  }
+}
 
 const Dashboard = ({ user, onLogout }) => {
   // Fetch and display current user token in the token chain
@@ -42,6 +59,8 @@ const Dashboard = ({ user, onLogout }) => {
   const [forbidden403, setForbidden403] = useState(false);
   const [showTokenModal, setShowTokenModal] = useState(false);
   const [tokenData, setTokenData] = useState(null);
+  const [tokenExpiresAt, setTokenExpiresAt] = useState(null);
+  const [tokenSecondsLeft, setTokenSecondsLeft] = useState(null);
   const [resettingDemo, setResettingDemo] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmWriteSeed, setConfirmWriteSeed] = useState(false);
@@ -373,30 +392,8 @@ const Dashboard = ({ user, onLogout }) => {
     [txLookupUsername, txLookupPhone4],
   );
 
-  // Function to decode JWT token
-  const decodeToken = (token) => {
-    try {
-      if (!token) return null;
-
-      const parts = token.split(".");
-      if (parts.length !== 3) return null;
-
-      const header = JSON.parse(atob(parts[0]));
-      const payload = JSON.parse(atob(parts[1]));
-
-      return {
-        header,
-        payload,
-        raw: token,
-      };
-    } catch (error) {
-      console.error("Error decoding token:", error);
-      return null;
-    }
-  };
-
   // Function to fetch current OAuth tokens
-  const fetchTokenData = async () => {
+  const fetchTokenData = useCallback(async () => {
     try {
       // Try both admin and user status endpoints using axios directly
       let response;
@@ -425,6 +422,8 @@ const Dashboard = ({ user, onLogout }) => {
         };
 
         setTokenData(tokenInfo);
+        if (response.data.expiresAt)
+          setTokenExpiresAt(response.data.expiresAt);
       } else {
         setTokenData(null);
       }
@@ -432,13 +431,32 @@ const Dashboard = ({ user, onLogout }) => {
       console.error("❌ Error fetching token data:", error);
       setTokenData(null);
     }
-  };
+  }, []);
 
   // Function to open token modal
   const openTokenModal = () => {
     fetchTokenData();
     setShowTokenModal(true);
   };
+
+  // Populate tokenExpiresAt on mount so the status bar shows immediately
+  useEffect(() => {
+    fetchTokenData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only
+  }, []);
+
+  // Live token expiry countdown — ticks every second
+  useEffect(() => {
+    if (!tokenExpiresAt) {
+      setTokenSecondsLeft(null);
+      return;
+    }
+    const tick = () =>
+      setTokenSecondsLeft(Math.max(0, Math.round((tokenExpiresAt - Date.now()) / 1000)));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [tokenExpiresAt]);
 
   // Check if scope injection is enabled (Phase 146 — D-04)
   useEffect(() => {
