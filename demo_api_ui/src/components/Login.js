@@ -5,6 +5,8 @@ import { useEducationUIOptional } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import { notifyError } from '../utils/appToast';
 import { useIndustryBranding } from '../context/IndustryBrandingContext';
+import UserTokenStatusBar from './UserTokenStatusBar';
+import { navigateToAdminOAuthLogin, navigateToCustomerOAuthLogin } from '../utils/authUi';
 import './Login.css';
 
 const Login = () => {
@@ -20,16 +22,8 @@ const Login = () => {
       .catch(() => {});
   }, []);
 
-  const handleOAuthLogin = () => {
-    // OAuth redirect_uri to PingOne is computed on the server (must match PingOne app allowlist).
-    const apiUrl = process.env.REACT_APP_API_URL || window.location.origin;
-    window.location.href = `${apiUrl}/api/auth/oauth/login`;
-  };
-
-  const handleUserOAuthLogin = () => {
-    const apiUrl = process.env.REACT_APP_API_URL || window.location.origin;
-    window.location.href = `${apiUrl}/api/auth/oauth/user/login`;
-  };
+  const handleOAuthLogin = navigateToAdminOAuthLogin;
+  const handleUserOAuthLogin = navigateToCustomerOAuthLogin;
 
   // Handle OAuth error parameters from URL
   useEffect(() => {
@@ -88,6 +82,7 @@ const Login = () => {
   return (
     <div className="login-container login-page" style={loginContainerStyle}>
         <div className="login-card">
+          <UserTokenStatusBar user={null} tokenSecondsLeft={null} onOpenModal={() => {}} />
           <div className="login-header login-card__header">
             <div className="login-branding">
               <div className="login-logo">
@@ -115,7 +110,7 @@ const Login = () => {
                   className="btn btn-primary oauth-btn"
                   disabled={loading}
                 >
-                  {loading ? 'Redirecting...' : 'Admin Sign in with PingOne AI IAM Core'}
+                  {loading ? 'Redirecting...' : 'Admin Sign In'}
                 </button>
               </div>
 
@@ -131,7 +126,7 @@ const Login = () => {
                   className="btn btn-danger oauth-btn"
                   disabled={loading}
                 >
-                  {loading ? 'Redirecting...' : 'Customer Sign in with PingOne AI IAM Core'}
+                  {loading ? 'Redirecting...' : 'Customer Sign In'}
                 </button>
               </div>
             </div>

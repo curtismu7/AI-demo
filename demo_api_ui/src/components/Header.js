@@ -149,7 +149,7 @@ const Header = ({ user, onLogout }) => {
                 {switching ? '…' : `⇄ ${isAdmin ? 'Customer' : 'Admin'} view`}
               </button>
               <button type="button" onClick={onLogout} className="btn btn-secondary">
-                Logout
+                Log Out
               </button>
             </div>
         </nav>

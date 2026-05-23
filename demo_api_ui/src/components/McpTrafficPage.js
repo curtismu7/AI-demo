@@ -8,6 +8,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import McpPairView from './McpPairView';
 import OtpStepUpModal from './OtpStepUpModal';
 import { navigateToCustomerOAuthLogin } from '../utils/authUi';
+import AuthButton from './AuthButton';
 
 const API_POLL_MS = 3000;
 const DEFAULT_LIMIT = 200;
@@ -578,13 +579,9 @@ export default function McpTrafficPage() {
             <div style={{ fontSize: '1.5rem', marginBottom: '8px' }}>[!]</div>
             <div style={{ fontWeight: 600, marginBottom: '4px' }}>Session expired</div>
             <div style={{ fontSize: '0.82rem', marginBottom: '12px' }}>Your session has expired. Please sign in again.</div>
-            <button
-              type="button"
-              onClick={() => navigateToCustomerOAuthLogin()}
-              style={{ padding: '6px 16px', borderRadius: '6px', border: 'none', background: '#1d4ed8', color: '#fff', fontSize: '0.85rem', cursor: 'pointer', fontWeight: 600 }}
-            >
+            <AuthButton variant="customer" onClick={() => navigateToCustomerOAuthLogin()}>
               Sign In
-            </button>
+            </AuthButton>
           </div>
         ) : error ? (
           <div style={{ padding: '8px 12px', borderRadius: '6px', backgroundColor: '#fee2e2', color: '#991b1b', fontSize: '0.85rem', marginTop: '8px' }}>
