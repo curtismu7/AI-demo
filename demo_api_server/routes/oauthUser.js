@@ -409,13 +409,9 @@ router.get('/callback', async (req, res) => {
         : claimValue === configuredAdminRole;
     }
 
-    // Signal 4 removed: do not preserve an existing admin role when logging in via the
-    // customer app. Role must be earned from PingOne signals (allowlist, population, claim,
-    // resolver) — not inherited from a stale data-store entry. This prevents a user whose
-    // store record was previously set to 'admin' (e.g. by the admin OAuth callback) from
-    // silently retaining admin privileges when they sign in through the end-user app.
-
     // Signal 5: roleClaimResolver — new oauth_role_claim_* config (any IDP)
+    // Note: we do NOT preserve an existing store role — role must be earned from PingOne
+    // signals each login to prevent stale admin entries persisting via the customer app.
     const resolvedRole    = getRoleFromClaims(mergedUserInfo);
     const resolverIsAdmin = resolvedRole === 'admin';
 

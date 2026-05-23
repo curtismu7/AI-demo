@@ -1725,9 +1725,7 @@ export default function BankingAgent({
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [nlLoading, setNlLoading] = useState(false);
   const [nlMeta, setNlMeta] = useState(null);
-  // Derived from nlMeta: the LLM provider that is actually configured server-side.
-  // null = no LLM configured (heuristic only). Never hardcoded.
-  const activeLlmProvider = nlMeta?.activeLlmProvider || null;
+  const activeLlmProvider = nlMeta?.activeLlmProvider ?? null;
   // Degraded-mode banner: true when the user selected an LLM provider (Helix)
   // but routing fell back to the heuristic parser (Helix unreachable / not
   // configured). Drives a persistent banner in the panel header. Cleared as
@@ -2090,7 +2088,6 @@ export default function BankingAgent({
     if (isConfigEmbeddedFocus) {
       groupsToRender = { admin: ACTION_GROUPS.admin || [] };
     } else if (effectiveUser?.role !== "admin") {
-      // Customers should not see the admin chip group
       const { admin: _admin, ...rest } = groupsToRender;
       groupsToRender = rest;
     }
