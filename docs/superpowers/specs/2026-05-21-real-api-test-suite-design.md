@@ -27,7 +27,7 @@ Test process
   → axios (https://api.ping.demo:3001)
       → BFF Express (TLS, session middleware, real auth, real configStore)
           → PingOne (token validation, token exchange)
-          → data/store (real in-memory store + SQLite)
+          → data/store (real in-memory store + LMDB)
           → demo_mcp_server (for MCP tests only)
 ```
 
@@ -205,7 +205,7 @@ Each vertical folder's `afterAll`:
 | File | Endpoints | Real signal vs mocked |
 |---|---|---|
 | `accounts.test.js` | `GET /api/accounts/my`, `GET /api/accounts/:id/balance` | Real store data, real auth scope check, real configStore flags |
-| `transactions.test.js` | `GET /api/transactions`, filtering, pagination | Real SQLite query, real date filtering |
+| `transactions.test.js` | `GET /api/transactions`, filtering, pagination | Real LMDB query, real date filtering |
 | `transfers.test.js` | `POST /api/transactions` (transfer/deposit/withdraw) | Real balance mutation, real HITL threshold from `.env`, real rollback |
 | `hitl.test.js` | `POST /api/transactions` HITL enforcement | Real `ff_hitl_enabled` from configStore, real consent challenge lifecycle |
 | `agent.test.js` | `POST /api/agent/delegate` | Real RFC 8693 token exchange, real `act` claim in MCP token |

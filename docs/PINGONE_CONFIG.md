@@ -177,23 +177,23 @@ curl "https://api.pingone.com/v1/environments/d02d2305-f445-406d-82ee-7cdbf6eeab
 ## Persistence Model — How Values Survive Restarts
 
 ```
-demo_api_server/.env   ← WRITTEN by bootstrap; seeded into SQLite immediately after
+demo_api_server/.env   ← WRITTEN by bootstrap; seeded into LMDB immediately after
         ↓
   configStore._seedFromEnv()   ← runs at bootstrap + every server cold-start
         ↓
-  data/persistent/config.db (SQLite/AES-256-GCM)
+  data/persistent/lmdb/ (LMDB/AES-256-GCM)
         ← AUTHORITATIVE at runtime: survives .env loss
         ← runtime overrides via /config admin UI also stored here
-        ← SQLite wins over .env when a value is explicitly saved there
+        ← LMDB wins over .env when a value is explicitly saved there
 ```
 
-**Rule:** Bootstrap writes `.env` then immediately mirrors all values into SQLite.
-Every subsequent server startup seeds SQLite with any env value that isn't already there — so SQLite is always a complete, encrypted-at-rest backup.
+**Rule:** Bootstrap writes `.env` then immediately mirrors all values into LMDB.
+Every subsequent server startup seeds LMDB with any env value that isn't already there — so LMDB is always a complete, encrypted-at-rest backup.
 Runtime overrides (set via `/config` UI) take precedence over both.
 If `config.db` is lost, re-run `npm run pingone:bootstrap` to regenerate both files.
 
 **Never read `process.env` directly in route handlers** — always use `configStore.getEffective(key)`.
-This ensures the SQLite override layer (runtime config UI changes) is respected.
+This ensures the LMDB override layer (runtime config UI changes) is respected.
 
 Key alias notes:
 - `getEffective('user_client_id')` and `getEffective('PINGONE_USER_CLIENT_ID')` both resolve to `PINGONE_USER_CLIENT_ID` env var

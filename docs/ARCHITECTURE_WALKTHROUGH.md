@@ -21,7 +21,7 @@ Super Banking is a three-layer stack. Each layer has a clear responsibility boun
 | System | Role |
 |--------|------|
 | PingOne (`auth.pingone.com`) | Identity provider — issues tokens for all OAuth/OIDC flows |
-| Upstash Redis (Vercel) / SQLite (local) | Session store — persists BFF sessions across serverless invocations |
+| Upstash Redis (Vercel) / LMDB (local) | Session store — persists BFF sessions across serverless invocations |
 
 **OAuth clients (up to five PingOne apps):**
 
@@ -47,7 +47,7 @@ This means a compromised browser session only exposes the session cookie — an 
 
 | What | Where | Notes |
 |------|-------|-------|
-| `access_token` (user) | BFF session store (Redis / SQLite) | Used by BFF for all downstream API calls |
+| `access_token` (user) | BFF session store (Redis / LMDB) | Used by BFF for all downstream API calls |
 | `refresh_token` | BFF session store | Used by BFF to renew access tokens silently |
 | `id_token` | BFF session store | Validated on receipt (signature + nonce); not stored in browser |
 | `session_id` | Browser cookie (httpOnly, SameSite=Lax) | The only credential the browser holds |
@@ -56,7 +56,7 @@ This means a compromised browser session only exposes the session cookie — an 
 **Code pointers:**
 - Token storage: `banking_api_server/services/oauthService.js`
 - Token exchange to MCP: `banking_api_server/services/agentMcpTokenService.js`
-- Session store: `express-session` backed by Upstash Redis on Vercel; `better-sqlite3` or in-memory locally
+- Session store: `express-session` backed by Upstash Redis on Vercel; LMDB or in-memory locally
 
 ### Security rationale
 

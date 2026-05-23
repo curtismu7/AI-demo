@@ -206,7 +206,7 @@ For a tight presales demo, cover these five things in order:
 
 | Option | Session store | Setup |
 |--------|--------------|-------|
-| **Local dev** | SQLite / in-memory | `npm start` in each package |
+| **Local dev** | LMDB / in-memory | `npm start` in each package |
 | **Vercel** | Upstash Redis (required) | `docs/VERCEL_SETUP.md` |
 | **Docker / K8s** | Redis | *(planned — Phase 55)* |
 

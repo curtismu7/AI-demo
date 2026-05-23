@@ -279,7 +279,7 @@ carries no scopes/auth/policy (Section 2 constraint).
   underneath. Demo-safe, zero pipeline risk.
 
 **Tool-returned data is NOT themed in Phase 1 (decided 2026-05-18):**
-SQLite-backed accounts/transactions (`data/store.js`:
+LMDB-backed accounts/transactions (`data/store.js`:
 `Checking`/`Savings`/`Deposit`) and the hardcoded mortgage / api_key
 `show_mortgage` payload (`banking_mortgage_service`, `$425,000 / 6.125%`)
 keep returning banking data under any theme. The retail experience is

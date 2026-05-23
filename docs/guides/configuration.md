@@ -11,7 +11,7 @@ This guide covers all configuration systems in BX Finance: environment variables
 The standard configuration flow is:
 
 1. **Vault (Phase 269)** — encrypted at-rest secrets (highest priority)
-2. **SQLite configStore** — persistent runtime configuration via `/config` UI
+2. **LMDB configStore** — persistent runtime configuration via `/config` UI
 3. **`.env` environment variables** — local development and deployment defaults
 4. **Built-in defaults** — fallbacks for unconfigured optional settings
 
@@ -102,7 +102,7 @@ Register these in PingOne as Resource Servers; they define the `aud` (audience) 
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `PINGONE_SESSION_SECRET` | Yes | — | Strong random secret for Express session signing; generate: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
-| `CONFIG_ENCRYPTION_KEY` | No | Falls back to `SESSION_SECRET` | Custom encryption key for configStore secrets at rest (SQLite) |
+| `CONFIG_ENCRYPTION_KEY` | No | Falls back to `SESSION_SECRET` | Custom encryption key for configStore secrets at rest (LMDB) |
 
 ### Server Configuration
 
@@ -248,7 +248,7 @@ For scaling beyond single-process dev, use Redis:
 | `REDIS_URL` | No | — | Redis connection URL (node-redis wire protocol): `redis://localhost:6379` |
 | `KV_URL` | No | — | Upstash REST KV URL (Vercel production): `https://rest-...com` |
 
-On Vercel, `KV_URL` (Upstash) is preferred; locally, `REDIS_URL` activates TCP Redis. SQLite is the fallback for local dev.
+On Vercel, `KV_URL` (Upstash) is preferred; locally, `REDIS_URL` activates TCP Redis. LMDB is the fallback for local dev.
 
 ### Vault (Phase 269)
 
@@ -335,12 +335,12 @@ The gateway typically symlinks to the BFF's `.env` (created by `run-demo.sh`). A
 
 ---
 
-## ConfigStore: Runtime Configuration (SQLite / Vault)
+## ConfigStore: Runtime Configuration (LMDB / Vault)
 
 The `configStore` singleton in `banking_api_server/services/configStore.js` manages persistent config via:
 
 1. **Vault** (highest priority) — encrypted-at-rest secrets (Phase 269)
-2. **SQLite** (`data/persistent/config.db`) — persistent values set via `/config` UI
+2. **LMDB** (`data/persistent/lmdb/`) — persistent values set via `/config` UI
 3. **Environment variables** — .env fallbacks
 4. **Built-in defaults** — from `FIELD_DEFS` in configStore.js
 
@@ -348,11 +348,11 @@ The `configStore` singleton in `banking_api_server/services/configStore.js` mana
 
 All of the environment variables above are also available via `configStore.get(key)` and `configStore.getEffective(key)`.
 
-**Admin UI access:** Open `/config` to edit any non-secret field at runtime. Changes are persisted to SQLite.
+**Admin UI access:** Open `/config` to edit any non-secret field at runtime. Changes are persisted to LMDB.
 
 ### Secret Fields (Encrypted at Rest)
 
-These are encrypted when stored in SQLite, decrypted in memory:
+These are encrypted when stored in LMDB, decrypted in memory:
 
 - `PINGONE_ADMIN_CLIENT_SECRET`
 - `PINGONE_USER_CLIENT_SECRET`
@@ -370,12 +370,12 @@ Encryption key: `CONFIG_ENCRYPTION_KEY` env var, or falls back to `SESSION_SECRE
 
 For **bootstrap keys** (session, encryption, vault, node_env, port, environment_id, region):
 1. `.env` variables (always win)
-2. SQLite (if persisted)
+2. LMDB (if persisted)
 3. Built-in defaults
 
 For **all other keys**:
 1. Vault (if unlocked)
-2. SQLite (if persisted)
+2. LMDB (if persisted)
 3. `.env` variables
 4. Built-in defaults
 
@@ -396,7 +396,7 @@ On Vercel, use **Encrypted Environment Variables** — no vault, no `.env` file:
 
 | Aspect | Local | Vercel |
 |---|---|---|
-| Session store | SQLite | Upstash REST KV (via `KV_URL`) |
+| Session store | LMDB | Upstash REST KV (via `KV_URL`) |
 | Vault | Optional (Phase 269) | Skipped (set `VERCEL=1` check) |
 | Build | CRA dev server | Static build + serverless functions |
 | OAuth origin | `https://api.ping.demo:4000` | `<!-- VERIFY: vercel-production-domain -->` (set in `/config` → Domain) |
@@ -537,7 +537,7 @@ Feature flags are toggled at runtime via `/config` UI or environment variables:
 **Fix:**
 1. Verify `PINGONE_SESSION_SECRET` is set and not empty
 2. Check session store:
-   - Local: SQLite at `banking_api_server/data/sessions.db` (auto-created)
+   - Local: LMDB at `banking_api_server/data/sessions.db` (auto-created)
    - Vercel: `KV_URL` (Upstash) must be set
 3. Restart the BFF
 
@@ -566,7 +566,7 @@ Feature flags are toggled at runtime via `/config` UI or environment variables:
 ## Configuration Files Checklist
 
 - ✅ `banking_api_server/.env` — BFF + shared config for all 8 services
-- ✅ `banking_api_server/data/persistent/config.db` — Persisted values (SQLite)
+- ✅ `banking_api_server/data/persistent/lmdb/` — Persisted values (LMDB)
 - ✅ `banking_api_server/services/configStore.js` — Config loading logic and FIELD_DEFS
 - ✅ `banking_api_server/services/vaultLoader.js` — Vault unlock at startup
 - ✅ `secrets.vault` — Encrypted secrets (Phase 269; optional)
@@ -590,7 +590,7 @@ Feature flags are toggled at runtime via `/config` UI or environment variables:
    - Or use platform vaults (Vercel Encrypted Variables, railway, etc.)
 
 3. **Rotate secrets regularly:**
-   - Use `/config` UI to update credentials at runtime (persisted to SQLite + vault)
+   - Use `/config` UI to update credentials at runtime (persisted to LMDB + vault)
    - Or regenerate in PingOne and update `.env`, then restart
 
 4. **Token validation:**

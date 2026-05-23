@@ -454,7 +454,7 @@ BFF again (fetch banking data)
 | File | Language | Role |
 |------|----------|------|
 | `banking_api_server/server.js` | JS | Express app, middleware order, route registration |
-| `banking_api_server/services/configStore.js` | JS | Runtime config — env, KV, SQLite resolution |
+| `banking_api_server/services/configStore.js` | JS | Runtime config — env, KV, LMDB resolution |
 | `banking_api_server/services/agentMcpTokenService.js` | JS | RFC 8693 token exchange orchestration |
 | `banking_api_server/services/mcpWebSocketClient.js` | JS | BFF ↔ MCP WebSocket pooled connection |
 | `banking_mcp_server/src/tools/BankingToolRegistry.ts` | TS | All MCP tools: schema, scopes, definitions |
@@ -597,7 +597,7 @@ The pool is bounded: `MCP_WS_MAX_CONCURRENT` (default 10) prevents unbounded con
 
 **Local development:**
 - Uses TCP Redis (default `localhost:6379`)
-- Or SQLite fallback if Redis is down
+- Or LMDB fallback if Redis is down
 - Sessions persist across service restarts
 
 **Vercel (production):**
