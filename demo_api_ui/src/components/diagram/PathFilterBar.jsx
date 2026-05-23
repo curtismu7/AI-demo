@@ -12,16 +12,17 @@
  *   onSelect     — func — called with key (null = All)
  *   className    — string — extra class on wrapper div
  */
+import { memo } from "react";
 import "./DiagramControls.css";
 
-export default function PathFilterBar({ paths = [], selectedPath, onSelect, className }) {
+function PathFilterBar({ paths = [], selectedPath, onSelect, className }) {
   return (
     <div className={`pfb-bar${className ? ` ${className}` : ""}`}>
       {paths.map(({ key, label, color }) => {
         const isActive = selectedPath === key;
         const activeStyle =
-          isActive && key !== null
-            ? { background: color ? `${color}22` : undefined, borderColor: color, color }
+          isActive && key !== null && color
+            ? { background: `${color}22`, borderColor: color, color }
             : undefined;
 
         return (
@@ -44,3 +45,5 @@ export default function PathFilterBar({ paths = [], selectedPath, onSelect, clas
     </div>
   );
 }
+
+export default memo(PathFilterBar);

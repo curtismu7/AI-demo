@@ -8,9 +8,10 @@
  * An optional `extra` node is rendered to the left of the zoom block
  * (e.g. a scenario dropdown, a title chip).
  */
+import { memo } from "react";
 import "./DiagramControls.css";
 
-export default function DiagramControls({
+function DiagramControls({
   // Zoom block (omit to hide)
   zoom,
   onZoomIn,
@@ -44,7 +45,7 @@ export default function DiagramControls({
 
   return (
     <div className="dc-toolbar">
-      {extra && <>{extra}</>}
+      {extra}
 
       {extra && (hasZoom || hasStep) && <div className="dc-divider" />}
 
@@ -148,3 +149,5 @@ export default function DiagramControls({
     </div>
   );
 }
+
+export default memo(DiagramControls);

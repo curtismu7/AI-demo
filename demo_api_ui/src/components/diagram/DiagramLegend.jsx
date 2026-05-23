@@ -9,9 +9,10 @@
  *   activeKey — string|null — highlights matching item, dims others
  *   layout    — 'row' | 'column' — default 'row'
  */
+import { memo } from "react";
 import "./DiagramControls.css";
 
-export default function DiagramLegend({ items = [], activeKey = null, layout = "row" }) {
+function DiagramLegend({ items = [], activeKey = null, layout = "row" }) {
   const hasActive = activeKey !== null && activeKey !== undefined;
 
   return (
@@ -32,3 +33,5 @@ export default function DiagramLegend({ items = [], activeKey = null, layout = "
     </div>
   );
 }
+
+export default memo(DiagramLegend);
