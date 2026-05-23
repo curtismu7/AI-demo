@@ -24,10 +24,30 @@ import { useAgentUiMode } from "../context/AgentUiModeContext";
 import ApiCallsModal from "./ApiCallsModal";
 
 import DashboardHeader from "./DashboardHeader";
+import FloatingPanel from "./FloatingPanel";
+import UserTokenStatusBar from "./UserTokenStatusBar";
+import OAuthTokenDisplayPage from "./OAuthTokenDisplayPage";
 import WebMcpPanel from "./WebMcpPanel";
 import ConfirmModal from "./ConfirmModal";
 import ThresholdControls from "./ThresholdControls";
 import ThemePicker from "./ThemePicker";
+
+// Decode a JWT into { header, payload, raw } — no component deps
+function decodeToken(token) {
+  try {
+    if (!token) return null;
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    return {
+      header: JSON.parse(atob(parts[0])),
+      payload: JSON.parse(atob(parts[1])),
+      raw: token,
+    };
+  } catch (err) {
+    console.error("Error decoding token:", err);
+    return null;
+  }
+}
 
 const Dashboard = ({ user, onLogout }) => {
   // Fetch and display current user token in the token chain
@@ -42,6 +62,8 @@ const Dashboard = ({ user, onLogout }) => {
   const [forbidden403, setForbidden403] = useState(false);
   const [showTokenModal, setShowTokenModal] = useState(false);
   const [tokenData, setTokenData] = useState(null);
+  const [tokenExpiresAt, setTokenExpiresAt] = useState(null);
+  const [tokenSecondsLeft, setTokenSecondsLeft] = useState(null);
   const [resettingDemo, setResettingDemo] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmWriteSeed, setConfirmWriteSeed] = useState(false);
@@ -374,29 +396,8 @@ const Dashboard = ({ user, onLogout }) => {
   );
 
   // Function to decode JWT token
-  const decodeToken = (token) => {
-    try {
-      if (!token) return null;
-
-      const parts = token.split(".");
-      if (parts.length !== 3) return null;
-
-      const header = JSON.parse(atob(parts[0]));
-      const payload = JSON.parse(atob(parts[1]));
-
-      return {
-        header,
-        payload,
-        raw: token,
-      };
-    } catch (error) {
-      console.error("Error decoding token:", error);
-      return null;
-    }
-  };
-
   // Function to fetch current OAuth tokens
-  const fetchTokenData = async () => {
+  const fetchTokenData = useCallback(async () => {
     try {
       // Try both admin and user status endpoints using axios directly
       let response;
@@ -407,24 +408,24 @@ const Dashboard = ({ user, onLogout }) => {
           response = await getCachedJson("/api/auth/oauth/user/status");
           console.debug("User OAuth response:", response.data);
         }
-      } catch (error) {
+      } catch (_err) {
         response = await getCachedJson("/api/auth/oauth/user/status");
         console.debug("User OAuth response:", response.data);
       }
 
-      if (response.data.authenticated && response.data.accessToken) {
-        const decodedAccessToken = decodeToken(response.data.accessToken);
-
-        const tokenInfo = {
-          accessToken: decodedAccessToken,
-          tokenType: response.data.tokenType,
-          expiresAt: response.data.expiresAt,
-          clientType: response.data.clientType,
-          oauthProvider: response.data.oauthProvider,
-          user: response.data.user,
-        };
-
-        setTokenData(tokenInfo);
+      if (response.data.authenticated) {
+        if (response.data.expiresAt)
+          setTokenExpiresAt(response.data.expiresAt);
+        if (response.data.accessToken) {
+          setTokenData({
+            accessToken: decodeToken(response.data.accessToken),
+            tokenType: response.data.tokenType,
+            expiresAt: response.data.expiresAt,
+            clientType: response.data.clientType,
+            oauthProvider: response.data.oauthProvider,
+            user: response.data.user,
+          });
+        }
       } else {
         setTokenData(null);
       }
@@ -432,13 +433,31 @@ const Dashboard = ({ user, onLogout }) => {
       console.error("❌ Error fetching token data:", error);
       setTokenData(null);
     }
-  };
+  }, []);
 
   // Function to open token modal
   const openTokenModal = () => {
     fetchTokenData();
     setShowTokenModal(true);
   };
+
+  // Populate tokenExpiresAt on mount so the status bar shows immediately
+  useEffect(() => {
+    fetchTokenData();
+  }, [fetchTokenData]);
+
+  // Live token expiry countdown — ticks every second
+  useEffect(() => {
+    if (!tokenExpiresAt) {
+      setTokenSecondsLeft(null);
+      return;
+    }
+    const tick = () =>
+      setTokenSecondsLeft(Math.max(0, Math.round((tokenExpiresAt - Date.now()) / 1000)));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [tokenExpiresAt]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Check if scope injection is enabled (Phase 146 — D-04)
   useEffect(() => {
@@ -469,6 +488,11 @@ const Dashboard = ({ user, onLogout }) => {
         Skip to admin content
       </a>
       <DashboardHeader variant="admin" />
+      <UserTokenStatusBar
+        user={user}
+        tokenSecondsLeft={tokenSecondsLeft}
+        onOpenModal={() => setShowTokenModal(true)}
+      />
 
       <div
         className={`app-page-shell__body app-page-shell__body--wide ${agentPlacement === "bottom" ? "app-page-shell__body--embed-agent" : ""}`}
@@ -1157,486 +1181,22 @@ const Dashboard = ({ user, onLogout }) => {
           </div>
         </div>
 
-        {/* OAuth Token Info Modal */}
+        {/* User Session Token Modal */}
         {showTokenModal && (
-          <div
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: "rgba(0, 0, 0, 0.7)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 1000,
-              padding: "20px",
-            }}
-            onClick={() => setShowTokenModal(false)}
+          <FloatingPanel
+            title="User Session Token"
+            onClose={() => setShowTokenModal(false)}
+            defaultWidth={820}
+            defaultHeight={Math.min(window.innerHeight - 80, 940)}
+            defaultX={Math.max(0, Math.round((window.innerWidth - 820) / 2))}
+            defaultY={60}
+            minWidth={360}
+            minHeight={200}
           >
-            <div
-              style={{
-                background: "white",
-                borderRadius: "12px",
-                maxWidth: "900px",
-                width: "100%",
-                height: "80vh",
-                maxHeight: "600px",
-                display: "flex",
-                flexDirection: "column",
-                boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)",
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div
-                style={{
-                  background:
-                    "linear-gradient(135deg, var(--brand-navy) 0%, var(--brand-navy) 100%)",
-                  color: "white",
-                  padding: "20px 30px",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  flexShrink: 0,
-                }}
-              >
-                <h3
-                  style={{ margin: 0, fontSize: "1.5rem", fontWeight: "600" }}
-                >
-                  OAuth Token Information
-                </h3>
-                <button
-                  type="button"
-                  aria-label="Close token information"
-                  onClick={() => setShowTokenModal(false)}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: "white",
-                    fontSize: "2rem",
-                    cursor: "pointer",
-                    padding: 0,
-                    width: "30px",
-                    height: "30px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    borderRadius: "50%",
-                    transition: "background 0.2s ease",
-                  }}
-                  onMouseOver={(e) =>
-                    (e.target.style.background = "rgba(255, 255, 255, 0.2)")
-                  }
-                  onMouseOut={(e) => (e.target.style.background = "none")}
-                >
-                  ×
-                </button>
-              </div>
-              <div
-                style={{
-                  padding: "20px 30px 30px 30px",
-                  flex: 1,
-                  overflowY: "auto",
-                  minHeight: 0,
-                }}
-              >
-                {tokenData ? (
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "30px",
-                    }}
-                  >
-                    <div
-                      style={{
-                        border: "1px solid #e1e5e9",
-                        borderRadius: "8px",
-                        overflow: "hidden",
-                      }}
-                    >
-                      <h4
-                        style={{
-                          background: "#f8f9fa",
-                          margin: 0,
-                          padding: "15px 20px",
-                          fontSize: "1.1rem",
-                          fontWeight: "600",
-                          color: "#2c3e50",
-                          borderBottom: "1px solid #e1e5e9",
-                        }}
-                      >
-                        Session Info
-                      </h4>
-                      <div
-                        style={{
-                          padding: "20px",
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: "8px",
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: "grid",
-                            gridTemplateColumns: "auto 1fr",
-                            gap: "12px",
-                            alignItems: "center",
-                            padding: "8px 0",
-                            borderBottom: "1px solid #f0f0f0",
-                          }}
-                        >
-                          <span
-                            style={{
-                              fontWeight: "600",
-                              color: "#34495e",
-                              fontSize: "0.85rem",
-                              textTransform: "uppercase",
-                              letterSpacing: "0.5px",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            User:
-                          </span>
-                          <span
-                            style={{
-                              color: "#2c3e50",
-                              fontSize: "0.9rem",
-                              wordBreak: "break-word",
-                            }}
-                          >
-                            {tokenData.user?.username} ({tokenData.user?.email})
-                          </span>
-                        </div>
-                        <div
-                          style={{
-                            display: "grid",
-                            gridTemplateColumns: "auto 1fr auto 1fr",
-                            gap: "12px",
-                            alignItems: "center",
-                            padding: "8px 0",
-                            borderBottom: "1px solid #f0f0f0",
-                          }}
-                        >
-                          <span
-                            style={{
-                              fontWeight: "600",
-                              color: "#34495e",
-                              fontSize: "0.85rem",
-                              textTransform: "uppercase",
-                              letterSpacing: "0.5px",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            Role:
-                          </span>
-                          <span
-                            style={{
-                              color: "#2c3e50",
-                              fontSize: "0.9rem",
-                              wordBreak: "break-word",
-                            }}
-                          >
-                            {tokenData.user?.role}
-                          </span>
-                          <span
-                            style={{
-                              fontWeight: "600",
-                              color: "#34495e",
-                              fontSize: "0.85rem",
-                              textTransform: "uppercase",
-                              letterSpacing: "0.5px",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            Provider:
-                          </span>
-                          <span
-                            style={{
-                              color: "#2c3e50",
-                              fontSize: "0.9rem",
-                              wordBreak: "break-word",
-                            }}
-                          >
-                            {tokenData.oauthProvider}
-                          </span>
-                        </div>
-                        <div
-                          style={{
-                            display: "grid",
-                            gridTemplateColumns: "auto 1fr auto 1fr",
-                            gap: "12px",
-                            alignItems: "center",
-                            padding: "8px 0",
-                            borderBottom: "1px solid #f0f0f0",
-                          }}
-                        >
-                          <span
-                            style={{
-                              fontWeight: "600",
-                              color: "#34495e",
-                              fontSize: "0.85rem",
-                              textTransform: "uppercase",
-                              letterSpacing: "0.5px",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            Client:
-                          </span>
-                          <span
-                            style={{
-                              color: "#2c3e50",
-                              fontSize: "0.9rem",
-                              wordBreak: "break-word",
-                            }}
-                          >
-                            {tokenData.clientType}
-                          </span>
-                          <span
-                            style={{
-                              fontWeight: "600",
-                              color: "#34495e",
-                              fontSize: "0.85rem",
-                              textTransform: "uppercase",
-                              letterSpacing: "0.5px",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            Token:
-                          </span>
-                          <span
-                            style={{
-                              color: "#2c3e50",
-                              fontSize: "0.9rem",
-                              wordBreak: "break-word",
-                            }}
-                          >
-                            {tokenData.tokenType}
-                          </span>
-                        </div>
-                        <div
-                          style={{
-                            display: "grid",
-                            gridTemplateColumns: "auto 1fr",
-                            gap: "12px",
-                            alignItems: "center",
-                            padding: "8px 0",
-                          }}
-                        >
-                          <span
-                            style={{
-                              fontWeight: "600",
-                              color: "#34495e",
-                              fontSize: "0.85rem",
-                              textTransform: "uppercase",
-                              letterSpacing: "0.5px",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            Expires:
-                          </span>
-                          <span
-                            style={{
-                              color: "#2c3e50",
-                              fontSize: "0.9rem",
-                              wordBreak: "break-word",
-                            }}
-                          >
-                            {tokenData.expiresAt
-                              ? new Date(tokenData.expiresAt).toLocaleString()
-                              : "N/A"}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {tokenData.accessToken && (
-                      <div
-                        style={{
-                          border: "1px solid #e1e5e9",
-                          borderRadius: "8px",
-                          overflow: "hidden",
-                        }}
-                      >
-                        <h4
-                          style={{
-                            background: "#f8f9fa",
-                            margin: 0,
-                            padding: "15px 20px",
-                            fontSize: "1.1rem",
-                            fontWeight: "600",
-                            color: "#2c3e50",
-                            borderBottom: "1px solid #e1e5e9",
-                          }}
-                        >
-                          Access Token Header
-                        </h4>
-                        <div style={{ padding: "20px" }}>
-                          <pre
-                            style={{
-                              background: "#f8f9fa",
-                              border: "1px solid #e1e5e9",
-                              borderRadius: "6px",
-                              padding: "15px",
-                              fontFamily: "inherit",
-                              fontSize: "0.85rem",
-                              lineHeight: "1.4",
-                              color: "#2c3e50",
-                              overflowX: "auto",
-                              whiteSpace: "pre-wrap",
-                              wordBreak: "break-all",
-                            }}
-                          >
-                            {JSON.stringify(
-                              tokenData.accessToken.header,
-                              null,
-                              2,
-                            )}
-                          </pre>
-                        </div>
-                      </div>
-                    )}
-
-                    {tokenData.accessToken && (
-                      <div
-                        style={{
-                          border: "1px solid #e1e5e9",
-                          borderRadius: "8px",
-                          overflow: "hidden",
-                        }}
-                      >
-                        <h4
-                          style={{
-                            background: "#f8f9fa",
-                            margin: 0,
-                            padding: "15px 20px",
-                            fontSize: "1.1rem",
-                            fontWeight: "600",
-                            color: "#2c3e50",
-                            borderBottom: "1px solid #e1e5e9",
-                            display: "flex",
-                            flexWrap: "wrap",
-                            alignItems: "center",
-                            gap: "8px",
-                          }}
-                        >
-                          Access Token Payload
-                          <button
-                            type="button"
-                            title="may_act / act claims"
-                            onClick={() => open(EDU.MAY_ACT, "lifecycle")}
-                            style={{
-                              border: "none",
-                              background: "#e0e7ff",
-                              borderRadius: "4px",
-                              cursor: "pointer",
-                              fontSize: "0.85rem",
-                              padding: "2px 6px",
-                            }}
-                          >
-                            ⓘ may_act / act
-                          </button>
-                          <button
-                            type="button"
-                            title="scope claim"
-                            onClick={() => open(EDU.LOGIN_FLOW, "tokens")}
-                            style={{
-                              border: "none",
-                              background: "#e0e7ff",
-                              borderRadius: "4px",
-                              cursor: "pointer",
-                              fontSize: "0.85rem",
-                              padding: "2px 6px",
-                            }}
-                          >
-                            ⓘ scope
-                          </button>
-                        </h4>
-                        <div style={{ padding: "20px" }}>
-                          <pre
-                            style={{
-                              background: "#f8f9fa",
-                              border: "1px solid #e1e5e9",
-                              borderRadius: "6px",
-                              padding: "15px",
-                              fontFamily: "inherit",
-                              fontSize: "0.85rem",
-                              lineHeight: "1.4",
-                              color: "#2c3e50",
-                              overflowX: "auto",
-                              whiteSpace: "pre-wrap",
-                              wordBreak: "break-all",
-                            }}
-                          >
-                            {JSON.stringify(
-                              tokenData.accessToken.payload,
-                              null,
-                              2,
-                            )}
-                          </pre>
-                        </div>
-                      </div>
-                    )}
-
-                    {tokenData.accessToken && (
-                      <div
-                        style={{
-                          border: "1px solid #e1e5e9",
-                          borderRadius: "8px",
-                          overflow: "hidden",
-                        }}
-                      >
-                        <h4
-                          style={{
-                            background: "#f8f9fa",
-                            margin: 0,
-                            padding: "15px 20px",
-                            fontSize: "1.1rem",
-                            fontWeight: "600",
-                            color: "#2c3e50",
-                            borderBottom: "1px solid #e1e5e9",
-                          }}
-                        >
-                          Raw Access Token
-                        </h4>
-                        <div style={{ padding: "20px" }}>
-                          <div
-                            style={{
-                              background: "#f8f9fa",
-                              border: "1px solid #e1e5e9",
-                              borderRadius: "6px",
-                              padding: "15px",
-                              fontFamily: "inherit",
-                              fontSize: "11px",
-                              lineHeight: "1.4",
-                              color: "#2c3e50",
-                              wordBreak: "break-all",
-                              whiteSpace: "pre-wrap",
-                              maxHeight: "150px",
-                              overflowY: "auto",
-                            }}
-                          >
-                            {tokenData.accessToken.raw}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div
-                    style={{
-                      textAlign: "center",
-                      padding: "40px",
-                      color: "#6b7280",
-                    }}
-                  >
-                    <p>No OAuth token data available</p>
-                  </div>
-                )}
-              </div>
+            <div style={{ overflowY: "auto", height: "100%" }}>
+              <OAuthTokenDisplayPage />
             </div>
-          </div>
+          </FloatingPanel>
         )}
 
         <WebMcpPanel />
