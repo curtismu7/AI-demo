@@ -4,12 +4,17 @@
 // reasoningUnavailable or transport failure → signal heuristic-fallback
 // (ARCHITECTURE-TRUTHS T-3 floor). Recursion cap enforced here.
 const axios = require('axios');
+const configStore = require('./configStore');
 
 const REASON_URL =
   (process.env.AGENT_SERVICE_URL || 'http://localhost:3006') + '/api/agent/reason';
 
 async function runReasonLoop(p) {
-  const secret = process.env.BFF_INTERNAL_SECRET || '';
+  // Prefer configStore (vault-loaded value) over process.env so that the vault
+  // secret for BFF_INTERNAL_SECRET reaches :3006 correctly. The vault loads
+  // into configStore (not process.env) at BFF startup, so process.env holds
+  // only the .env fallback value which may differ from what :3006 loaded.
+  const secret = configStore.getEffective('BFF_INTERNAL_SECRET') || process.env.BFF_INTERNAL_SECRET || '';
   let messages = p.messages;
   for (let i = 0; i < p.maxIterations; i++) {
     let resp;
