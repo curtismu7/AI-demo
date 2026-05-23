@@ -14,6 +14,7 @@ const {
 } = require('../services/oauthRedirectUris');
 const { setPkceCookie, readPkceCookie, clearPkceCookie } = require('../services/pkceStateCookie');
 const { setAuthCookie, clearAuthCookie } = require('../services/authStateCookie');
+const { clearAllAuthCookies, buildPingOneSignoffUrl } = require('../services/sessionCookies');
 const oauthConfig = require('../config/oauth');
 const { buildPingOneAuthorizeResourceQueryParam } = require('../utils/oauthAuthorizeResource');
 const { trackTokenEvent } = require('../services/tokenChainService');
@@ -416,9 +417,6 @@ router.get('/logout', (req, res) => {
   if (accessToken  && accessToken  !== '_cookie_session') oauthService.revokeToken(accessToken,  'access_token');
   if (refreshToken && refreshToken !== '_cookie_session') oauthService.revokeToken(refreshToken, 'refresh_token');
 
-  // Clear any stale PKCE cookie so re-login doesn't hit invalid_state
-  clearPkceCookie(res, _isProd());
-
   req.session.destroy((err) => {
     if (err) {
       console.error('Session destruction error:', err);
@@ -431,21 +429,9 @@ router.get('/logout', (req, res) => {
       metadata: { event: 'logout', role: null, hasAccessToken: false, hasIdToken: false, hasRefreshToken: false },
     });
 
-    // Redirect to PingOne RP-Initiated Logout so the SSO session is cleared.
-    // PingOne signoff endpoint: /as/signoff
-    const envId = process.env.PINGONE_ENVIRONMENT_ID;
-    const region = process.env.PINGONE_REGION || 'com';
-    const pingoneSignoff = `https://auth.pingone.${region}/${envId}/as/signoff`;
+    clearAllAuthCookies(res, _isProd());
 
-    const params = new URLSearchParams({
-      post_logout_redirect_uri: postLogoutUri
-    });
-    // Include id_token_hint if available (PingOne uses it to identify the session)
-    if (idToken) {
-      params.set('id_token_hint', idToken);
-    }
-
-    res.redirect(`${pingoneSignoff}?${params.toString()}`);
+    res.redirect(buildPingOneSignoffUrl(postLogoutUri, 'pingone_admin_client_id', idToken));
   });
 });
 

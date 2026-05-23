@@ -23,8 +23,31 @@ export default function Admin() {
     try {
       setLoading(true);
       setError(null);
-      const response = await apiClient.get("/api/admin/stats");
-      setStats(response.data.stats);
+      // Try admin stats first; fall back to banking data if scope is unavailable
+      try {
+        const response = await apiClient.get("/api/admin/stats");
+        setStats(response.data.stats);
+        return;
+      } catch (adminErr) {
+        if (adminErr.response?.status !== 403 && adminErr.response?.status !== 401) throw adminErr;
+      }
+      // Fall back: derive stats from banking accounts/transactions endpoints
+      const [acctRes, txRes] = await Promise.all([
+        apiClient.get("/api/accounts").catch(() => ({ data: [] })),
+        apiClient.get("/api/transactions").catch(() => ({ data: [] })),
+      ]);
+      const accounts = Array.isArray(acctRes.data) ? acctRes.data : (acctRes.data?.accounts ?? []);
+      const transactions = Array.isArray(txRes.data) ? txRes.data : (txRes.data?.transactions ?? []);
+      const totalBalance = accounts.reduce((s, a) => s + (a.balance || 0), 0);
+      setStats({
+        totalUsers: '—',
+        activeUsers: '—',
+        totalAccounts: accounts.length,
+        activeAccounts: accounts.filter(a => a.isActive !== false).length,
+        totalBalance,
+        averageBalance: accounts.length ? totalBalance / accounts.length : 0,
+        totalTransactions: transactions.length,
+      });
     } catch (err) {
       console.error("[Admin] Error loading stats:", err);
       setError(
@@ -111,7 +134,7 @@ export default function Admin() {
 
               <div className="stat-card">
                 <div className="stat-value">{stats.totalAccounts}</div>
-                <div className="stat-label">Bank Accounts</div>
+                <div className="stat-label">Accounts</div>
                 <div className="stat-subtext">
                   {stats.activeAccounts} active
                 </div>
@@ -119,11 +142,11 @@ export default function Admin() {
 
               <div className="stat-card">
                 <div className="stat-value">
-                  ${(stats.totalBalance / 1000).toFixed(0)}K
+                  {typeof stats.totalBalance === 'number' ? `$${(stats.totalBalance / 1000).toFixed(0)}K` : stats.totalBalance}
                 </div>
                 <div className="stat-label">Total Balance</div>
                 <div className="stat-subtext">
-                  Avg: ${stats.averageBalance?.toFixed(0)}
+                  {typeof stats.averageBalance === 'number' ? `Avg: $${stats.averageBalance.toFixed(0)}` : ''}
                 </div>
               </div>
 

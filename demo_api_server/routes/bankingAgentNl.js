@@ -29,8 +29,8 @@ router.post('/nl', async (req, res) => {
     // Pass langchain_config so NL routing can respect configured LLM provider (Helix, etc.)
     const langchainConfig = req.session?.langchain_config || {};
 
-    const { source, result } = await parseNaturalLanguage(message.trim(), context, provider, langchainConfig);
-    return res.json({ source, result });
+    const { source, result, llm_attempted, llm_not_configured } = await parseNaturalLanguage(message.trim(), context, provider, langchainConfig);
+    return res.json({ source, result, llm_attempted, llm_not_configured });
   } catch (e) {
     console.error('[bankingAgentNl]', e);
     return res.status(500).json({ error: 'nl_parse_failed', message: e.message || 'Failed to parse message' });
@@ -45,22 +45,36 @@ router.post('/nl', async (req, res) => {
  * response (no host, no exact model); authenticated callers still get the
  * full detail for the Config/diagnostics surfaces. */
 router.get('/nl/status', (req, res) => {
+  const configStore = require('../services/configStore');
   const ollamaBase = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
   const ollamaModel = process.env.OLLAMA_MODEL || 'llama3.2';
   const isAuthed = Boolean(req.session?.user);
-  if (!isAuthed) {
-    return res.json({
-      activeProvider: 'ollama',
-      ollamaConfigured: true,
-      heuristicAlwaysAvailable: true,
-    });
-  }
+
+  // Resolve which LLM provider is actually configured.
+  // helix_api_key uses the file-based loader (LLM2.json) as fallback.
+  const helixApiKey = configStore.getEffective('helix_api_key') || '';
+  const helixBaseUrl = configStore.getEffective('helix_base_url') || '';
+  const helixConfigured = !!(helixApiKey && helixBaseUrl);
+
+  const ollamaConfigured = !!(process.env.OLLAMA_BASE_URL);
+
+  // Determine active LLM provider: helix wins if configured, then ollama, then none.
+  const activeLlmProvider = helixConfigured ? 'helix' : ollamaConfigured ? 'ollama' : null;
+
+  const base = {
+    activeLlmProvider,
+    helixConfigured,
+    ollamaConfigured,
+    heuristicAlwaysAvailable: true,
+  };
+
+  if (!isAuthed) return res.json(base);
+
   return res.json({
-    activeProvider: 'ollama',
-    ollamaConfigured: true,
+    ...base,
     ollamaBaseUrl: ollamaBase,
     ollamaModel,
-    heuristicAlwaysAvailable: true,
+    helixAgentId: configStore.getEffective('helix_agent_id') || '',
   });
 });
 

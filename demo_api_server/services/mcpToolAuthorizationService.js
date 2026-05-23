@@ -113,7 +113,10 @@ async function evaluateMcpFirstToolGate({ req, tool, agentToken, userSub, userAc
   // Both authorization-server implementations (simulated + PingOne) receive
   // the same expected aud and must enforce the same audience-match rule.
   const twoExchangeOn = configStore.getEffective('ff_two_exchange_delegation') !== 'false';
-  const useGateway = !!(process.env.MCP_GATEWAY_HTTP_URL || configStore.getEffective('mcp_gateway_http_url'));
+  // useGateway: only true when explicitly configured (env var or persisted SQLite value).
+  // Intentionally excludes FIELD_DEFS defaults — a default gateway URL doesn't mean the
+  // gateway is deployed, so we must not switch audience resolution based on it.
+  const useGateway = !!(process.env.MCP_GATEWAY_HTTP_URL || configStore.get('mcp_gateway_http_url'));
   const mcpResourceUri = useGateway
     ? (configStore.getEffective('pingone_resource_mcp_gateway_uri') || '')
     : twoExchangeOn

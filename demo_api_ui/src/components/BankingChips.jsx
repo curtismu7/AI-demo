@@ -20,6 +20,14 @@ const HEURISTIC_CHIPS = [
     label: "Show Mortgage Data",
     message: "show mortgage data",
   },
+  // Vertical feature chip — label overridden by manifest dashboard.chips[key=feature].
+  // Message routes to vertical_feature_demo in the heuristic parser; BankingAgent
+  // reads the active vertical to dispatch the correct MCP tool.
+  {
+    id: "feature",
+    label: "Show Feature Data",
+    message: "show vertical feature",
+  },
 ];
 
 // Overlay manifest chip LABELS by key. id + message (routing keys) are never
@@ -192,9 +200,9 @@ export default function BankingChips({
   const customHeuristic = customChips.filter((c) => c.type === "heuristic");
   const customLlm = customChips.filter((c) => c.type === "llm");
 
-  const handleChipClick = (chip) => {
+  const handleChipClick = (chip, requiresLlm = false) => {
     if (onChipClick) {
-      onChipClick({ message: chip.message, label: chip.label });
+      onChipClick({ message: chip.message, label: chip.label, requiresLlm });
     }
   };
 
@@ -213,7 +221,7 @@ export default function BankingChips({
                 type="button"
                 key={chip.id}
                 className="banking-chips-dropdown__button banking-chips-dropdown__button--heuristic"
-                onClick={() => handleChipClick(chip)}
+                onClick={() => handleChipClick(chip, false)}
                 disabled={isLoading}
                 title={chip.message}
               >
@@ -232,7 +240,7 @@ export default function BankingChips({
               type="button"
               key={chip.id}
               className="banking-chips-dropdown__button banking-chips-dropdown__button--heuristic"
-              onClick={() => handleChipClick(chip)}
+              onClick={() => handleChipClick(chip, false)}
               disabled={isLoading}
               title={chip.message}
             >
@@ -244,7 +252,7 @@ export default function BankingChips({
               type="button"
               key={chip.id}
               className="banking-chips-dropdown__button banking-chips-dropdown__button--heuristic"
-              onClick={() => handleChipClick({ message: chip.prompt })}
+              onClick={() => handleChipClick({ message: chip.prompt }, false)}
               disabled={isLoading}
               title={chip.prompt}
             >
@@ -280,7 +288,7 @@ export default function BankingChips({
                       type="button"
                       key={chip.id}
                       className="banking-chips-dropdown__button banking-chips-dropdown__button--llm"
-                      onClick={() => handleChipClick(chip)}
+                      onClick={() => handleChipClick(chip, true)}
                       disabled={isLoading}
                       title={chip.message}
                     >
@@ -313,7 +321,7 @@ export default function BankingChips({
                       type="button"
                       key={chip.id}
                       className="banking-chips-dropdown__button banking-chips-dropdown__button--llm"
-                      onClick={() => handleChipClick({ message: chip.prompt })}
+                      onClick={() => handleChipClick({ message: chip.prompt }, true)}
                       disabled={isLoading}
                       title={chip.prompt}
                     >

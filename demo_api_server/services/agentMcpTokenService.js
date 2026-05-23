@@ -1679,7 +1679,23 @@ async function _resolveFinalMcpAudience(gatewayAud, mcpServerAud) {
         );
         _warnedInsecureProbe = true;
       }
-      const httpsOpts = isHttps && allowInsecure ? { rejectUnauthorized: false } : {};
+      // For local dev with mkcert: trust the mkcert CA root so the probe
+      // validates the self-signed cert without skipping TLS entirely.
+      let httpsOpts = {};
+      if (isHttps) {
+        if (allowInsecure) {
+          httpsOpts = { rejectUnauthorized: false };
+        } else {
+          const mkcertCaPath = require('node:path').join(
+            process.env.HOME || '',
+            'Library', 'Application Support', 'mkcert', 'rootCA.pem',
+          );
+          const fs = require('node:fs');
+          if (fs.existsSync(mkcertCaPath)) {
+            httpsOpts = { ca: fs.readFileSync(mkcertCaPath) };
+          }
+        }
+      }
       const req = httpModule.get(`${baseUrl}/health`, httpsOpts, (res) => {
         let data = '';
         res.on('data', (chunk) => { data += chunk; });

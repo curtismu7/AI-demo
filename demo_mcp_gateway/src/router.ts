@@ -47,7 +47,13 @@ const INVEST_TOOLS = new Set([
 //   dispatches to a backend (banking_mortgage_service) via X-API-Key.
 //   Other apikey tools (if re-added) keep the Gateway-only marker behavior —
 //   the split is decided by backendHttpUrl() returning non-empty, not here.
-const APIKEY_TOOLS = new Set(['show_mortgage']);
+const APIKEY_TOOLS = new Set([
+  'show_mortgage',       // banking — home loan (Phase 267)
+  'show_large_purchase', // retail — Great Buy large purchase
+  'show_health_record',  // healthcare — CareConnect health record
+  'show_gear_order',     // sporting-goods — Super Sports gear order
+  'show_expense_report', // workforce — WX Workforce expense report
+]);
 
 // Phase 266 Path B: Dual-token forward to /api/resource-server/identity
 const DUALTOKEN_TOOLS = new Set(['user_profile_card']);
@@ -93,11 +99,16 @@ export function backendResourceUri(target: BackendTarget, config: GatewayConfig)
 // Gateway-terminating ('apikey').
 export function backendHttpUrl(target: BackendTarget, toolName: string, config: GatewayConfig): string {
   if (target === 'apikey') {
-    // Phase 267: show_mortgage dispatches to banking_mortgage_service via
-    // X-API-Key. Any other apikey tool stays Gateway-only (empty string →
-    // index.ts returns the static marker, preserving Phase 266 behavior).
-    if (toolName === 'show_mortgage') return `${config.mortgageServiceBaseUrl}/mortgage`;
-    return '';
+    // Each apikey tool maps to a route on banking_mortgage_service via X-API-Key.
+    const APIKEY_BACKEND_ROUTES: Record<string, string> = {
+      show_mortgage:       'mortgage',
+      show_large_purchase: 'retail',
+      show_health_record:  'healthcare',
+      show_gear_order:     'gear',
+      show_expense_report: 'expense',
+    };
+    const route = APIKEY_BACKEND_ROUTES[toolName];
+    return route ? `${config.mortgageServiceBaseUrl}/${route}` : '';
   }
   if (target === 'olb' || target === 'invest') return '';
   if (target === 'dualtoken') {

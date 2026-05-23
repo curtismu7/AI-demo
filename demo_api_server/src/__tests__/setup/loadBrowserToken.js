@@ -38,6 +38,10 @@ module.exports = async function loadBrowserToken() {
     const key = trimmed.slice(0, eqIdx).trim();
     const val = trimmed.slice(eqIdx + 1).trim();
 
+    // Gate flags must only be set explicitly via shell — never auto-injected from
+    // the token file, or every `npm test` run would hit real PingOne APIs.
+    if (key === 'RUN_LIVE_TESTS' || key === 'RUN_PINGONE_TOKEN_INTEGRATION') continue;
+
     // Don't overwrite vars already set in the environment (CI / shell export wins)
     if (!process.env[key]) {
       process.env[key] = val;

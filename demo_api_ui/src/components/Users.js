@@ -191,7 +191,7 @@ const Users = ({ user, onLogout }) => {
         {showCreatePanel && (
           <CreateUserPanel
             onClose={() => setShowCreatePanel(false)}
-            onCreated={() => { setShowCreatePanel(false); fetchUsers(); }}
+            onCreated={() => { fetchUsers(); }}
           />
         )}
 

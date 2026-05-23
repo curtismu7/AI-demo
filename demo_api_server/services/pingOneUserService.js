@@ -250,8 +250,15 @@ class PingOneUserService {
    */
   async setUserPassword(userId, password) {
     try {
-      await this.makeRequest('PUT', `/users/${userId}/password`, {
-        value: password
+      const token = await this.getAccessToken();
+      await axios({
+        method: 'PUT',
+        url: `${this.baseUrl}/users/${userId}/password`,
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/vnd.pingidentity.password.set+json',
+        },
+        data: { value: password },
       });
 
       logger.debug(LOG_CATEGORIES.USER_MANAGEMENT, 'User password set successfully', {

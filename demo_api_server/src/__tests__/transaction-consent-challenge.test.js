@@ -86,6 +86,9 @@ jest.mock('../../services/configStore', () => ({
   getEffective: jest.fn((key) => {
     if (key === 'ff_hitl_enabled') return 'true';
     if (key === 'max_transaction_amount') return '10000';
+    // Use 'email' mode so confirmChallenge falls through to the BFF-generated
+    // OTP path (emailService) instead of calling mfaService.getPingOneUserContact.
+    if (key === 'hitl_consent_mfa_mode') return 'email';
     return null;
   }),
   setConfig: jest.fn().mockResolvedValue(undefined),
@@ -120,6 +123,21 @@ jest.mock('../../services/transactionAuthorizationService', () => ({
     }
     return { ran: false, reason: 'below_threshold' };
   }),
+}));
+
+// Mock mfaService so confirmChallenge (onetime mode) can resolve user contact
+// without hitting real PingOne APIs.
+jest.mock('../../services/mfaService', () => ({
+  getPingOneUserContact: jest.fn().mockResolvedValue({ email: 'test@bank.com', mobilePhone: null }),
+  initiateDeviceAuth: jest.fn(),
+  selectDevice: jest.fn(),
+  submitOtp: jest.fn(),
+  submitFido2Assertion: jest.fn(),
+}));
+
+// Mock recognizeService so face-auth path doesn't hit PingOne.
+jest.mock('../../services/recognizeService', () => ({
+  verifyFace: jest.fn().mockResolvedValue({ ok: true }),
 }));
 
 // Mock emailService so no real PingOne calls are made.

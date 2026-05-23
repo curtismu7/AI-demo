@@ -64,6 +64,15 @@ const BOOTSTRAP_ALLOWLIST = new Set([
   'port',
   'pingone_environment_id',
   'pingone_region',
+  // OAuth issuer and management credentials are identity-critical: a stale LMDB
+  // value for these causes JWT validation failures or Management API auth errors
+  // even when .env has the correct values. Treat them as bootstrap-authoritative
+  // so .env always wins when set.
+  'oauth_issuer',
+  'pingone_mgmt_client_id',
+  'pingone_mgmt_client_secret',
+  'pingone_management_client_id',
+  'pingone_management_client_secret',
 ]);
 
 // All known config keys with their defaults and whether they are public
@@ -539,6 +548,13 @@ class ConfigStore {
     const rows = _lmdbConfig.loadAll();
     const decoded = {};
     for (const row of rows) {
+      const lk = String(row.key).toLowerCase();
+      // Bootstrap keys are always resolved live by getEffective() (env wins).
+      // Never load them into the cache — a stale LMDB value would silently
+      // override the correct .env value because _setCache runs before
+      // process.env is consulted in the non-bootstrap path. See REGRESSION_PLAN §4
+      // (2026-05-23 LMDB bootstrap-key protection).
+      if (BOOTSTRAP_ALLOWLIST.has(lk)) continue;
       decoded[row.key] = SECRET_KEYS.has(String(row.key).toUpperCase()) ? _decrypt(row.value) : row.value;
     }
     this._setCache(decoded, 'sqlite');
@@ -581,6 +597,7 @@ class ConfigStore {
     const allowEmptyStringKeys = new Set(['marketing_demo_username_hint', 'marketing_demo_password_hint', 'demo_accounts']);
     for (const [key, value] of Object.entries(data)) {
       if (!(key in FIELD_DEFS)) continue;          // ignore unknown keys
+      if (BOOTSTRAP_ALLOWLIST.has(String(key).toLowerCase())) continue; // .env is authoritative
       if (value === null || value === undefined) continue;
       if (value === '' && !allowEmptyStringKeys.has(key)) continue;
       // Value is a non-empty string
@@ -621,6 +638,7 @@ class ConfigStore {
     if (shouldPersist) {
       try {
         for (const [key, value] of Object.entries(data)) {
+          if (BOOTSTRAP_ALLOWLIST.has(String(key).toLowerCase())) continue; // .env is authoritative
           _lmdbConfig.upsert(String(key).toUpperCase(), String(value));
         }
       } catch (err) {

@@ -1725,7 +1725,9 @@ export default function BankingAgent({
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [nlLoading, setNlLoading] = useState(false);
   const [nlMeta, setNlMeta] = useState(null);
-  const [selectedLlmProvider] = useState("helix");
+  // Derived from nlMeta: the LLM provider that is actually configured server-side.
+  // null = no LLM configured (heuristic only). Never hardcoded.
+  const activeLlmProvider = nlMeta?.activeLlmProvider || null;
   // Degraded-mode banner: true when the user selected an LLM provider (Helix)
   // but routing fell back to the heuristic parser (Helix unreachable / not
   // configured). Drives a persistent banner in the panel header. Cleared as
@@ -2087,6 +2089,10 @@ export default function BankingAgent({
     let groupsToRender = { ...ACTION_GROUPS, ...customGroupMap };
     if (isConfigEmbeddedFocus) {
       groupsToRender = { admin: ACTION_GROUPS.admin || [] };
+    } else if (effectiveUser?.role !== "admin") {
+      // Customers should not see the admin chip group
+      const { admin: _admin, ...rest } = groupsToRender;
+      groupsToRender = rest;
     }
 
     return (
@@ -5462,7 +5468,7 @@ export default function BankingAgent({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: text,
-          provider: selectedLlmProvider,
+          provider: activeLlmProvider || "heuristic",
         }),
         signal: anySignal([AbortSignal.timeout(15000), signal]),
       })
@@ -5615,7 +5621,7 @@ export default function BankingAgent({
     // A Helix-sourced answer (helix / helix_fallback) clears the banner.
     if (_source === "helix" || _source === "helix_fallback") {
       setHelixDegraded(false);
-    } else if (selectedLlmProvider === "helix" && _source === "heuristic") {
+    } else if (activeLlmProvider === "helix" && _source === "heuristic") {
       setHelixDegraded(true);
     }
     if (result.kind === "education" && result.ciba) {
@@ -6087,7 +6093,7 @@ export default function BankingAgent({
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, provider: selectedLlmProvider }),
+        body: JSON.stringify({ message: text, provider: activeLlmProvider || "heuristic" }),
         signal: anySignal([AbortSignal.timeout(15000), signal]),
       });
       const { result: _nlResult, source: _nlSource } = await _nlRes
@@ -6742,7 +6748,7 @@ export default function BankingAgent({
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({
                               message: text,
-                              provider: selectedLlmProvider,
+                              provider: activeLlmProvider || "heuristic",
                             }),
                             signal: AbortSignal.timeout(15000),
                           },
@@ -6772,7 +6778,7 @@ export default function BankingAgent({
                   <BankingChips
                     customChips={customChips}
                     user={user}
-                    onChipClick={({ message, label }) => {
+                    onChipClick={({ message, label, requiresLlm }) => {
                       setShowDiscovery(false);
                       if (isAgentBlockedByConsentDecline()) {
                         addMessage(
@@ -6791,11 +6797,11 @@ export default function BankingAgent({
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({
                               message: message,
-                              provider: selectedLlmProvider,
+                              provider: requiresLlm ? (activeLlmProvider || "heuristic") : "heuristic",
                             }),
                             signal: AbortSignal.timeout(15000),
                           });
-                          const { result, source } = await res
+                          const { result, source, llm_attempted, llm_not_configured } = await res
                             .json()
                             .catch(() => ({
                               result: {
@@ -6804,22 +6810,19 @@ export default function BankingAgent({
                               },
                               source: "heuristic",
                             }));
-                          // Advanced Analysis chips need an LLM provider; when one is
-                          // selected (helix/ollama) but no provider is configured the
-                          // backend falls back to heuristics and returns kind:"none"
-                          // with a generic "didn't recognize" message. Surface a
-                          // clearer hint that points at the actual fix.
-                          if (
-                            result?.kind === "none" &&
-                            selectedLlmProvider &&
-                            selectedLlmProvider !== "heuristic"
-                          ) {
-                            result.message =
-                              `This chip needs an LLM (Helix or Ollama) to interpret freeform questions, ` +
-                              `but no provider is configured.\n\n` +
-                              `Open the Helix tab in the agent and add base_url + api_key + agent_id, ` +
-                              `or pick a different chip from "Quick Actions" — those use the local ` +
-                              `heuristic parser and work without an LLM.`;
+                          if (result?.kind === "none") {
+                            if (llm_not_configured) {
+                              result.message =
+                                `This chip needs an LLM (Helix or Ollama) to interpret freeform questions, ` +
+                                `but no provider is configured.\n\n` +
+                                `Open the Helix tab in the agent and add base_url + api_key + agent_id, ` +
+                                `or pick a different chip from "Quick Actions" — those use the local ` +
+                                `heuristic parser and work without an LLM.`;
+                            } else if (llm_attempted) {
+                              result.message =
+                                `Helix couldn't map this to a banking action. ` +
+                                `Try rephrasing, or pick a chip from "Quick Actions".`;
+                            }
                           }
                           await dispatchNlResult(
                             result,
@@ -8207,7 +8210,7 @@ export default function BankingAgent({
                                   },
                                   body: JSON.stringify({
                                     message: s,
-                                    provider: selectedLlmProvider,
+                                    provider: activeLlmProvider || "heuristic",
                                   }),
                                   signal: AbortSignal.timeout(15000),
                                 },
@@ -8322,7 +8325,7 @@ export default function BankingAgent({
                                       },
                                       body: JSON.stringify({
                                         message: chip.label,
-                                        provider: selectedLlmProvider,
+                                        provider: activeLlmProvider || "heuristic",
                                       }),
                                       signal: AbortSignal.timeout(15000),
                                     },

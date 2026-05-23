@@ -409,16 +409,19 @@ router.get('/callback', async (req, res) => {
         : claimValue === configuredAdminRole;
     }
 
-    // Signal 4: existing record — don't downgrade someone already marked admin
-    const existingRoleAdmin = user?.role === 'admin';
+    // Signal 4 removed: do not preserve an existing admin role when logging in via the
+    // customer app. Role must be earned from PingOne signals (allowlist, population, claim,
+    // resolver) — not inherited from a stale data-store entry. This prevents a user whose
+    // store record was previously set to 'admin' (e.g. by the admin OAuth callback) from
+    // silently retaining admin privileges when they sign in through the end-user app.
 
     // Signal 5: roleClaimResolver — new oauth_role_claim_* config (any IDP)
     const resolvedRole    = getRoleFromClaims(mergedUserInfo);
     const resolverIsAdmin = resolvedRole === 'admin';
 
-    if (usernameIsAdmin || populationIsAdmin || claimIsAdmin || existingRoleAdmin || resolverIsAdmin) {
+    if (usernameIsAdmin || populationIsAdmin || claimIsAdmin || resolverIsAdmin) {
       oauthUser.role = 'admin';
-      console.log(`[oauth/user/callback] Granting admin to ${oauthUser.username} (allowlist=${usernameIsAdmin}, population=${populationIsAdmin}, claim[${configuredRoleClaim}]=${claimIsAdmin}, existing=${existingRoleAdmin}, resolver=${resolverIsAdmin})`);
+      console.log(`[oauth/user/callback] Granting admin to ${oauthUser.username} (allowlist=${usernameIsAdmin}, population=${populationIsAdmin}, claim[${configuredRoleClaim}]=${claimIsAdmin}, resolver=${resolverIsAdmin})`);
     } else {
       oauthUser.role = 'customer';
       console.log(`[oauth/user/callback] Granting customer role to ${oauthUser.username}`);

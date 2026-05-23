@@ -4,8 +4,9 @@
  * (/accounts, /transactions, /users) is hit while the visitor is not logged in.
  *
  * Provides a PingOne Customer Sign In button. No content is fetched until logged in.
+ * Pass onClose to dismiss without navigating (e.g. when user is cookie-restored).
  */
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const OVERLAY_STYLE = {
@@ -94,21 +95,28 @@ const PAGE_LABELS = {
   '/users': 'user management',
 };
 
-export default function QuickLoginModal({ pathname }) {
+export default function QuickLoginModal({ pathname, onClose }) {
   const navigate = useNavigate();
   const label = PAGE_LABELS[pathname] || 'this page';
+
+  const handleClose = useCallback(() => {
+    if (onClose) {
+      onClose();
+    } else {
+      navigate('/', { replace: true });
+    }
+  }, [onClose, navigate]);
 
   // Close on Escape
   useEffect(() => {
     function onKey(e) {
-      if (e.key === 'Escape') navigate('/', { replace: true });
+      if (e.key === 'Escape') handleClose();
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [navigate]);
+  }, [handleClose]);
 
   const handleCustomerLogin = () => {
-    // Save intended destination; restore after OAuth callback
     try {
       sessionStorage.setItem('post_login_redirect', pathname);
     } catch {}
@@ -125,19 +133,19 @@ export default function QuickLoginModal({ pathname }) {
   return (
     <div style={OVERLAY_STYLE} role="dialog" aria-modal="true" aria-label="Sign in required">
       <div style={MODAL_STYLE}>
-        <button style={CLOSE_STYLE} onClick={() => navigate('/', { replace: true })} aria-label="Close">×</button>
-        <div style={ICON_STYLE}>🔐</div>
+        <button type="button" style={CLOSE_STYLE} onClick={handleClose} aria-label="Close">×</button>
+        <div style={ICON_STYLE}>&#128272;</div>
         <h2 style={TITLE_STYLE}>Sign in to continue</h2>
         <p style={SUBTITLE_STYLE}>
           You need to sign in with PingOne to view your {label}.
         </p>
-        <button style={BTN_PRIMARY_STYLE} onClick={handleCustomerLogin}>
+        <button type="button" style={BTN_PRIMARY_STYLE} onClick={handleCustomerLogin}>
           Customer Sign In
         </button>
-        <button style={{ ...BTN_PRIMARY_STYLE, background: '#b91c1c', marginBottom: '12px' }} onClick={handleAdminLogin}>
+        <button type="button" style={{ ...BTN_PRIMARY_STYLE, background: '#b91c1c', marginBottom: '12px' }} onClick={handleAdminLogin}>
           Admin Sign In
         </button>
-        <button style={BTN_GHOST_STYLE} onClick={() => navigate('/', { replace: true })}>
+        <button type="button" style={BTN_GHOST_STYLE} onClick={handleClose}>
           Back to Home
         </button>
       </div>

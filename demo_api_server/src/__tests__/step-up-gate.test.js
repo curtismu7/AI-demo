@@ -68,12 +68,31 @@ jest.mock('../../middleware/auth', () => ({
   hashPassword: (p) => p,
 }));
 
-// ─── Bypass HITL consent gate so step-up gate tests can reach the step-up logic ──
-// The HITL consent check runs before step-up. For amounts > $500 we skip it here.
-jest.mock('../../services/transactionConsentChallenge', () => ({
-  ...jest.requireActual('../../services/transactionConsentChallenge'),
-  verifyAndConsumeChallenge: jest.fn(() => ({ ok: true })),
-}));
+// ─── Fully mock transactionConsentChallenge so step-up gate tests bypass the OTP flow ──
+// These tests are about the step-up gate, not OTP challenge logic.
+// createChallenge/confirmChallenge are stubbed to return success without touching
+// mfaService, emailService, or any other external dependency.
+jest.mock('../../services/transactionConsentChallenge', () => {
+  let _challenges = {};
+  return {
+    createChallenge: jest.fn((req, body) => {
+      const id = 'mock-challenge-' + Math.random().toString(36).slice(2);
+      _challenges[id] = { id, status: 'pending' };
+      if (!req.session.txConsentChallenges) req.session.txConsentChallenges = {};
+      req.session.txConsentChallenges[id] = _challenges[id];
+      return { ok: true, challengeId: id };
+    }),
+    confirmChallenge: jest.fn((req, challengeId) => {
+      const ch = req.session.txConsentChallenges?.[challengeId];
+      if (!ch) return { ok: false, status: 404, json: { error: 'not_found' } };
+      ch.status = 'confirmed';
+      return { ok: true, json: { otpSent: true, otpExpiresAt: new Date(Date.now() + 300000).toISOString() } };
+    }),
+    verifyOtp: jest.fn((req, challengeId, otpCode) => ({ ok: true })),
+    verifyAndConsumeChallenge: jest.fn((req, challengeId) => ({ ok: true })),
+    __reset: () => { _challenges = {}; },
+  };
+});
 
 // ─── Mock the data store with a test user + account ───────────────────────────
 jest.mock('../../data/store', () => ({

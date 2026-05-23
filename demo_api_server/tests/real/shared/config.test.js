@@ -14,7 +14,7 @@ describe('Vertical config endpoints (real)', () => {
   });
 
   afterAll(async () => {
-    await client.put('/api/config/vertical', { verticalId: 'banking' });
+    if (client) await client.put('/api/config/vertical', { verticalId: 'banking' });
   });
 
   it('GET /api/config/verticals/list lists all 6 verticals', async () => {

@@ -7,7 +7,6 @@ module.exports = {
   globalTeardown: '<rootDir>/tests/real/helpers/globalTeardown.js',
   setupFilesAfterEnv: ['<rootDir>/tests/real/helpers/suiteSetup.js'],
   testTimeout: 30000,
-  runInBand: true,
   forceExit: true,
   verbose: true,
   silent: false,

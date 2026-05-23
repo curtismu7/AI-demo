@@ -83,12 +83,14 @@ export default function DemoSetupPanel() {
 
   const [demoResetting, setDemoResetting] = useState(false);
   const handleResetDemo = async () => {
-    if (!window.confirm('Reset demo? This clears all agent history, token chain events, and MCP audit logs. You will stay logged in.')) return;
+    if (!window.confirm('Reset demo? This clears all agent history, token chain events, and MCP audit logs. You will be logged out and the theme will reset to default.')) return;
     setDemoResetting(true);
     try { await axios.post('/api/admin/reset-demo'); } catch (_) {}
     try { localStorage.removeItem('tokenChainHistory'); } catch (_) {}
     try { localStorage.removeItem('api-traffic-store'); } catch (_) {}
-    window.location.reload();
+    try { localStorage.removeItem('banking_ui_theme'); } catch (_) {}
+    try { sessionStorage.removeItem('banking_ui_theme'); } catch (_) {}
+    window.location.href = '/api/auth/logout';
   };
 
   const [loading, setLoading] = useState(true);

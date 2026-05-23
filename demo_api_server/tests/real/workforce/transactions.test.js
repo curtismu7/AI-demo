@@ -21,13 +21,13 @@ describe(`Transactions — ${VERTICAL} vertical (real)`, () => {
     it('returns 200 with array', async () => {
       const r = await client.get('/api/transactions/my');
       expect(r.status).toBe(200);
-      expect(Array.isArray(r.data)).toBe(true);
+      expect(Array.isArray(r.data.transactions)).toBe(true);
     });
 
     it('transactions include expected fields', async () => {
       const r = await client.get('/api/transactions/my');
-      if (r.data.length === 0) return;
-      const tx = r.data[0];
+      if (!r.data.transactions?.length) return;
+      const tx = r.data.transactions[0];
       expect(tx).toMatchObject({
         id:     expect.any(String),
         type:   expect.any(String),
