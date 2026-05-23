@@ -1273,6 +1273,8 @@ export default function ArchitectureTokenFlowPage({ user }) {
                 setStepDetail(null);
                 setStepDetail2(null);
                 setStepDetailOut(null);
+                setIsTokenExch(false);
+                setIsHitl(false);
                 setStepArrow(null);
               }, HIGHLIGHT_MS);
               simTimeouts.current.push(done);
