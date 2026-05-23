@@ -1,6 +1,6 @@
 'use strict';
 
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('node:crypto');
 const { runWithCorrelation } = require('../utils/correlationContext');
 
 /**
@@ -11,7 +11,7 @@ const { runWithCorrelation } = require('../utils/correlationContext');
  * clients and log aggregators can correlate request/response pairs end-to-end.
  */
 function correlationIdMiddleware(req, res, next) {
-  const id = req.headers['x-request-id'] || req.headers['x-correlation-id'] || uuidv4();
+  const id = req.headers['x-request-id'] || req.headers['x-correlation-id'] || randomUUID();
   req.requestId = id;
   req.correlationId = id; // Also set correlationId for consistency
   res.setHeader('X-Request-ID', id);

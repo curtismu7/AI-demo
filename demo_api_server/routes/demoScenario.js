@@ -7,7 +7,7 @@
 
 const express = require('express');
 const axios = require('axios');
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID: uuidv4 } = require('node:crypto');
 const dataStore = require('../data/store');
 const runtimeSettings = require('../config/runtimeSettings');
 const demoScenarioStore = require('../services/demoScenarioStore');
