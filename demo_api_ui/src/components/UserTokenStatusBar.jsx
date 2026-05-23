@@ -9,13 +9,13 @@ import './UserTokenStatusBar.css';
  *
  * States:
  *   - Loading: tokenSecondsLeft === null && user !== null → shimmer
- *   - Active:  tokenSecondsLeft > 0 → clickable pill with countdown
- *   - Expired: tokenSecondsLeft === 0 && user !== null → warning + re-login
+ *   - Active:  tokenSecondsLeft > 0 → username + user ID + countdown + "View Token" button
+ *   - Expired: tokenSecondsLeft <= 0 && user !== null → warning + re-login
  *   - Anonymous: user === null → not-logged-in + login button
  *
- * @param {object|null} props.user - Session user object or null
+ * @param {object|null} props.user - Session user object ({ firstName, lastName, email, id, role }) or null
  * @param {number|null} props.tokenSecondsLeft - Seconds until token expiry (live countdown)
- * @param {function} props.onOpenModal - Called when user clicks the active pill
+ * @param {function} props.onOpenModal - Called when user clicks "View Token"
  */
 export default function UserTokenStatusBar({ user, tokenSecondsLeft, onOpenModal }) {
   function formatCountdown(seconds) {
@@ -42,11 +42,15 @@ export default function UserTokenStatusBar({ user, tokenSecondsLeft, onOpenModal
     );
   }
 
+  const displayName = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.username || user.email || 'User';
+  const userId = user.id || null;
+
   // Token data still loading
   if (tokenSecondsLeft === null) {
     return (
       <div className="utsb" role="status" aria-label="Session status">
         <span className="utsb__shimmer" aria-hidden="true" />
+        <span className="utsb__sr-only">Loading session status…</span>
       </div>
     );
   }
@@ -55,7 +59,11 @@ export default function UserTokenStatusBar({ user, tokenSecondsLeft, onOpenModal
   if (tokenSecondsLeft <= 0) {
     return (
       <div className="utsb" role="status" aria-label="Session status">
-        <span className="utsb__expired">⚠ Session expired</span>
+        <span className="utsb__user-info">
+          <span className="utsb__name">{displayName}</span>
+          {userId && <span className="utsb__id" title="User ID">{userId}</span>}
+        </span>
+        <span className="utsb__expired">⚠️ Session expired</span>
         <button
           type="button"
           className="utsb__login-btn"
@@ -70,14 +78,22 @@ export default function UserTokenStatusBar({ user, tokenSecondsLeft, onOpenModal
   // Active
   return (
     <div className="utsb" role="status" aria-label="Session status">
+      <span className="utsb__dot" aria-hidden="true" />
+      <span className="utsb__user-info">
+        <span className="utsb__name">{displayName}</span>
+        {userId && <span className="utsb__id" title="User ID">{userId}</span>}
+      </span>
+      <span className="utsb__countdown">
+        <span className="utsb__sr-only">Token expires in </span>
+        {formatCountdown(tokenSecondsLeft)}
+      </span>
       <button
         type="button"
-        className="utsb__active"
+        className="utsb__view-btn"
         onClick={onOpenModal}
         title="View token details"
       >
-        <span className="utsb__dot" aria-hidden="true" />
-        User session active · {formatCountdown(tokenSecondsLeft)}
+        View Token
       </button>
     </div>
   );

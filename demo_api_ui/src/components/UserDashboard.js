@@ -3288,7 +3288,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         </div>
       )}
 
-      {/* OAuth Token Info Modal */}
+      {/* User Session Token Modal */}
       {showTokenModal && (
         <FloatingPanel
           title="User Session Token"
