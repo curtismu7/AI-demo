@@ -589,7 +589,7 @@ function AppWithAuth() {
     !user && isPublicMarketingAgentPath(pathname) ? 12000 : 4000;
 
   const logout = () => {
-    console.info("Starting logout — navigating to /api/auth/logout");
+    console.info("Starting logout — calling /api/auth/logout via fetch");
 
     localStorage.setItem("userLoggedOut", "true");
 
@@ -602,7 +602,26 @@ function AppWithAuth() {
     window.dispatchEvent(new CustomEvent("userLoggedOut"));
 
     localStorage.removeItem("tokenChainHistory");
-    window.location.href = "/api/auth/logout";
+
+    // Fetch the logout endpoint so the BFF can set cookie-clearing headers
+    // (Set-Cookie: connect.sid=; Max-Age=0) on this response directly — if we
+    // navigate via window.location.href the 302→PingOne redirect loses those
+    // headers at the proxy layer and cookies are not cleared in the browser.
+    // The BFF returns { logoutUrl } instead of redirecting when called via fetch.
+    fetch("/api/auth/logout", { credentials: "include" })
+      .then((r) => r.json())
+      .then(({ logoutUrl }) => {
+        if (logoutUrl) {
+          window.location.href = logoutUrl;
+        } else {
+          // Fallback: BFF returned HTML redirect (shouldn't happen with fetch)
+          window.location.href = "/";
+        }
+      })
+      .catch(() => {
+        // Network error — clear what we can and go home
+        window.location.href = "/";
+      });
   };
 
   return (
