@@ -92,29 +92,71 @@ const MERMAID_SOURCE = `flowchart TB
     class BankingDb db
 `;
 
-const PATH_LEGEND = [
-  {
-    key: "A",
-    label: "Path A — API-key (mortgage service)",
-    swatch: "#b45309",
-    description:
-      'Gateway swaps bearer for service API key, calls banking_mortgage_service :8082 (X-API-Key). Prompt: "show mortgage data".',
-  },
-  {
-    key: "B",
-    label: "Path B — Access + ID-Token",
-    swatch: "#0f766e",
-    description:
-      "Gateway POSTs JSON-RPC envelope to /api/resource-server/identity (bearer + id_token).",
-  },
-  {
-    key: "C",
-    label: "Path C — OAuth Bearer",
-    swatch: "#1e40af",
-    description:
-      "Gateway GETs /api/resource-server/accounts + /transactions (SQLite-backed, exchanged bearer).",
-  },
-];
+// Node identifier strings from the Mermaid source that map to each path.
+// tagPathNodes() checks whether a <g>'s text content *contains* one of these
+// strings. More specific strings first to avoid substring false-positives.
+const PATH_NODE_MAP = {
+  A: ["MortgageService", "PathInfo"],
+  B: ["Identity", "InternalIdToken"],
+  C: ["Accounts", "Transactions", "BankingDb"],
+  shared: ["User", "SPA", "Gateway", "PingOne", "Session"],
+};
+
+/**
+ * Walk all <g> elements in the rendered Mermaid SVG and stamp data-path
+ * attributes so CSS can dim/highlight nodes by path selection.
+ * Called once after mermaid.render() injects the SVG.
+ */
+function tagPathNodes(container) {
+  const groups = container.querySelectorAll("g");
+  groups.forEach((g) => {
+    const text = g.textContent || "";
+    for (const [path, identifiers] of Object.entries(PATH_NODE_MAP)) {
+      if (identifiers.some((id) => text.includes(id))) {
+        g.setAttribute("data-path", path);
+        break; // first match wins
+      }
+    }
+  });
+}
+
+function PathFilterBar({ selectedPath, onSelect }) {
+  const paths = [
+    { key: null, label: "All", swatch: null },
+    { key: "A", label: "Path A — API-key", swatch: "#b45309" },
+    { key: "B", label: "Path B — Dual Token", swatch: "#0f766e" },
+    { key: "C", label: "Path C — OAuth Bearer", swatch: "#1e40af" },
+  ];
+
+  return (
+    <div className="p266-filter-bar">
+      {paths.map(({ key, label, swatch }) => {
+        const isActive = selectedPath === key;
+        let activeClass = "";
+        if (isActive) {
+          activeClass = key === null ? "p266-filter-btn--all-active" : `p266-filter-btn--${key}-active`;
+        }
+        return (
+          <button
+            key={String(key)}
+            type="button"
+            className={`p266-filter-btn ${activeClass}`}
+            onClick={() => onSelect(key)}
+            aria-pressed={isActive}
+          >
+            {swatch && (
+              <span
+                className="p266-filter-swatch"
+                style={{ background: swatch }}
+              />
+            )}
+            {label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 const SPEC_HOPS = [
   { label: "OIDC Core 1.0", summary: "id_token issuance + claims (§3.1.3.7)" },
@@ -155,6 +197,7 @@ const SPEC_HOPS = [
 export default function Phase266ArchitecturePage() {
   const containerRef = useRef(null);
   const [renderError, setRenderError] = useState(null);
+  const [selectedPath, setSelectedPath] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -173,6 +216,7 @@ export default function Phase266ArchitecturePage() {
         );
         if (!cancelled && containerRef.current) {
           containerRef.current.innerHTML = svg;
+          tagPathNodes(containerRef.current);
         }
       } catch (err) {
         if (!cancelled) {
@@ -185,6 +229,13 @@ export default function Phase266ArchitecturePage() {
       cancelled = true;
     };
   }, []);
+
+  const wrapperClass = [
+    "p266-arch-diagram-wrapper",
+    selectedPath ? "p266-path-active" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <div className="p266-arch-page">
@@ -203,22 +254,12 @@ export default function Phase266ArchitecturePage() {
         </p>
       </header>
 
-      <section className="p266-arch-legend-row">
-        {PATH_LEGEND.map((p) => (
-          <div key={p.key} className="p266-arch-legend-card">
-            <span
-              className="p266-arch-legend-swatch"
-              style={{ background: p.swatch }}
-            />
-            <div>
-              <strong>{p.label}</strong>
-              <p>{p.description}</p>
-            </div>
-          </div>
-        ))}
-      </section>
+      <PathFilterBar selectedPath={selectedPath} onSelect={setSelectedPath} />
 
-      <section className="p266-arch-diagram-wrapper">
+      <section
+        className={wrapperClass}
+        {...(selectedPath ? { "data-selected-path": selectedPath } : {})}
+      >
         {renderError ? (
           <div className="p266-arch-error">
             <strong>Diagram failed to render:</strong> {renderError}
