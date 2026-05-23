@@ -577,7 +577,6 @@ class ConfigStore {
    * Persist new configuration values.
    * Accepts partial updates — only sets keys that are provided and non-empty.
    * Secrets are encrypted before writing to storage.
-   * Persists config values to SQLite.
    */
   async setConfig(data) {
     await this.ensureInitialized();
@@ -620,12 +619,12 @@ class ConfigStore {
   }
 
   /**
-   * Persist arbitrary key-value pairs to SQLite and cache without FIELD_DEFS validation.
+   * Persist arbitrary key-value pairs to LMDB and cache without FIELD_DEFS validation.
    * Used by feature flags, which have their own flag-ID namespace (not in FIELD_DEFS).
    *
-   * Phase 269: opts.persist (boolean, default true) — when explicitly false,
-   * skip the SQLite upsert and update only the in-memory cache. The vault
-   * loader uses this so secrets never get duplicated at rest in config.db
+   * opts.persist (boolean, default true) — when explicitly false,
+   * skip the LMDB write and update only the in-memory cache. The vault
+   * loader uses this so secrets never get duplicated at rest
    * (the vault is already the encrypted-at-rest source of truth).
    */
   async setRaw(data, opts = {}) {
@@ -647,7 +646,7 @@ class ConfigStore {
     }
     // Update cache regardless of SQLite outcome (or skip)
     // persist:false is the vault loader's path → provenance 'vault';
-    // persist:true (or default) is a SQLite-backed write → 'sqlite'.
+    // persist:true (or default) is an LMDB-backed write → 'sqlite' provenance.
     this._setCache(data, shouldPersist ? 'sqlite' : 'vault');
   }
 
@@ -673,7 +672,7 @@ class ConfigStore {
 
   /**
    * Returns the effective value for a key:
-   * - With persisted store (SQLite): cache first, then env fallbacks, then default.
+   * - With persisted store (LMDB): cache first, then env fallbacks, then default.
    * - Without persistence: env vars only (no runtime persistence).
    * This is what config/oauth.js getters call.
    *
@@ -1424,6 +1423,7 @@ const configStore = new ConfigStore();
 module.exports = configStore;
 module.exports.FIELD_DEFS = FIELD_DEFS;
 module.exports.SECRET_KEYS = SECRET_KEYS;
+module.exports.BOOTSTRAP_ALLOWLIST = BOOTSTRAP_ALLOWLIST;
 module.exports.validateTwoExchangeConfig = validateTwoExchangeConfig;
 module.exports.buildAllowedScopesByAudience = buildAllowedScopesByAudience;
 module.exports.validateScopeAudience = validateScopeAudience;

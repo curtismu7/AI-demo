@@ -466,14 +466,9 @@ async function main() {
       if (fs.existsSync(lmdbDir)) {
         try {
           const lmdb = require('../services/lmdb/configStore.lmdb');
-          const BOOTSTRAP_KEYS = [
-            'SESSION_SECRET', 'CONFIG_ENCRYPTION_KEY', 'VAULT_PASSWORD', 'VAULT_PATH',
-            'NODE_ENV', 'PORT', 'PINGONE_ENVIRONMENT_ID', 'PINGONE_REGION',
-            'OAUTH_ISSUER', 'PINGONE_MGMT_CLIENT_ID', 'PINGONE_MGMT_CLIENT_SECRET',
-            'PINGONE_MANAGEMENT_CLIENT_ID', 'PINGONE_MANAGEMENT_CLIENT_SECRET',
-          ];
+          const { BOOTSTRAP_ALLOWLIST } = require('../services/configStore');
           let removed = 0;
-          for (const key of BOOTSTRAP_KEYS) {
+          for (const key of [...BOOTSTRAP_ALLOWLIST].map(k => k.toUpperCase())) {
             try { lmdb.remove(key); removed++; } catch (_) { /* key absent — fine */ }
           }
           if (removed > 0) console.log(`  Stripped ${removed} bootstrap key(s) from imported LMDB (env will supply correct values).`);

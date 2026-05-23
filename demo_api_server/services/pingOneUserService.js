@@ -85,8 +85,8 @@ class PingOneUserService {
       const response = await axios.post(tokenEndpoint, body, axiosConfig);
 
       this.accessToken = response.data.access_token;
-      // Set expiry 5 minutes before actual expiry to be safe
-      this.tokenExpiry = Date.now() + (response.data.expires_in - 300) * 1000;
+      const expiresIn = Math.max(response.data.expires_in || 300, 60);
+      this.tokenExpiry = Date.now() + (expiresIn - 60) * 1000;
 
       logger.debug(LOG_CATEGORIES.USER_MANAGEMENT, 'Worker app token obtained', {
         expiresIn: response.data.expires_in,
