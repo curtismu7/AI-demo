@@ -1,5 +1,689 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 
+// ─── Token card components (copied from SequenceDiagramPage.js) ─────────────
+
+const FLOW_ACCENT = {
+  oauth: "#2563eb",
+  exchange: "#7c3aed",
+  permit: "#16a34a",
+  hitl: "#d97706",
+  idtoken: "#0891b2",
+  mcp: "#475569",
+  error: "#dc2626",
+};
+
+function FlowClaimRow({ k, v }) {
+  const isAud = k === "aud" || k === "audience" || k === "TokenAudience";
+  const isAct = k === "act" || k === "may_act" || k === "ActClientId";
+  const isDecide = k === "decision" || k === "DecisionContext";
+  if (k === "note" || k === "_type" || k === "_rfcs" || k === "_title")
+    return null;
+  const val = String(v);
+  return (
+    <div
+      style={{
+        display: "flex",
+        gap: 8,
+        marginBottom: 4,
+        alignItems: "flex-start",
+      }}
+    >
+      <span
+        style={{
+          fontSize: "0.73rem",
+          color: "#64748b",
+          minWidth: 100,
+          flexShrink: 0,
+          lineHeight: 1.5,
+          fontFamily: "inherit",
+        }}
+      >
+        {k}
+      </span>
+      <span
+        style={{
+          fontSize: "0.8rem",
+          fontFamily: "inherit",
+          lineHeight: 1.5,
+          wordBreak: "break-word",
+          color: isAud
+            ? "#1d4ed8"
+            : isAct
+              ? "#15803d"
+              : isDecide
+                ? "#15803d"
+                : "#0f172a",
+          fontWeight: isAud || isAct || isDecide ? 700 : 500,
+        }}
+      >
+        {val}
+      </span>
+    </div>
+  );
+}
+
+function OneFlowCard({ token }) {
+  if (!token) return null;
+  const accentType =
+    token._type ||
+    (token.decision?.includes("PERMIT")
+      ? "permit"
+      : token.decision?.includes("DENY")
+        ? "error"
+        : "oauth");
+  const accent = FLOW_ACCENT[accentType] || FLOW_ACCENT.oauth;
+  const rfcs = token._rfcs || [];
+  const title = token.type || "Token";
+  const note = token.note;
+  const claimEntries = Object.entries(token).filter(
+    ([k]) =>
+      k !== "type" &&
+      k !== "_type" &&
+      k !== "_title" &&
+      k !== "_rfcs" &&
+      k !== "note",
+  );
+  return (
+    <div
+      style={{
+        background: "#fff",
+        borderRadius: 10,
+        padding: "12px 14px",
+        minWidth: 270,
+        maxWidth: 340,
+        boxShadow: "0 4px 20px rgba(0,0,0,0.14)",
+        border: "1px solid #e2e8f0",
+        borderLeft: `4px solid ${accent}`,
+        pointerEvents: "none",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: 5,
+          marginBottom: 9,
+        }}
+      >
+        <span
+          style={{
+            fontSize: "0.86rem",
+            fontWeight: 700,
+            color: "#0f172a",
+            flex: "1 1 auto",
+          }}
+        >
+          {title}
+        </span>
+        {rfcs.map((r) => (
+          <span
+            key={r}
+            style={{
+              fontSize: "0.65rem",
+              fontWeight: 700,
+              background: "#eff6ff",
+              color: "#1d4ed8",
+              border: "1px solid #bfdbfe",
+              borderRadius: 4,
+              padding: "1px 5px",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {r}
+          </span>
+        ))}
+      </div>
+      {claimEntries.map(([k, v]) => (
+        <FlowClaimRow key={k} k={k} v={v} />
+      ))}
+      {note && (
+        <div
+          style={{
+            marginTop: 8,
+            paddingTop: 6,
+            borderTop: "1px solid #f1f5f9",
+            fontSize: "0.73rem",
+            color: "#64748b",
+            fontStyle: "italic",
+            lineHeight: 1.4,
+            fontFamily: "system-ui,sans-serif",
+          }}
+        >
+          {note}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// StepInfoPanel: left sidebar showing current step number, description, and details
+// Collapsible <details>-style section used by the rich step panel below.
+// Default-open for "Why" so the most-important context is always visible
+// without a click; everything else is default-closed to keep the column
+// scrollable. Tone: muted gray header, accent bar on the left when open.
+function StepDetailSection({
+  title,
+  accent = "#3b82f6",
+  defaultOpen = false,
+  children,
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div
+      style={{
+        marginTop: "0.5rem",
+        borderTop: "1px solid #e2e8f0",
+        paddingTop: "0.5rem",
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          background: "transparent",
+          border: "none",
+          padding: 0,
+          width: "100%",
+          textAlign: "left",
+          cursor: "pointer",
+          color: "#475569",
+          fontWeight: 600,
+          fontSize: "0.7rem",
+          display: "flex",
+          alignItems: "center",
+          gap: "0.35rem",
+          marginBottom: open ? "0.4rem" : 0,
+        }}
+      >
+        <span style={{ color: accent, fontSize: "0.65rem", width: "0.7rem" }}>
+          {open ? "▼" : "▶"}
+        </span>
+        {title}
+      </button>
+      {open ? (
+        <div
+          style={{
+            borderLeft: `2px solid ${accent}`,
+            paddingLeft: "0.5rem",
+            fontSize: "0.7rem",
+            color: "#334155",
+            lineHeight: 1.5,
+          }}
+        >
+          {children}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+// Pretty key/value rows for request/response blocks. Long URLs and bodies
+// wrap onto multiple lines; values render in a slightly darker code-style
+// font so the reader can pick fields apart at a glance.
+function HttpDetailGrid({ entries }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+      {entries.map(([k, v]) => (
+        <div key={k} style={{ display: "flex", gap: "0.4rem" }}>
+          <div
+            style={{
+              fontWeight: 600,
+              color: "#64748b",
+              minWidth: "3.5rem",
+              flexShrink: 0,
+            }}
+          >
+            {k}
+          </div>
+          <div
+            style={{
+              color: "#0f172a",
+              fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+              fontSize: "0.65rem",
+              wordBreak: "break-word",
+              whiteSpace: "pre-wrap",
+            }}
+          >
+            {typeof v === "string" || typeof v === "number"
+              ? String(v)
+              : JSON.stringify(v, null, 2)}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function StepInfoPanel({
+  activeStep,
+  currentStepIdx,
+  steps,
+  isPaused,
+  onStepClick,
+  panelWidth = 280,
+}) {
+  const arrowSteps = steps.filter((s) => s.step);
+  const totalSteps = arrowSteps.length;
+  const stepListRef = useRef(null);
+
+  // Auto-scroll active step into view
+  const activeStepNum = activeStep?.step;
+  const activeIdx = arrowSteps.findIndex((s) => s.step === activeStepNum);
+  useEffect(() => {
+    if (activeIdx >= 0 && stepListRef.current) {
+      const activeElem = stepListRef.current.querySelector(
+        `[data-step="${activeStepNum}"]`,
+      );
+      if (activeElem) {
+        activeElem.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    }
+  }, [activeStepNum, activeIdx]);
+
+  if (!activeStep) {
+    return (
+      <div
+        style={{
+          width: `${panelWidth}px`,
+          flexShrink: 0,
+          padding: "1.5rem 1rem",
+          background: "#f8fafc",
+          borderRight: "1px solid #e2e8f0",
+          display: "flex",
+          flexDirection: "column",
+          gap: "1rem",
+          overflowY: "auto",
+          maxHeight: "800px",
+        }}
+      >
+        <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#475569" }}>
+          Flow Steps
+        </div>
+        <div style={{ fontSize: "0.75rem", color: "#94a3b8", lineHeight: 1.6 }}>
+          Press Simulate to begin. Then Pause to navigate steps with Prev/Next
+          or click a step in this list.
+        </div>
+        <div
+          style={{
+            marginTop: "0.5rem",
+            fontSize: "0.75rem",
+            color: "#cbd5e1",
+            fontStyle: "italic",
+          }}
+        >
+          {totalSteps} steps total
+        </div>
+      </div>
+    );
+  }
+
+  const fromParticipant = HITL_PARTICIPANTS.find((p) => p.id === activeStep.from);
+  const toParticipant = HITL_PARTICIPANTS.find((p) => p.id === activeStep.to);
+
+  return (
+    <div
+      style={{
+        width: `${panelWidth}px`,
+        flexShrink: 0,
+        padding: "1.5rem 1rem",
+        background: "#f8fafc",
+        borderRight: "1px solid #e2e8f0",
+        display: "flex",
+        flexDirection: "column",
+        gap: "0.5rem",
+        overflowY: "auto",
+        maxHeight: "800px",
+      }}
+    >
+      {/* Active step details */}
+      <div
+        style={{
+          paddingBottom: "1rem",
+          borderBottom: "1px solid #e2e8f0",
+          marginBottom: "0.5rem",
+        }}
+      >
+        <div
+          style={{
+            fontSize: "1.1rem",
+            fontWeight: 700,
+            color: "#0f172a",
+            marginBottom: "0.25rem",
+          }}
+        >
+          Step {activeStep.step} of {totalSteps}
+        </div>
+        <div
+          style={{
+            fontSize: "1.25rem",
+            fontWeight: 700,
+            color: "#0f172a",
+            marginBottom: "0.5rem",
+          }}
+        >
+          {activeStep.description}
+        </div>
+        {fromParticipant && toParticipant && (
+          <div
+            style={{
+              fontSize: "0.85rem",
+              fontWeight: 600,
+              color: "#0f172a",
+              marginBottom: "0.4rem",
+              lineHeight: 1.4,
+            }}
+          >
+            {fromParticipant.label} calls {toParticipant.label}
+          </div>
+        )}
+        <div
+          style={{
+            fontSize: "0.78rem",
+            color: "#334155",
+            lineHeight: 1.5,
+            marginBottom: "0.5rem",
+          }}
+        >
+          {activeStep.label}
+        </div>
+        {activeStep.scopes && activeStep.scopes.length > 0 && (
+          <div
+            style={{
+              paddingTop: "0.5rem",
+              borderTop: "1px solid #e2e8f0",
+              marginTop: "0.5rem",
+            }}
+          >
+            <div
+              style={{
+                fontSize: "0.7rem",
+                fontWeight: 600,
+                color: "#475569",
+                marginBottom: "0.3rem",
+              }}
+            >
+              Scopes:
+            </div>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.25rem",
+              }}
+            >
+              {activeStep.scopes.map((scope) => (
+                <div
+                  key={scope}
+                  style={{
+                    fontSize: "0.7rem",
+                    color: "#1d4ed8",
+                    fontWeight: 500,
+                    background: "#eff6ff",
+                    padding: "0.3rem 0.5rem",
+                    borderRadius: 3,
+                  }}
+                >
+                  {scope}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {activeStep.tokenChanges && activeStep.tokenChanges.length > 0 && (
+          <div
+            style={{
+              paddingTop: "0.5rem",
+              marginTop: "0.5rem",
+              borderTop: "1px solid #e2e8f0",
+            }}
+          >
+            <div
+              style={{
+                fontSize: "0.7rem",
+                fontWeight: 600,
+                color: "#475569",
+                marginBottom: "0.3rem",
+              }}
+            >
+              Token Changes:
+            </div>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.25rem",
+              }}
+            >
+              {activeStep.tokenChanges.map((change) => (
+                <div
+                  key={`${activeStep.step}-${change}`}
+                  style={{
+                    fontSize: "0.74rem",
+                    color: "#451a03",
+                    fontWeight: 600,
+                    background: "#fef9c3",
+                    padding: "0.4rem 0.55rem",
+                    borderRadius: 4,
+                    border: "1px solid #d97706",
+                    lineHeight: 1.45,
+                  }}
+                >
+                  {change}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Rich detail sections. Default-open for Why (most-important context);
+            everything else is collapsed so the column stays scrollable. Sections
+            self-hide when the step doesn't define that field. */}
+        {activeStep.why && (
+          <StepDetailSection
+            title="Why this step matters"
+            accent="#0f766e"
+            defaultOpen={true}
+          >
+            {activeStep.why}
+          </StepDetailSection>
+        )}
+
+        {activeStep.request && (
+          <StepDetailSection title="Request" accent="#1d4ed8">
+            <HttpDetailGrid
+              entries={Object.entries(activeStep.request).filter(
+                ([_, v]) => v != null && v !== "",
+              )}
+            />
+          </StepDetailSection>
+        )}
+
+        {activeStep.response && (
+          <StepDetailSection title="Response" accent="#15803d">
+            <HttpDetailGrid
+              entries={Object.entries(activeStep.response).filter(
+                ([_, v]) => v != null && v !== "",
+              )}
+            />
+          </StepDetailSection>
+        )}
+
+        {activeStep.rulesEvaluated && activeStep.rulesEvaluated.length > 0 && (
+          <StepDetailSection
+            title="Policy rules checked"
+            accent="#7c3aed"
+            defaultOpen={true}
+          >
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.4rem",
+              }}
+            >
+              {activeStep.rulesEvaluated.map((r, i) => {
+                const palette =
+                  r.result === "PASS"
+                    ? {
+                        bg: "#ecfdf5",
+                        border: "#a7f3d0",
+                        badgeBg: "#10b981",
+                        badgeFg: "#fff",
+                      }
+                    : r.result === "FAIL"
+                      ? {
+                          bg: "#fef2f2",
+                          border: "#fecaca",
+                          badgeBg: "#dc2626",
+                          badgeFg: "#fff",
+                        }
+                      : {
+                          bg: "#f8fafc",
+                          border: "#e2e8f0",
+                          badgeBg: "#94a3b8",
+                          badgeFg: "#fff",
+                        };
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      background: palette.bg,
+                      border: `1px solid ${palette.border}`,
+                      borderRadius: 4,
+                      padding: "0.4rem 0.5rem",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: "0.4rem",
+                      }}
+                    >
+                      <span
+                        style={{
+                          background: palette.badgeBg,
+                          color: palette.badgeFg,
+                          fontWeight: 700,
+                          fontSize: "0.6rem",
+                          padding: "0.1rem 0.35rem",
+                          borderRadius: 3,
+                          flexShrink: 0,
+                          marginTop: "0.05rem",
+                        }}
+                      >
+                        {r.result}
+                      </span>
+                      <span
+                        style={{
+                          fontWeight: 600,
+                          color: "#0f172a",
+                          fontSize: "0.7rem",
+                        }}
+                      >
+                        {r.rule}
+                      </span>
+                    </div>
+                    {r.detail ? (
+                      <div
+                        style={{
+                          marginLeft: "2.25rem",
+                          marginTop: "0.2rem",
+                          fontSize: "0.65rem",
+                          color: "#475569",
+                          fontFamily:
+                            "ui-monospace, SFMono-Regular, Menlo, monospace",
+                          wordBreak: "break-word",
+                        }}
+                      >
+                        {r.detail}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          </StepDetailSection>
+        )}
+
+        {activeStep.onError && (
+          <StepDetailSection title="What can go wrong" accent="#b91c1c">
+            {Array.isArray(activeStep.onError) ? (
+              <ul style={{ paddingLeft: "1rem", margin: 0 }}>
+                {activeStep.onError.map((line, i) => (
+                  <li key={i} style={{ marginBottom: "0.25rem" }}>
+                    {line}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              activeStep.onError
+            )}
+          </StepDetailSection>
+        )}
+      </div>
+
+      {/* Step list */}
+      <div
+        style={{
+          fontSize: "0.75rem",
+          fontWeight: 600,
+          color: "#475569",
+          marginBottom: "0.5rem",
+        }}
+      >
+        Steps:
+      </div>
+      <div
+        ref={stepListRef}
+        style={{
+          flex: 1,
+          overflowY: "auto",
+          fontSize: "0.75rem",
+          display: "flex",
+          flexDirection: "column",
+          gap: "0.25rem",
+        }}
+      >
+        {arrowSteps.map((step, idx) => {
+          const isActive = step.step === activeStepNum;
+          return (
+            <button
+              key={step.step}
+              data-step={step.step}
+              onClick={() => {
+                if (isPaused) {
+                  onStepClick(idx);
+                }
+              }}
+              style={{
+                padding: "0.35rem 0.5rem",
+                borderRadius: 4,
+                border: "none",
+                background: isActive ? "#dbeafe" : "#fff",
+                color: isActive ? "#004687" : "#475569",
+                fontWeight: isActive ? 600 : 400,
+                cursor: isPaused ? "pointer" : "default",
+                textAlign: "left",
+                fontSize: "0.75rem",
+                opacity: isPaused ? 1 : 0.6,
+                transition: "all 0.2s",
+              }}
+              disabled={!isPaused}
+            >
+              <span style={{ color: "#94a3b8", marginRight: "0.25rem" }}>
+                {step.step}.
+              </span>
+              {step.description}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // HITL_PARTICIPANTS — matches hitl-sequence.mmd participant declarations
 const HITL_PARTICIPANTS = [
   { id: "B",   label: "Browser" },
