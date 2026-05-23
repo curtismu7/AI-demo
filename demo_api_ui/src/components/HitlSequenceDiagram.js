@@ -1805,5 +1805,194 @@ const HITL_SCENARIOS = {
 };
 
 export default function HitlSequenceDiagram() {
-  return <div style={{ padding: "1rem", color: "#475569" }}>Loading…</div>;
+  const [selectedScenario, setSelectedScenario] = useState("all");
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [currentStepIdx, setCurrentStepIdx] = useState(-1);
+  const [leftPanelWidth, setLeftPanelWidth] = useState(300);
+  const [zoomLevel, setZoomLevel] = useState(100);
+  const simTimeouts = useRef([]);
+  const pausedStepIdx = useRef(-1);
+
+  const steps = HITL_SCENARIOS[selectedScenario] || HITL_STEPS;
+  const activeStep = currentStepIdx >= 0 ? steps[currentStepIdx] : null;
+
+  const participantIndex = (id) => HITL_PARTICIPANTS.findIndex((p) => p.id === id);
+
+  const applyStep = useCallback((idx) => { setCurrentStepIdx(idx); }, []);
+
+  const resetDiagram = useCallback(() => {
+    setCurrentStepIdx(-1);
+    setIsPaused(false);
+    pausedStepIdx.current = -1;
+  }, []);
+
+  const scheduleSteps = useCallback((startIdx) => {
+    simTimeouts.current.forEach(clearTimeout);
+    simTimeouts.current = [];
+    steps.slice(startIdx).forEach((_, offset) => {
+      const i = startIdx + offset;
+      const t = setTimeout(() => {
+        applyStep(i);
+        if (i === steps.length - 1) {
+          const done = setTimeout(() => { resetDiagram(); setIsSimulating(false); }, 4000);
+          simTimeouts.current.push(done);
+        }
+      }, (offset + (startIdx === 0 ? 0 : 1)) * 2500);
+      simTimeouts.current.push(t);
+    });
+  }, [steps, applyStep, resetDiagram]);
+
+  const runSimulation = useCallback(() => {
+    if (isSimulating) return;
+    setCurrentStepIdx(-1);
+    setIsSimulating(true);
+    setIsPaused(false);
+    scheduleSteps(0);
+  }, [isSimulating, scheduleSteps]);
+
+  const pause = useCallback(() => {
+    simTimeouts.current.forEach(clearTimeout);
+    simTimeouts.current = [];
+    pausedStepIdx.current = currentStepIdx;
+    setIsPaused(true);
+  }, [currentStepIdx]);
+
+  const resume = useCallback(() => {
+    if (!isPaused) return;
+    setIsPaused(false);
+    scheduleSteps(pausedStepIdx.current + 1);
+  }, [isPaused, scheduleSteps]);
+
+  const prevStep = useCallback(() => {
+    if (!isPaused) return;
+    const prev = pausedStepIdx.current - 1;
+    if (prev < 0) return;
+    applyStep(prev);
+    pausedStepIdx.current = prev;
+  }, [isPaused, applyStep]);
+
+  const nextStep = useCallback(() => {
+    if (!isPaused) return;
+    const next = pausedStepIdx.current + 1;
+    if (next >= steps.length) { resetDiagram(); setIsSimulating(false); return; }
+    applyStep(next);
+    pausedStepIdx.current = next;
+  }, [isPaused, steps.length, applyStep, resetDiagram]);
+
+  const stopSim = useCallback(() => {
+    simTimeouts.current.forEach(clearTimeout);
+    simTimeouts.current = [];
+    resetDiagram();
+    setIsSimulating(false);
+  }, [resetDiagram]);
+
+  const handleStepClick = useCallback((idx) => {
+    if (!isPaused) return;
+    applyStep(idx);
+    pausedStepIdx.current = idx;
+  }, [isPaused, applyStep]);
+
+  const handleMouseDownResize = (e) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = leftPanelWidth;
+    const onMove = (ev) => {
+      const newWidth = Math.max(240, Math.min(500, startWidth + ev.clientX - startX));
+      setLeftPanelWidth(newWidth);
+    };
+    const onUp = () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  };
+
+  const scenarioLabel = {
+    all: "All Paths",
+    homegrown: "Path 1 — Homegrown OTP",
+    onetime: "Path 2 — PingOne One-Time",
+    device: "Path 3 — Device Picker",
+  }[selectedScenario] || "All Paths";
+
+  const arrowSteps = steps.filter((s) => s.step);
+  const stepCounter = activeStep?.step
+    ? `Step ${activeStep.step} of ${arrowSteps.length} · ${scenarioLabel}`
+    : `${arrowSteps.length} steps · ${scenarioLabel}`;
+
+  return (
+    <div style={{ background: "#fff" }}>
+      {/* Controls bar */}
+      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.5rem 1rem", borderBottom: "1px solid #e2e8f0", flexWrap: "wrap" }}>
+        <label htmlFor="hitl-scenario-select" style={{ fontSize: "0.8rem", fontWeight: 600, color: "#475569" }}>Scenario:</label>
+        <select
+          id="hitl-scenario-select"
+          value={selectedScenario}
+          onChange={(e) => { stopSim(); setSelectedScenario(e.target.value); }}
+          style={{ fontSize: "0.8rem", border: "1px solid #cbd5e1", borderRadius: 4, padding: "0.25rem 0.4rem" }}
+        >
+          <option value="all">All Paths</option>
+          <option value="homegrown">Path 1 — Homegrown OTP</option>
+          <option value="onetime">Path 2 — PingOne One-Time</option>
+          <option value="device">Path 3 — Device Picker</option>
+        </select>
+        {!isSimulating && (
+          <button type="button" onClick={runSimulation} style={ctrlBtn(false)}>Simulate</button>
+        )}
+        {isSimulating && !isPaused && (
+          <button type="button" onClick={pause} style={ctrlBtn(false)}>Pause</button>
+        )}
+        {isSimulating && isPaused && (
+          <button type="button" onClick={resume} style={ctrlBtn(false)}>Resume</button>
+        )}
+        {isSimulating && (
+          <button type="button" onClick={stopSim} style={ctrlBtn(false)}>Stop</button>
+        )}
+        <button type="button" onClick={prevStep} disabled={!isPaused} style={ctrlBtn(!isPaused)}>Prev</button>
+        <button type="button" onClick={nextStep} disabled={!isPaused} style={ctrlBtn(!isPaused)}>Next</button>
+        <button type="button" onClick={() => setZoomLevel((z) => Math.max(50, z - 25))} style={ctrlBtn(false)}>- Zoom</button>
+        <button type="button" onClick={() => setZoomLevel((z) => Math.min(200, z + 25))} style={ctrlBtn(false)}>+ Zoom</button>
+        <span style={{ fontSize: "0.8rem", color: "#475569", fontWeight: 600 }}>{zoomLevel}%</span>
+        <div style={{ flex: 1 }} />
+        <span style={{ fontSize: "0.75rem", color: "#64748b" }}>{stepCounter}</span>
+      </div>
+
+      {/* Split layout */}
+      <div style={{ display: "flex" }}>
+        <StepInfoPanel
+          activeStep={activeStep}
+          currentStepIdx={currentStepIdx}
+          steps={steps}
+          isPaused={isPaused}
+          onStepClick={handleStepClick}
+          panelWidth={leftPanelWidth}
+        />
+        {/* Drag handle */}
+        <button
+          type="button"
+          aria-label="Resize panel"
+          onMouseDown={handleMouseDownResize}
+          style={{ width: 4, cursor: "col-resize", background: "#e2e8f0", flexShrink: 0, border: "none", padding: 0, outline: "none" }}
+        />
+        {/* SVG area — rendered in Task 6 */}
+        <div style={{ flex: 1, overflow: "auto", background: "#f8fafc", padding: "1.5rem" }}>
+          <div style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: "top left", transition: "transform 0.15s" }}>
+            <p style={{ color: "#94a3b8", fontSize: "0.8rem" }}>SVG diagram — Task 6</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ctrlBtn(disabled) {
+  return {
+    fontSize: "0.8rem", fontWeight: 600,
+    border: "1px solid #cbd5e1", borderRadius: 4,
+    padding: "0.3rem 0.6rem",
+    background: disabled ? "#f1f5f9" : "#fff",
+    color: disabled ? "#94a3b8" : "#0f172a",
+    cursor: disabled ? "not-allowed" : "pointer",
+  };
 }
