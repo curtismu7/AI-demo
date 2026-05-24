@@ -65,6 +65,39 @@
     "extends": [
       "react-app",
       "react-app/jest"
+    ],
+    "rules": {
+      "no-restricted-globals": [
+        "warn",
+        {
+          "name": "confirm",
+          "message": "Use <ConfirmModal> with local state instead of window.confirm(). See docs/superpowers/specs/2026-05-24-ui-feedback-consistency-design.md"
+        }
+      ],
+      "no-restricted-imports": [
+        "warn",
+        {
+          "paths": [
+            {
+              "name": "react-toastify",
+              "importNames": ["toast"],
+              "message": "Import notifyError/notifySuccess/notifyInfo/notifyWarning from utils/appToast instead. Direct toast() is only allowed in utils/appToast.js, utils/dashboardToast.js, and components/ErrorToast.js."
+            }
+          ]
+        }
+      ]
+    },
+    "overrides": [
+      {
+        "files": [
+          "src/utils/appToast.js",
+          "src/utils/dashboardToast.js",
+          "src/components/ErrorToast.js"
+        ],
+        "rules": {
+          "no-restricted-imports": "off"
+        }
+      }
     ]
   },
   "browserslist": {
