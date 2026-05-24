@@ -28,6 +28,15 @@ const HOST = process.env.HOST || '0.0.0.0';
 const RESOURCE_URI = process.env.MCP_SERVER_RESOURCE_URI || 'https://mcp-invest.ping.demo';
 const RESOURCE_NAME = process.env.MCP_SERVER_RESOURCE_NAME || 'Super Banking MCP Server (mcp-invest)';
 
+// Startup env validation
+if (!process.env.MCP_SERVER_RESOURCE_URI) {
+  console.warn(
+    '[demo-mcp-invest] WARNING: MCP_SERVER_RESOURCE_URI is not set — ' +
+    `using default '${RESOURCE_URI}'. Token audience validation may fail. ` +
+    'Set MCP_SERVER_RESOURCE_URI in demo_api_server/.env'
+  );
+}
+
 const PINGONE_ENV_ID = process.env.PINGONE_ENVIRONMENT_ID || '';
 const PINGONE_REGION = process.env.PINGONE_REGION || 'com';
 
@@ -59,7 +68,12 @@ function handleHttp(req: IncomingMessage, res: ServerResponse): void {
 
   if (url === '/health' && req.method === 'GET') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ status: 'ok', service: 'banking-mcp-invest', resourceUri: RESOURCE_URI }));
+    res.end(JSON.stringify({
+      status: 'ok',
+      service: 'banking-mcp-invest',
+      uptime: process.uptime(),
+      resourceUri: RESOURCE_URI,
+    }));
     return;
   }
 
