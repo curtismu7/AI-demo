@@ -733,23 +733,6 @@ if [[ -f "$VAULT_FILE" ]]; then
   echo "[VAULT] secrets.vault detected — passing VAULT_PASSWORD to vault-aware services."
 fi
 
-echo "[LAUNCH] Starting Demo API Server on ${API_HOST}:${API_PORT}..."
-(
-  cd "$BASEDIR/demo_api_server"
-  PORT=${API_PORT} \
-  NODE_EXTRA_CA_CERTS="${NODE_EXTRA_CA_CERTS:-}" \
-  REACT_APP_CLIENT_URL=${CLIENT_URL} \
-  FRONTEND_ADMIN_URL=${CLIENT_URL}/admin \
-  FRONTEND_DASHBOARD_URL=${CLIENT_URL}/dashboard \
-  MCP_GATEWAY_HTTP_URL="${MCP_GATEWAY_HTTP_URL:-https://api.ping.demo:3005}" \
-  VAULT_PASSWORD="${VAULT_PASSWORD:-}" \
-  VAULT_PATH="${VAULT_PATH:-}" \
-  npm start > /tmp/demo-api.log 2>&1
-) &
-echo $! > "$PID_API"
-
-sleep 1
-
 # Helper: ensure a sibling Node service has a .env that points at the API
 # server's .env. Without this, services that do `dotenv.config()` find no
 # .env and fail with "Missing required env var" even though every key they
@@ -778,10 +761,40 @@ ensure_service_env() {
   fi
 }
 
+# ── Pre-launch: symlink all service .envs before any process starts ──────────
+# Done as a single pass here so no service can start before its .env is in place.
+# (Previously each ensure_service_env was called inline just before that service's
+# launch block, creating a race on the first service.)
+for _svc in demo_mcp_server demo_mcp_gateway demo_hitl_service \
+            demo_agent_service demo_mcp_invest; do
+  [[ -d "$BASEDIR/$_svc" ]] && ensure_service_env "$_svc"
+done
+unset _svc
+
+# ── Tier 1: Demo API Server (Express) on :3001 ───────────────────────────────
+echo "[LAUNCH] Starting Demo API Server on ${API_HOST}:${API_PORT}..."
+(
+  cd "$BASEDIR/demo_api_server"
+  PORT=${API_PORT} \
+  NODE_EXTRA_CA_CERTS="${NODE_EXTRA_CA_CERTS:-}" \
+  REACT_APP_CLIENT_URL=${CLIENT_URL} \
+  FRONTEND_ADMIN_URL=${CLIENT_URL}/admin \
+  FRONTEND_DASHBOARD_URL=${CLIENT_URL}/dashboard \
+  MCP_GATEWAY_HTTP_URL="${MCP_GATEWAY_HTTP_URL:-https://api.ping.demo:3005}" \
+  VAULT_PASSWORD="${VAULT_PASSWORD:-}" \
+  VAULT_PATH="${VAULT_PATH:-}" \
+  npm start > /tmp/demo-api.log 2>&1
+) &
+echo $! > "$PID_API"
+
+# Gate: Tier 2 blocked until API server is healthy
+wait_for_health "${API_PORT}" "/api/healthz" 30 "Demo API Server" "${LOG_API}" >/dev/null
+
+# ── Tier 2: MCP Server, Gateway, HITL ────────────────────────────────────────
+
 # ── Demo MCP Server on :8080 ──────────────────────────────────────────────
 if [[ -d "$BASEDIR/demo_mcp_server" ]]; then
   echo "[BOT] Starting Demo MCP Server on :8080..."
-  ensure_service_env demo_mcp_server
   (
     cd "$BASEDIR/demo_mcp_server"
     npm start > /tmp/demo-mcp.log 2>&1
@@ -789,12 +802,11 @@ if [[ -d "$BASEDIR/demo_mcp_server" ]]; then
   echo $! > "$PID_MCP"
 fi
 
-# ── MCP Gateway on :3005 (Phase 243) ────────────────────────────────────────────
+# ── MCP Gateway on :3005 (Phase 243) ─────────────────────────────────────────
 # Build is handled by the dependency check loop above — don't re-run it here,
 # and don't swallow its errors silently (that's how MODULE_NOT_FOUND happens).
 if [[ -d "$BASEDIR/demo_mcp_gateway" ]]; then
   echo "[SHIELD]  Starting MCP Gateway on :3005..."
-  ensure_service_env demo_mcp_gateway
   (
     cd "$BASEDIR/demo_mcp_gateway"
     VAULT_PASSWORD="${VAULT_PASSWORD:-}" \
@@ -807,7 +819,6 @@ fi
 # ── HITL Service on :3009 ───────────────────────────────────────────────────
 if [[ -d "$BASEDIR/demo_hitl_service" ]]; then
   echo "[ALERT] Starting HITL Service on :3009..."
-  ensure_service_env demo_hitl_service
   (
     cd "$BASEDIR/demo_hitl_service"
     PORT=3009 npm start > "${LOG_HITL}" 2>&1
@@ -815,11 +826,17 @@ if [[ -d "$BASEDIR/demo_hitl_service" ]]; then
   echo $! > "$PID_HITL"
 fi
 
+# Wait for Tier 2 services; gate Tier 3 on gateway health
+wait_for_health 8080 "/health" 25 "Demo MCP Server"  "${LOG_MCP}"  >/dev/null
+wait_for_health 3005 "/health" 15 "MCP Gateway"      "${LOG_GW}"   >/dev/null
+wait_for_health 3009 "/health" 15 "HITL Service"     "${LOG_HITL}" >/dev/null
+
+# ── Tier 3: Agent Service, MCP Invest, Mortgage, UI, LangChain ───────────────
+
 # ── Agent Service on :3006 ──────────────────────────────────────────────────
 # dist/ is guaranteed by the dependency check loop above (it builds or aborts).
 if [[ -d "$BASEDIR/demo_agent_service" ]]; then
   echo "[CONNECT] Starting Agent Service on :3006..."
-  ensure_service_env demo_agent_service
   (
     cd "$BASEDIR/demo_agent_service"
     PORT=3006 \
@@ -833,7 +850,6 @@ fi
 # ── MCP Invest Server on :8081 ──────────────────────────────────────────────
 if [[ -d "$BASEDIR/demo_mcp_invest" ]]; then
   echo "[INVEST] Starting MCP Invest Server on :8081..."
-  ensure_service_env demo_mcp_invest
   (
     cd "$BASEDIR/demo_mcp_invest"
     PORT=8081 npm start > "${LOG_INVEST}" 2>&1
@@ -898,24 +914,17 @@ echo "[WEB] Starting Demo UI on ${CLIENT_URL}..."
 ) &
 echo $! > "$PID_UI"
 
-# ── Banner + health check ────────────────────────────────────────────────────
-echo ""
-echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-echo -e "${CYAN}${BOLD}   [DEMO]  AI DEMO — STARTING                                          ${RESET}"
-echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-echo ""
-echo -e "${DIM}  Waiting for services to come up (this can take 30-60 seconds on first start)…${RESET}"
+# Wait for Tier 3 services
+wait_for_health 3006 "/health" 15 "Agent Service"     "${LOG_AGENT_SVC}" >/dev/null
+wait_for_health 8081 "/health" 15 "MCP Invest Server" "${LOG_INVEST}"    >/dev/null
+wait_for_health 8082 "/health" 10 "Demo Mortgage"     "${LOG_MORTGAGE}"  >/dev/null
+# UI: port-only (CRA has no /health endpoint)
+wait_for_port "${UI_PORT}" 90 "Demo UI" >/dev/null
+# LangChain: warn-only, not a gate
+wait_for_health 8890 "/health" 20 "LangChain Agent" "${LOG_AGENT}" >/dev/null || true
 
-wait_for_port "${API_PORT}" 25 "Demo API Server"    >/dev/null
-wait_for_port 8080         25 "Demo MCP Server"    >/dev/null
-wait_for_port 3005         15 "MCP Gateway"        >/dev/null
-wait_for_port 3009         15 "HITL Service"       >/dev/null
-wait_for_port 3006         15 "Agent Service"      >/dev/null
-wait_for_port 8081         15 "MCP Invest Server"  >/dev/null
-wait_for_port 8082         10 "Demo Mortgage"      >/dev/null
-wait_for_port "${UI_PORT}" 60 "Demo UI"            >/dev/null
-sleep 1   # give LangChain agent a moment too
-
+# ── Banner ───────────────────────────────────────────────────────────────────
+echo ""
 echo -e "${GREEN}${BOLD}  [CLEAR]  DEMO STATE CLEARED${RESET} — all in-memory state reset on startup:"
 echo -e "${DIM}      Token chain · App events · MCP audit · Pending consents${RESET}"
 
