@@ -789,8 +789,11 @@ ensure_service_env() {
   # No service-specific .env.development → copy from API server's .env.
   # Using cp (not ln -s) so each service has its own independent file;
   # no symlink brittleness and no cross-service sync risk.
+  # Guard with || true: if svc_env is a symlink to api_env (same inode),
+  # cp fails with "identical" on macOS; the env is already correct, so
+  # treat that as success.
   if [[ -f "$api_env" ]]; then
-    cp "$api_env" "${svc_env}"
+    cp "$api_env" "${svc_env}" || true
   fi
 }
 
