@@ -54,7 +54,7 @@ const [pendingXxx, setPendingXxx] = useState(null); // only if action needs an a
 - An **X button** (`aria-label="Close"`) in the top-right corner of the modal header, wired to `onCancel`
 - A **Cancel button** in the modal footer, wired to `onCancel`
 
-If `ConfirmModal` already renders these, no change needed to the component itself. Audit and add if missing.
+**Confirmed via code audit:** `ConfirmModal` already has a Cancel button and ESC key support, but is **missing the X close button**. Step 1 of the implementation is to add it to `components/ConfirmModal.js` before touching any call site.
 
 #### Callsites to replace (13 total)
 
@@ -140,11 +140,48 @@ No data flow changes. Both PRs are purely call-site replacements — no new serv
 
 ---
 
+## Enforcement (lint rules)
+
+After the fix PRs land, two ESLint rules are added to `demo_api_ui/package.json` `eslintConfig` to prevent regressions in new components. CRA supports these rules without ejecting.
+
+```json
+"eslintConfig": {
+  "extends": ["react-app", "react-app/jest"],
+  "rules": {
+    "no-restricted-globals": [
+      "error",
+      {
+        "name": "confirm",
+        "message": "Use <ConfirmModal> with local state instead of window.confirm(). See docs/superpowers/specs/2026-05-24-ui-feedback-consistency-design.md"
+      }
+    ],
+    "no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            "name": "react-toastify",
+            "importNames": ["toast"],
+            "message": "Import notifyError/notifySuccess/notifyInfo/notifyWarning from utils/appToast instead. Direct toast() is only allowed in utils/appToast.js, utils/dashboardToast.js, and components/ErrorToast.js."
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**Exempt files** (`no-restricted-imports` must be overridden with `/* eslint-disable */` in the three authorised wrappers — or via `overrides` in the ESLint config targeting those specific paths.)
+
+The lint rules are added in **PR 1** so the constraint is live immediately after modals are cleaned up.
+
+---
+
 ## Sequence
 
-1. **Audit `ConfirmModal`** — verify X button and Cancel button are present; add if missing.
-2. **PR 1 — Modals** — replace all 13 `window.confirm()` callsites. Build. Manual smoke.
-3. **PR 2 — Notifications** — redirect 7 non-wrapper `toast` callsites. Build. Manual smoke.
+1. **Audit `ConfirmModal`** — add X close button (confirmed missing).
+2. **PR 1 — Modals + lint rules** — replace all 13 `window.confirm()` call sites; add both ESLint rules to `package.json`. Build. Manual smoke.
+3. **PR 2 — Notifications** — redirect 7 non-wrapper `toast` call sites. Build. Manual smoke.
 
 ---
 
