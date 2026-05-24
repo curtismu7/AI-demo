@@ -213,26 +213,41 @@ preflight_checks() {
     fi
   done
 
-  # Ollama (local LLM for NL intent fallback) — optional but recommended
+  # Ollama (local LLM for NL intent fallback) — optional, local-only.
+  # If OLLAMA_BASE_URL points to a remote host we skip the local start attempt
+  # and just verify reachability. If unset, default to localhost:11434.
   local ollama_model="${OLLAMA_MODEL:-llama3.2}"
-  if ! command -v ollama >/dev/null 2>&1; then
+  local ollama_base="${OLLAMA_BASE_URL:-http://localhost:11434}"
+  # Extract host and port from the URL (handles http://host:port and http://host)
+  local ollama_host ollama_port
+  ollama_host=$(echo "$ollama_base" | sed -E 's|https?://([^:/]+).*|\1|')
+  ollama_port=$(echo "$ollama_base" | sed -E 's|https?://[^:]+:([0-9]+).*|\1|')
+  [[ "$ollama_port" == "$ollama_base" ]] && ollama_port="11434"  # sed produced no match → default
+
+  if [[ "$ollama_host" != "localhost" && "$ollama_host" != "127.0.0.1" ]]; then
+    # Remote Ollama — just check reachability, never try to start locally
+    if curl -sf --max-time 3 "${ollama_base}/api/tags" >/dev/null 2>&1; then
+      ok "Ollama reachable at ${ollama_base} — model: ${ollama_model}"
+    else
+      warn "Ollama at ${ollama_base} not reachable — NL fallback may be disabled"
+    fi
+  elif ! command -v ollama >/dev/null 2>&1; then
     warn "ollama not found — NL fallback LLM disabled. Install: https://ollama.ai"
-  elif port_listening 11434; then
-    ok "Ollama running on :11434 — model: ${ollama_model}"
+  elif port_listening "${ollama_port}"; then
+    ok "Ollama running on :${ollama_port} — model: ${ollama_model}"
   else
     echo -e "  ${CYAN}[SPIN]${RESET}  Starting Ollama (model: ${ollama_model})…"
     ollama serve > /tmp/demo-ollama.log 2>&1 &
     echo $! > /tmp/demo-ollama.pid
-    # Give it a moment to start
     local i=0
     while [[ $i -lt 8 ]]; do
-      port_listening 11434 && break
+      port_listening "${ollama_port}" && break
       sleep 1; (( i++ )) || true
     done
-    if port_listening 11434; then
-      ok "Ollama started on :11434 — model: ${ollama_model}"
+    if port_listening "${ollama_port}"; then
+      ok "Ollama started on :${ollama_port} — model: ${ollama_model}"
     else
-      warn "Ollama did not start on :11434 — check /tmp/demo-ollama.log"
+      warn "Ollama did not start on :${ollama_port} — check /tmp/demo-ollama.log"
     fi
   fi
 
