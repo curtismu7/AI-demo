@@ -801,7 +801,7 @@ echo "[LAUNCH] Starting Demo API Server on ${API_HOST}:${API_PORT}..."
   MCP_GATEWAY_HTTP_URL="${MCP_GATEWAY_HTTP_URL:-https://api.ping.demo:3005}" \
   VAULT_PASSWORD="${VAULT_PASSWORD:-}" \
   VAULT_PATH="${VAULT_PATH:-}" \
-  npm start > /tmp/demo-api.log 2>&1
+  npm start > "${LOG_API}" 2>&1
 ) &
 echo $! > "$PID_API"
 
@@ -815,7 +815,7 @@ if [[ -d "$BASEDIR/demo_mcp_server" ]]; then
   echo "[BOT] Starting Demo MCP Server on :8080..."
   (
     cd "$BASEDIR/demo_mcp_server"
-    npm start > /tmp/demo-mcp.log 2>&1
+    npm start > "${LOG_MCP}" 2>&1
   ) &
   echo $! > "$PID_MCP"
 fi
@@ -888,28 +888,9 @@ if [[ -d "$BASEDIR/demo_mortgage_service" ]]; then
   echo $! > "$PID_MORTGAGE"
 fi
 
-# ── LangChain Agent (chat WS :8889 + health :8890) ───────────────────────────
-# Entry point is src/main.py, run as a module (`python -m src.main`) — it is an
-# asyncio app that manages its own websockets server (8889) and health server
-# (8890); it is NOT a uvicorn ASGI app and there is no :8888 listener. It reads
-# its own langchain_agent/.env via python-dotenv. The venv is `.venv`.
-if [[ -f "$BASEDIR/langchain_agent/src/main.py" ]]; then
-  echo "[CHAIN] Starting LangChain Agent (chat WS :8889, health :8890)..."
-  (
-    cd "$BASEDIR/langchain_agent"
-    if [[ -x ".venv/bin/python" ]]; then
-      PY=".venv/bin/python"
-    elif [[ -x "venv/bin/python" ]]; then
-      PY="venv/bin/python"
-    else
-      PY="python3"
-    fi
-    "$PY" -m src.main > /tmp/demo-langchain.log 2>&1
-  ) &
-  echo $! > "$PID_AGENT"
-fi
-
 # ── Demo UI (CRA) on :4000 ────────────────────────────────────────────────
+# Launched here (before the Tier 3 waits) so CRA's slow compile runs in parallel
+# with the ~40s of agent/invest/mortgage health checks rather than after them.
 # REACT_APP_API_PORT  → picked up by src/setupProxy.js to proxy /api/* to :3001
 # REACT_APP_API_URL   → used by apiClient.js for absolute axios calls
 # HOST                → binds CRA dev server to 0.0.0.0 so api.ping.demo resolves
@@ -928,15 +909,36 @@ echo "[WEB] Starting Demo UI on ${CLIENT_URL}..."
   REACT_APP_CLIENT_URL=${CLIENT_URL} \
   DANGEROUSLY_DISABLE_HOST_CHECK=true \
   WDS_SOCKET_PORT=0 \
-  npm start > /tmp/demo-ui.log 2>&1
+  npm start > "${LOG_UI}" 2>&1
 ) &
 echo $! > "$PID_UI"
 
-# Wait for Tier 3 services
+# ── LangChain Agent (chat WS :8889 + health :8890) ───────────────────────────
+# Entry point is src/main.py, run as a module (`python -m src.main`) — it is an
+# asyncio app that manages its own websockets server (8889) and health server
+# (8890); it is NOT a uvicorn ASGI app and there is no :8888 listener. It reads
+# its own langchain_agent/.env via python-dotenv. The venv is `.venv`.
+if [[ -f "$BASEDIR/langchain_agent/src/main.py" ]]; then
+  echo "[CHAIN] Starting LangChain Agent (chat WS :8889, health :8890)..."
+  (
+    cd "$BASEDIR/langchain_agent"
+    if [[ -x ".venv/bin/python" ]]; then
+      PY=".venv/bin/python"
+    elif [[ -x "venv/bin/python" ]]; then
+      PY="venv/bin/python"
+    else
+      PY="python3"
+    fi
+    "$PY" -m src.main > "${LOG_AGENT}" 2>&1
+  ) &
+  echo $! > "$PID_AGENT"
+fi
+
+# Wait for Tier 3 services (UI and LangChain were launched above to run in parallel)
 wait_for_health 3006 "/health" 15 "Agent Service"     "${LOG_AGENT_SVC}" >/dev/null
 wait_for_health 8081 "/health" 15 "MCP Invest Server" "${LOG_INVEST}"    >/dev/null
 wait_for_health 8082 "/health" 10 "Demo Mortgage"     "${LOG_MORTGAGE}"  >/dev/null
-# UI: port-only (CRA has no /health endpoint)
+# UI: port-only (CRA has no /health endpoint); full 90s budget since UI launched before waits
 wait_for_port "${UI_PORT}" 90 "Demo UI" >/dev/null
 # LangChain: warn-only, not a gate
 wait_for_health 8890 "/health" 20 "LangChain Agent" "${LOG_AGENT}" >/dev/null || true
