@@ -102,73 +102,80 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null, su
   const isAdmin = sessionRole === 'admin';
 
   try {
-    if (action === 'accounts') {
-      // Admin: return all accounts system-wide; user: own accounts only
-      const accounts = isAdmin
-        ? (dataStore.getAllAccounts ? dataStore.getAllAccounts() : await dataStore.getAccountsByUserId(userId))
-        : await dataStore.getAccountsByUserId(userId);
-      if (!accounts || accounts.length === 0) {
-        return { reply: isAdmin ? 'No customer accounts found in the system.' : 'You don\'t have any accounts yet.', success: true, toolsCalled: ['get_my_accounts'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
-      }
-      // Normalize to snake_case keeping all detail fields so AccountsTable renders full info
-      const normalizedAccounts = accounts.map(a => ({
-        id: a.id,
-        account_type: a.accountType,
-        type: a.accountType,
-        account_number: a.accountNumber,
-        accountNumber: a.accountNumber,
-        balance: a.balance,
-        currency: a.currency || 'USD',
-        name: a.name,
-        status: a.status || 'active',
-        accountHolderName: a.accountHolderName || null,
-        iban: a.iban || null,
-        swiftCode: a.swiftCode || null,
-        branchName: a.branchName || null,
-        branchCode: a.branchCode || null,
-        openedDate: a.openedDate || null,
-      }));
-      const lines = accounts.map(a =>
-        `• **${a.accountType}** (${a.accountNumber || '—'}) — **$${Number(a.balance).toFixed(2)}** ${a.currency || 'USD'}`
-      );
-      return { reply: `${isAdmin ? 'Here are all customer accounts' : 'Here are your accounts'}:\n\n${lines.join('\n\n')}`, success: true, toolsCalled: ['get_my_accounts'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [], accounts: normalizedAccounts };
-    }
+    // READ actions — route through the full token-exchange → gateway → MCP server
+    // pipeline so PingAuthorize evaluates every call (same path as the chip/action UI).
+    // executeBffTool does RFC 8693 token exchange, calls the tool executor with the
+    // exchanged agent token, and collects tokenEvents for the Token Chain panel.
+    if (action === 'accounts' || action === 'balance' || action === 'transactions') {
+      const tokenEvents = [];
+      const sessionId = req?.sessionID || '';
 
-    if (action === 'balance') {
-      const accounts = await dataStore.getAccountsByUserId(userId);
-      if (!accounts || accounts.length === 0) {
-        return { reply: 'No accounts found.', success: true, toolsCalled: ['get_account_balance'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
+      let toolName, toolArgs;
+      if (action === 'accounts') {
+        toolName = 'get_my_accounts';
+        toolArgs = {};
+      } else if (action === 'balance') {
+        toolName = 'get_account_balance';
+        toolArgs = params.accountId ? { account_id: params.accountId } : {};
+      } else {
+        toolName = 'get_my_transactions';
+        toolArgs = { limit: 10 };
       }
-      // If a specific account was requested, find it
-      if (params.accountId) {
-        const acct = accounts.find(a => a.id === params.accountId || a.accountType === params.accountId);
-        if (acct) {
-          return { reply: `Your **${acct.accountType}** balance is **$${Number(acct.balance).toFixed(2)}**.`, success: true, toolsCalled: ['get_account_balance'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [], balance: acct.balance };
+
+      const rawResult = await executeBffTool({ name: toolName, args: toolArgs, userId, userToken, req, tokenEvents, sessionId });
+
+      let parsed2;
+      try { parsed2 = typeof rawResult === 'string' ? JSON.parse(rawResult) : rawResult; }
+      catch (_) { parsed2 = null; }
+
+      if (!parsed2 || parsed2.error) {
+        const errMsg = parsed2?.message || parsed2?.error || 'Tool call failed.';
+        return { reply: `❌ ${errMsg}`, success: false, toolsCalled: [toolName], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents };
+      }
+
+      // accounts / balance: return structured accounts list
+      if (action === 'accounts' || (action === 'balance' && !params.accountId)) {
+        const accts = parsed2.accounts || [];
+        if (!accts.length) {
+          return { reply: isAdmin ? 'No customer accounts found in the system.' : 'You don\'t have any accounts yet.', success: true, toolsCalled: [toolName], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents, accounts: [] };
         }
+        const lines = accts.map(a => {
+          const type = a.accountType || a.account_type || a.type || 'Account';
+          const num = a.accountNumber || a.account_number || '—';
+          const bal = Number(a.balance ?? 0).toFixed(2);
+          const cur = a.currency || 'USD';
+          return `• **${type}** (${num}) — **$${bal}** ${cur}`;
+        });
+        const heading = action === 'balance' ? 'Your balances' : (isAdmin ? 'Here are all customer accounts' : 'Here are your accounts');
+        return { reply: `${heading}:\n\n${lines.join('\n\n')}`, success: true, toolsCalled: [toolName], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents, accounts: accts };
       }
-      // Show all balances — return as accounts list
-      const lines = accounts.map(a => `• **${a.accountType}**: $${Number(a.balance).toFixed(2)}`);
-      const normalizedAccounts = accounts.map(a => ({
-        id: a.id, account_type: a.accountType, type: a.accountType,
-        account_number: a.accountNumber, accountNumber: a.accountNumber,
-        balance: a.balance, currency: a.currency || 'USD', name: a.name,
-        status: a.status || 'active',
-        accountHolderName: a.accountHolderName || null,
-        iban: a.iban || null, swiftCode: a.swiftCode || null,
-        branchName: a.branchName || null, branchCode: a.branchCode || null,
-        openedDate: a.openedDate || null,
-      }));
-      return { reply: `Your balances:\n\n${lines.join('\n')}`, success: true, toolsCalled: ['get_account_balance'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [], accounts: normalizedAccounts };
-    }
 
-    if (action === 'transactions') {
-      const txns = await dataStore.getTransactionsByUserId(userId);
-      if (!txns || txns.length === 0) {
-        return { reply: 'No recent transactions found.', success: true, toolsCalled: ['get_my_transactions'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
+      // balance for a specific account
+      if (action === 'balance' && params.accountId) {
+        const bal = parsed2.balance;
+        const acctType = parsed2.accountType || parsed2.account_type || params.accountId;
+        if (bal !== undefined) {
+          return { reply: `Your **${acctType}** balance is **$${Number(bal).toFixed(2)}**.`, success: true, toolsCalled: [toolName], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents, balance: bal };
+        }
+        // fallback: show accounts list from result
+        const accts2 = parsed2.accounts || [];
+        const match = accts2.find(a => (a.accountType || a.account_type || a.type || '').toLowerCase() === String(params.accountId).toLowerCase() || a.id === params.accountId);
+        if (match) {
+          const bal2 = Number(match.balance ?? 0).toFixed(2);
+          const type2 = match.accountType || match.account_type || match.type || 'Account';
+          return { reply: `Your **${type2}** balance is **$${bal2}**.`, success: true, toolsCalled: [toolName], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents, balance: match.balance };
+        }
+        return { reply: 'Balance information is not available right now.', success: false, toolsCalled: [toolName], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents };
       }
-      const recent = txns.slice(-5).reverse();
+
+      // transactions
+      const txns = parsed2.transactions || [];
+      if (!txns.length) {
+        return { reply: 'No recent transactions found.', success: true, toolsCalled: [toolName], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents, transactions: [] };
+      }
+      const recent = txns.slice(0, 5);
       const lines = recent.map(t => `• ${t.type} — $${Number(t.amount).toFixed(2)} — ${t.description || t.type}`);
-      return { reply: `Recent transactions:\n\n${lines.join('\n')}`, success: true, toolsCalled: ['get_my_transactions'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [], transactions: recent };
+      return { reply: `Recent transactions:\n\n${lines.join('\n')}`, success: true, toolsCalled: [toolName], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents, transactions: recent };
     }
 
     if (action === 'transfer') {
@@ -462,15 +469,20 @@ async function executeBffTool({ name, args, userId, userToken, req = null, token
  * Same `{ helix_base_url, helix_api_key, helix_environment_id,
  * helix_agent_id, helix_prompt_field_id }` object literal agentBuilder.js
  * builds (~lines 173-179), read from langchainConfig.
+ *
+ * Falls back to configStore for any field not present in the session —
+ * Helix credentials are persisted in configStore (runtimeData.json/SQLite)
+ * but may not have been copied into req.session.langchain_config yet (e.g.
+ * fresh session, tab switch without visiting config page).
  */
 function extractHelixConfig(langchainConfig = {}) {
   const cfg = langchainConfig || {};
   return {
-    helix_base_url: cfg.helix_base_url,
-    helix_api_key: cfg.helix_api_key,
-    helix_environment_id: cfg.helix_environment_id,
-    helix_agent_id: cfg.helix_agent_id,
-    helix_prompt_field_id: cfg.helix_prompt_field_id,
+    helix_base_url:      cfg.helix_base_url      || configStore.getEffective('helix_base_url')      || '',
+    helix_api_key:       cfg.helix_api_key        || configStore.getEffective('helix_api_key')        || '',
+    helix_environment_id: cfg.helix_environment_id || configStore.getEffective('helix_environment_id') || '',
+    helix_agent_id:      cfg.helix_agent_id       || configStore.getEffective('helix_agent_id')       || '',
+    helix_prompt_field_id: cfg.helix_prompt_field_id || configStore.getEffective('helix_prompt_field_id') || '',
   };
 }
 
@@ -659,6 +671,29 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
     const { resolveLlmProvider } = require('./llmProviderResolver');
     const { runReasonLoop } = require('./agentReasoningClient');
     const { provider, model } = resolveLlmProvider(langchainConfig);
+
+    // If the resolved provider is Helix but no Helix credentials are configured,
+    // fall back to the heuristics-only catalog message rather than attempting a
+    // doomed Helix call that returns reasoning_unavailable.
+    // "Configured" = helix_api_key is present (it's the only required secret;
+    // helix_base_url has a default and helix_agent_id defaults to 'LLM2').
+    if (provider === 'helix') {
+      const helixCfg = extractHelixConfig(langchainConfig);
+      const helixApiKey = helixCfg.helix_api_key || configStore.getEffective('helix_api_key') || '';
+      if (!helixApiKey) {
+        console.log('[processAgentMessage] Helix not configured (no API key) — returning catalog message (heuristic floor)');
+        if (req) req.agentPath = 'heuristic';
+        return {
+          reply: buildCatalogMessage(),
+          success: true,
+          toolsCalled: [],
+          tokensUsed: 0,
+          requiresConsent: false,
+          agentConfigured: true,
+          tokenEvents: req?.tokenEvents || [],
+        };
+      }
+    }
 
     // Best-effort agent-path attribution: any tool the reason loop drives via
     // executeBffTool → /api/mcp/tool will carry this in the delegation audit.

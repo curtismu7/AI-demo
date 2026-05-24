@@ -35,7 +35,7 @@ describe('Identity Format Standardization Service', () => {
     });
 
     test('should validate standard MCP server identifiers', () => {
-      const standardMcp = 'https://mcp-server.pingdemo.com/mcp/test-mcp';
+      const standardMcp = 'mcpserver.ping.demo/mcp/test-mcp';
       const result = service.validateIdentifierFormat(standardMcp, 'mcp_server');
       
       expect(result.valid).toBe(true);
@@ -61,7 +61,7 @@ describe('Identity Format Standardization Service', () => {
       expect(result.valid).toBe(true);
       expect(result.format).toBe('legacy');
       expect(result.warnings).toContain('Using legacy mcp_server identifier format: legacy-test-mcp');
-      expect(result.standardized).toBe('https://mcp-server.pingdemo.com/mcp/legacy-test-mcp');
+      expect(result.standardized).toBe('mcpserver.ping.demo/mcp/legacy-test-mcp');
     });
 
     test('should reject invalid agent identifiers', () => {
@@ -121,14 +121,14 @@ describe('Identity Format Standardization Service', () => {
       const legacyMcp = 'legacy-test-mcp';
       const result = service.standardizeIdentifier(legacyMcp, 'mcp_server');
       
-      expect(result).toBe('https://mcp-server.pingdemo.com/mcp/legacy-test-mcp');
+      expect(result).toBe('mcpserver.ping.demo/mcp/legacy-test-mcp');
     });
 
     test('should use preferred domain when specified', () => {
       const legacyAgent = 'legacy-test-agent';
       const result = service.standardizeIdentifier(legacyAgent, 'agent', { domain: 'ai-agent' });
       
-      expect(result).toBe('https://ai-agent.pingdemo.com/agent/legacy-test-agent');
+      expect(result).toBe('agentgateway.ping.demo/agent/legacy-test-agent');
     });
 
     test('should reject invalid identifiers for standardization', () => {
@@ -150,13 +150,13 @@ describe('Identity Format Standardization Service', () => {
     test('should map legacy agent with preferred domain', () => {
       const result = service.mapLegacyToStandard('test-agent', 'agent', 'ai-agent');
       
-      expect(result).toBe('https://ai-agent.pingdemo.com/agent/test-agent');
+      expect(result).toBe('agentgateway.ping.demo/agent/test-agent');
     });
 
     test('should map legacy MCP server with default domain', () => {
       const result = service.mapLegacyToStandard('test-mcp', 'mcp_server');
       
-      expect(result).toBe('https://mcp-server.pingdemo.com/mcp/test-mcp');
+      expect(result).toBe('mcpserver.ping.demo/mcp/test-mcp');
     });
 
     test('should map legacy MCP server with preferred domain', () => {
@@ -185,7 +185,7 @@ describe('Identity Format Standardization Service', () => {
     });
 
     test('should extract components from standard MCP server identifier', () => {
-      const identifier = 'https://mcp-server.pingdemo.com/mcp/test-mcp';
+      const identifier = 'mcpserver.ping.demo/mcp/test-mcp';
       const result = service.extractIdentifierComponents(identifier, 'mcp_server');
       
       expect(result.valid).toBe(true);
@@ -222,7 +222,7 @@ describe('Identity Format Standardization Service', () => {
     test('should create standard MCP server identifier', () => {
       const result = service.createStandardizedIdentifier('mcp-server', 'mcp', 'test-mcp');
       
-      expect(result).toBe('https://mcp-server.pingdemo.com/mcp/test-mcp');
+      expect(result).toBe('mcpserver.ping.demo/mcp/test-mcp');
     });
 
     test('should use default domain for unknown domain', () => {
@@ -238,7 +238,7 @@ describe('Identity Format Standardization Service', () => {
         'https://banking-agent.pingdemo.com/agent/standard-agent',
         'legacy-agent-1',
         'legacy-agent-2',
-        'https://ai-agent.pingdemo.com/agent/ai-agent'
+        'agentgateway.ping.demo/agent/ai-agent'
       ];
       
       const result = service.batchStandardize(identifiers, 'agent');
@@ -285,7 +285,7 @@ describe('Identity Format Standardization Service', () => {
           sub: 'https://banking-agent.pingdemo.com/agent/test-agent'
         },
         act: {
-          sub: 'https://mcp-server.pingdemo.com/mcp/test-mcp',
+          sub: 'mcpserver.ping.demo/mcp/test-mcp',
           act: {
             sub: 'https://banking-agent.pingdemo.com/agent/test-agent'
           }
@@ -317,7 +317,7 @@ describe('Identity Format Standardization Service', () => {
       expect(result.valid).toBe(true);
       expect(result.fixed).toBe(true);
       expect(result.standardized.may_act.sub).toBe('https://banking-agent.pingdemo.com/agent/legacy-agent');
-      expect(result.standardized.act.sub).toBe('https://mcp-server.pingdemo.com/mcp/legacy-mcp');
+      expect(result.standardized.act.sub).toBe('mcpserver.ping.demo/mcp/legacy-mcp');
       expect(result.standardized.act.act.sub).toBe('https://banking-agent.pingdemo.com/agent/legacy-agent');
     });
 
@@ -411,7 +411,7 @@ describe('Identity Format Standardization Service', () => {
   describe('Act Claim Validation', () => {
     test('should validate act with standard identifiers', () => {
       const act = {
-        sub: 'https://mcp-server.pingdemo.com/mcp/test-mcp',
+        sub: 'mcpserver.ping.demo/mcp/test-mcp',
         act: {
           sub: 'https://banking-agent.pingdemo.com/agent/test-agent'
         }
@@ -436,7 +436,7 @@ describe('Identity Format Standardization Service', () => {
       expect(result.valid).toBe(true);
       expect(result.warnings).toContain('Using legacy mcp_server identifier format: legacy-mcp');
       expect(result.warnings).toContain('Using legacy agent identifier in act.act.sub: legacy-agent');
-      expect(result.standardized.sub).toBe('https://mcp-server.pingdemo.com/mcp/legacy-mcp');
+      expect(result.standardized.sub).toBe('mcpserver.ping.demo/mcp/legacy-mcp');
       expect(result.standardized.act.sub).toBe('https://banking-agent.pingdemo.com/agent/legacy-agent');
     });
 
@@ -480,7 +480,7 @@ describe('Identity Format Standardization Service', () => {
       
       expect(docs.type).toBe('mcp_server');
       expect(docs.standard.pattern).toBe('https://{domain}.pingdemo.com/mcp/{mcp-id}');
-      expect(docs.standard.examples).toContain('https://mcp-server.pingdemo.com/mcp/banking-mcp');
+      expect(docs.standard.examples).toContain('mcpserver.ping.demo/mcp/banking-mcp');
       // legacy_mcp_server key doesn't exist in IDENTITY_FORMATS (key is legacy_mcp)
       expect(docs.legacy).toBeNull();
     });
@@ -493,7 +493,7 @@ describe('Identity Format Standardization Service', () => {
         'legacy-agent-1',
         'legacy-agent-2',
         'invalid://format',
-        'https://ai-agent.pingdemo.com/agent/ai-agent'
+        'agentgateway.ping.demo/agent/ai-agent'
       ];
       
       const report = service.generateMigrationReport(identifiers, 'agent');
@@ -511,7 +511,7 @@ describe('Identity Format Standardization Service', () => {
     test('should generate report for all standard identifiers', () => {
       const identifiers = [
         'https://banking-agent.pingdemo.com/agent/standard-agent',
-        'https://ai-agent.pingdemo.com/agent/ai-agent'
+        'agentgateway.ping.demo/agent/ai-agent'
       ];
       
       const report = service.generateMigrationReport(identifiers, 'agent');

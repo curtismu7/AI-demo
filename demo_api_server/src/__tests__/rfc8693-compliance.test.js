@@ -105,8 +105,8 @@ describe('RFC 8693 Token Exchange Compliance', () => {
 
     test('double exchange audience progression', () => {
       const audiences = {
-        step1: 'https://agent-gateway.pingdemo.com',
-        step2: 'https://mcp-server.pingdemo.com', 
+        step1: 'agentgateway.ping.demo',
+        step2: 'mcpserver.ping.demo', 
         step3: 'https://mcp-gateway.pingdemo.com',
         step4: 'https://resource-server.pingdemo.com'
       };
@@ -162,13 +162,13 @@ describe('RFC 8693 Token Exchange Compliance', () => {
       const actorToken = {
         type: 'access_token',
         client_id: 'agent-client-id',
-        audience: ['https://agent-gateway.pingdemo.com'],
+        audience: ['agentgateway.ping.demo'],
         scope: 'read write'
       };
       
       expect(actorToken.type).toBe('access_token');
       expect(actorToken.client_id).toBeDefined();
-      expect(actorToken.audience).toContain('https://agent-gateway.pingdemo.com');
+      expect(actorToken.audience).toContain('agentgateway.ping.demo');
     });
 
     test('act claim construction for single exchange', () => {

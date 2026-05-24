@@ -7,9 +7,12 @@ describe('resolveAgentMode', () => {
       mode: 'heuristics', provider: null, heuristicRouting: true, externalWiring: null,
     });
   });
-  test('mode 2 helix-google: helix provider, routing off', () => {
+  test('mode 2 helix-google: helix provider, routing off, hidden (external:true)', () => {
+    // helix_google is marked external:true so it is filtered out of the compact
+    // 2-option dropdown (coreOptions filter in AgentModeSelector). It still
+    // resolves correctly when stored in configStore, and defaults to bff wiring.
     expect(resolveAgentMode('helix_google')).toEqual({
-      mode: 'helix_google', provider: 'helix', heuristicRouting: false, externalWiring: null,
+      mode: 'helix_google', provider: 'helix', heuristicRouting: false, externalWiring: 'bff',
     });
   });
   test('mode 3 heuristics+helix: helix, routing on', () => {
@@ -32,8 +35,8 @@ describe('resolveAgentMode', () => {
       mode: 'heuristics_helix', provider: 'helix', heuristicRouting: true, externalWiring: null,
     });
   });
-  test('external wiring ignored for non-external modes', () => {
-    expect(resolveAgentMode('helix_google', 'platform').externalWiring).toBeNull();
+  test('external wiring honored for external modes (helix_google is external)', () => {
+    expect(resolveAgentMode('helix_google', 'platform').externalWiring).toBe('platform');
   });
   test('AGENT_MODES lists exactly the five', () => {
     expect(AGENT_MODES.map((m) => m.id)).toEqual([

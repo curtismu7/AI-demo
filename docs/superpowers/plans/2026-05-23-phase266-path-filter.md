@@ -376,7 +376,7 @@ export default function Phase266ArchitecturePage() {
               Existing <code>/summary</code> route preserved untouched.
             </strong>{" "}
             <code>ResourceServerPage.jsx</code> continues to use it; new
-            SQLite-backed
+            LMDB-backed
             <code>/accounts</code> + <code>/transactions</code> routes are
             siblings.
           </li>
@@ -420,7 +420,7 @@ const PATH_LEGEND = [
     label: "Path C — OAuth Bearer",
     swatch: "#1e40af",
     description:
-      "Gateway GETs /api/resource-server/accounts + /transactions (SQLite-backed, exchanged bearer).",
+      "Gateway GETs /api/resource-server/accounts + /transactions (LMDB-backed, exchanged bearer).",
   },
 ];
 ```

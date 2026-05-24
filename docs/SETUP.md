@@ -184,7 +184,7 @@ The React UI reads `REACT_APP_*` vars from the **root** `.env` or from its own `
 
 > **Legacy names:** The BFF also accepts `PINGONE_AI_CORE_CLIENT_ID` as a fallback alias for `PINGONE_ADMIN_CLIENT_ID`. Use the canonical names above for new setups.
 
-> **Config UI alternative:** Instead of `.env` files, launch the app and visit **`http://localhost:3000/config`** to enter PingOne credentials via the browser UI. Settings are encrypted and saved to `banking_api_server/data/persistent/config.db` (SQLite). Either method works.
+> **Config UI alternative:** Instead of `.env` files, launch the app and visit **`http://localhost:3000/config`** to enter PingOne credentials via the browser UI. Settings are encrypted and saved to `banking_api_server/data/persistent/lmdb/` (LMDB). Either method works.
 
 ---
 

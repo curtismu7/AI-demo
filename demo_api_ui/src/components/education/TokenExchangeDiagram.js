@@ -182,7 +182,7 @@ export default function TokenExchangeDiagram() {
             color={C.tok1.bg} border={C.tok1.border} accent={C.tok1.text}
             claims={[
               ['sub',      '<user-id>  ← never changes'],
-              ['aud',      'https://ai-agent.pingdemo.com'],
+              ['aud',      'agentgateway.ping.demo'],
               ['scope',    'openid profile email offline_access read write ai:agent'],
               ['may_act',  '{ "sub": "<ai-agent-client-id>" }  ← pre-approval for Exchange #1'],
             ]}
@@ -203,7 +203,7 @@ export default function TokenExchangeDiagram() {
             color={C.cc1.bg} border={C.cc1.border} accent={C.cc1.text}
             claims={[
               ['grant',  'client_credentials'],
-              ['aud',    'https://agent-gateway.pingdemo.com'],
+              ['aud',    'agentgateway.ping.demo'],
               ['client', 'PINGONE_AI_AGENT_CLIENT_ID'],
             ]}
           />
@@ -211,7 +211,7 @@ export default function TokenExchangeDiagram() {
 
         <Row mt={4}>
           <Actor icon="🏦" label="BFF" sublabel="subject_token = User AT&#10;actor_token = AI Agent CC Token"  color={C.bff.bg}  border={C.bff.border} width={170} />
-          <Arrow label="POST /as/token  RFC 8693" sublabel="grant_type=token-exchange  audience=ai-agent.pingdemo.com" color={C.ping.border} />
+          <Arrow label="POST /as/token  RFC 8693" sublabel="grant_type=token-exchange  audience=agentgateway.ping.demo" color={C.ping.border} />
           <Actor icon="🔐" label="PingOne AS" sublabel="validates may_act.sub matches actor_token.sub" color={C.ping.bg} border={C.ping.border} />
         </Row>
 
@@ -224,7 +224,7 @@ export default function TokenExchangeDiagram() {
             color={C.tok2.bg} border={C.tok2.border} accent={C.tok2.text}
             claims={[
               ['sub',   '<user-id>  ← preserved'],
-              ['aud',   'https://ai-agent.pingdemo.com'],
+              ['aud',   'agentgateway.ping.demo'],
               ['scope', 'read  write'],
               ['act',   '{ "sub": "<ai-agent-client-id>" }  ← delegation fact recorded'],
             ]}

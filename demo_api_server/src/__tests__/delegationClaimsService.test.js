@@ -36,7 +36,7 @@ describe('Delegation Claims Service', () => {
     });
 
     test('should validate standard MCP server identifiers', () => {
-      const standardMcp = 'https://mcp-server.pingdemo.com/mcp/test-mcp';
+      const standardMcp = 'mcpserver.ping.demo/mcp/test-mcp';
       const result = validateIdentifierFormat(standardMcp, 'mcp_server');
       
       expect(result.valid).toBe(true);
@@ -292,12 +292,12 @@ describe('Delegation Claims Service', () => {
     test('should validate valid exchanged token with proper act claim', () => {
       const exchangedToken = {
         sub: 'user-12345',
-        aud: ['https://mcp-server.pingdemo.com'],
+        aud: ['mcpserver.ping.demo'],
         iss: 'https://auth.pingone.com/123456/as',
         exp: 1640993400,
         iat: 1640991700,
         act: {
-          sub: 'https://mcp-server.pingdemo.com/mcp/test-mcp',
+          sub: 'mcpserver.ping.demo/mcp/test-mcp',
           act: {
             sub: 'https://banking-agent.pingdemo.com/agent/test-agent'
           }
@@ -314,7 +314,7 @@ describe('Delegation Claims Service', () => {
     test('should reject exchanged token without act claim', () => {
       const exchangedToken = {
         sub: 'user-12345',
-        aud: ['https://mcp-server.pingdemo.com'],
+        aud: ['mcpserver.ping.demo'],
         iss: 'https://auth.pingone.com/123456/as',
         exp: 1640993400,
         iat: 1640991700,
@@ -329,12 +329,12 @@ describe('Delegation Claims Service', () => {
 
     test('should reject exchanged token without sub claim', () => {
       const exchangedToken = {
-        aud: ['https://mcp-server.pingdemo.com'],
+        aud: ['mcpserver.ping.demo'],
         iss: 'https://auth.pingone.com/123456/as',
         exp: 1640993400,
         iat: 1640991700,
         act: {
-          sub: 'https://mcp-server.pingdemo.com/mcp/test-mcp'
+          sub: 'mcpserver.ping.demo/mcp/test-mcp'
         },
         scope: 'read ai:agent:read'
       };
@@ -348,7 +348,7 @@ describe('Delegation Claims Service', () => {
     test('should reject malformed act claim', () => {
       const exchangedToken = {
         sub: 'user-12345',
-        aud: ['https://mcp-server.pingdemo.com'],
+        aud: ['mcpserver.ping.demo'],
         iss: 'https://auth.pingone.com/123456/as',
         exp: 1640993400,
         iat: 1640991700,
@@ -365,7 +365,7 @@ describe('Delegation Claims Service', () => {
     test('should reject act claim without sub field', () => {
       const exchangedToken = {
         sub: 'user-12345',
-        aud: ['https://mcp-server.pingdemo.com'],
+        aud: ['mcpserver.ping.demo'],
         iss: 'https://auth.pingone.com/123456/as',
         exp: 1640993400,
         iat: 1640991700,
@@ -386,7 +386,7 @@ describe('Delegation Claims Service', () => {
     test('should reject legacy MCP server identifiers (key mismatch in formats)', () => {
       const exchangedToken = {
         sub: 'user-12345',
-        aud: ['https://mcp-server.pingdemo.com'],
+        aud: ['mcpserver.ping.demo'],
         iss: 'https://auth.pingone.com/123456/as',
         exp: 1640993400,
         iat: 1640991700,
@@ -409,12 +409,12 @@ describe('Delegation Claims Service', () => {
     test('should warn about legacy agent identifiers in nested act', () => {
       const exchangedToken = {
         sub: 'user-12345',
-        aud: ['https://mcp-server.pingdemo.com'],
+        aud: ['mcpserver.ping.demo'],
         iss: 'https://auth.pingone.com/123456/as',
         exp: 1640993400,
         iat: 1640991700,
         act: {
-          sub: 'https://mcp-server.pingdemo.com/mcp/test-mcp',
+          sub: 'mcpserver.ping.demo/mcp/test-mcp',
           act: {
             sub: 'legacy-agent'
           }
@@ -441,7 +441,7 @@ describe('Delegation Claims Service', () => {
       const exchangedToken = {
         sub: 'user-12345',
         act: {
-          sub: 'https://mcp-server.pingdemo.com/mcp/test-mcp',
+          sub: 'mcpserver.ping.demo/mcp/test-mcp',
           act: {
             sub: 'https://banking-agent.pingdemo.com/agent/test-agent'
           }
@@ -470,7 +470,7 @@ describe('Delegation Claims Service', () => {
       const exchangedToken = {
         sub: 'user-12345',
         act: {
-          sub: 'https://mcp-server.pingdemo.com/mcp/test-mcp'
+          sub: 'mcpserver.ping.demo/mcp/test-mcp'
         }
       };
 
@@ -491,7 +491,7 @@ describe('Delegation Claims Service', () => {
       const exchangedToken = {
         sub: 'different-user-67890', // Subject not preserved
         act: {
-          sub: 'https://mcp-server.pingdemo.com/mcp/test-mcp',
+          sub: 'mcpserver.ping.demo/mcp/test-mcp',
           act: {
             sub: 'https://banking-agent.pingdemo.com/agent/test-agent'
           }
@@ -517,7 +517,7 @@ describe('Delegation Claims Service', () => {
       const exchangedToken = {
         sub: 'user-12345',
         act: {
-          sub: 'https://mcp-server.pingdemo.com/mcp/test-mcp',
+          sub: 'mcpserver.ping.demo/mcp/test-mcp',
           act: {
             sub: 'https://banking-agent.pingdemo.com/agent/different-agent'
           }
@@ -566,7 +566,7 @@ describe('Delegation Claims Service', () => {
       const exchangedToken = {
         sub: 'user-12345',
         act: {
-          sub: 'https://mcp-server.pingdemo.com/mcp/test-mcp',
+          sub: 'mcpserver.ping.demo/mcp/test-mcp',
           act: {
             sub: 'user-12345' // Circular reference
           }
@@ -608,12 +608,12 @@ describe('Delegation Claims Service', () => {
     test('should validate exchanged token successfully', () => {
       const token = {
         sub: 'user-12345',
-        aud: ['https://mcp-server.pingdemo.com'],
+        aud: ['mcpserver.ping.demo'],
         iss: 'https://auth.pingone.com/123456/as',
         exp: 1640993400,
         iat: 1640991700,
         act: {
-          sub: 'https://mcp-server.pingdemo.com/mcp/test-mcp',
+          sub: 'mcpserver.ping.demo/mcp/test-mcp',
           act: {
             sub: 'https://banking-agent.pingdemo.com/agent/test-agent'
           }

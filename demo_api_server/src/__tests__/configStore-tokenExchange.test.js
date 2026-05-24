@@ -280,7 +280,7 @@ describe('buildAllowedScopesByAudience()', () => {
     const mapping = buildAllowedScopesByAudience();
 
     // Default end-user audience
-    const endUserAud = 'https://banking-api.banking-demo.com';
+    const endUserAud = 'enduser.ping.demo';
     expect(mapping[endUserAud]).toEqual(
       expect.arrayContaining(['read', 'write'])
     );
@@ -291,7 +291,7 @@ describe('buildAllowedScopesByAudience()', () => {
     const mapping = buildAllowedScopesByAudience();
 
     // After scope rename: agent gateway uses 'ai:agent' and 'ai_agent' (not 'ai:agent:read')
-    const agentGw = 'https://banking-agent-gateway.banking-demo.com';
+    const agentGw = 'agentgateway.ping.demo';
     expect(mapping[agentGw]).toEqual(expect.arrayContaining(['ai:agent']));
   });
 
@@ -299,8 +299,8 @@ describe('buildAllowedScopesByAudience()', () => {
     const { buildAllowedScopesByAudience } = loadConfigStore();
     const mapping = buildAllowedScopesByAudience();
 
-    const mcpGw = 'https://banking-mcp-gateway.banking-demo.com';
-    const mcpServer = 'https://banking-mcp-server.banking-demo.com';
+    const mcpGw = 'mcpgateway.ping.demo';
+    const mcpServer = 'mcpserver.ping.demo';
     expect(mapping[mcpGw]).toEqual(expect.arrayContaining(['mcp:invoke']));
     expect(mapping[mcpServer]).toEqual(expect.arrayContaining(['mcp:invoke']));
   });
@@ -329,7 +329,7 @@ describe('validateScopeAudience()', () => {
     // After scope rename: end-user audience allows 'ai:agent' not 'ai:agent:read'
     const result = validateScopeAudience(
       ['read', 'write', 'openid', 'ai:agent'],
-      'https://banking-api.banking-demo.com'
+      'enduser.ping.demo'
     );
 
     expect(result.valid).toBe(true);
@@ -344,7 +344,7 @@ describe('validateScopeAudience()', () => {
   it('throws SCOPE_ERROR when scopes array is empty', () => {
     const { validateScopeAudience } = loadConfigStore();
 
-    expect(() => validateScopeAudience([], 'https://banking-api.banking-demo.com')).toThrow(
+    expect(() => validateScopeAudience([], 'enduser.ping.demo')).toThrow(
       /SCOPE_ERROR/
     );
   });
@@ -352,7 +352,7 @@ describe('validateScopeAudience()', () => {
   it('throws SCOPE_ERROR when scopes is null', () => {
     const { validateScopeAudience } = loadConfigStore();
 
-    expect(() => validateScopeAudience(null, 'https://banking-api.banking-demo.com')).toThrow(
+    expect(() => validateScopeAudience(null, 'enduser.ping.demo')).toThrow(
       /SCOPE_ERROR/
     );
   });
@@ -363,7 +363,7 @@ describe('validateScopeAudience()', () => {
     expect(() =>
       validateScopeAudience(
         ['openid', 'profile'],
-        'https://banking-api.banking-demo.com'
+        'enduser.ping.demo'
       )
     ).toThrow(/SCOPE_MISMATCH/);
   });
@@ -385,7 +385,7 @@ describe('validateScopeAudience()', () => {
     const { validateScopeAudience } = loadConfigStore();
     const result = validateScopeAudience(
       ['read', 'write'],
-      'https://banking-api.banking-demo.com'
+      'enduser.ping.demo'
     );
 
     expect(result.valid).toBe(true);

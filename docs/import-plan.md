@@ -20,7 +20,7 @@ A user on Machine A runs one command to produce a self-contained archive. They c
 
 The app has three distinct persistence layers that require different treatment:
 
-**Layer 1 — SQLite databases** (`data/persistent/*.db`)
+**Layer 1 — LMDB databases** (LMDB environment at `data/persistent/lmdb/`)
 
 | File | Contents | Encryption | Lock behaviour |
 |------|----------|------------|----------------|
@@ -29,11 +29,10 @@ The app has three distinct persistence layers that require different treatment:
 | `delegations.db` | RFC 8693 token delegation records | None | Written during agent token exchange |
 | `demoAccounts.db` | Demo account seed data | None | Rarely written |
 
-`configStore.js` uses `better-sqlite3` (synchronous driver) with **no WAL pragma** — standard rollback journal mode. Consequences:
+`configStore.js` uses `lmdb` with memory-mapped access.
 
-- No `.db-wal` or `.db-shm` sidecar files to include in the archive.
-- A concurrent write mid-copy will produce a corrupt database. Export mitigates this by opening all `.db` files with `{ readonly: true }` — `better-sqlite3` supports this and the live server can continue writing to its own connection.
-- Import **must** refuse to run while the server is up. `better-sqlite3` holds an exclusive write lock; extracting over a locked file produces a partially-written database with no error.
+- LMDB supports concurrent readers via memory-mapping. Export opens the environment in read-only mode.
+- Import **must** refuse to run while the server is up. LMDB write transactions hold exclusive locks; extracting over an active environment produces corruption.
 
 **Layer 2 — JSON flat files** (`data/persistent/*.json`)
 
@@ -109,7 +108,7 @@ banking-export-<timestamp>.tar.gz
 
 ```
 Step 0 — Package pre-flight (NEW)
-  Same checks as import script Step 0 (tar loadable, better-sqlite3 or node:sqlite loadable,
+  Same checks as import script Step 0 (tar loadable, lmdb or lmdb loadable,
   native binary architecture match). Exit 1 with the same remediation messages if any check fails.
   Print: "✓ Package pre-flight passed"
 
@@ -195,7 +194,7 @@ Step 8 — Print summary
 
 ### 2b. Dependencies
 
-- `better-sqlite3` — already in `package.json`, used only for read-only probe open/close
+- `lmdb` — already in `package.json`, used only for read-only probe open/close
 - `tar` — **must be added** to `banking_api_server/package.json` (`npm install tar`). The `tar` npm package is not a Node built-in and is not currently installed. It provides a cross-platform streaming tar API and avoids spawning a shell `tar` process.
 - `node:zlib`, `node:stream`, `node:fs`, `node:path`, `node:os` — Node built-ins, no new packages beyond `tar`
 
@@ -226,26 +225,26 @@ Step 0 — Package pre-flight (NEW)
          Run:  cd banking_api_server && npm install
          Then retry the import."
   
-  Check 3 — better-sqlite3 or node:sqlite loadable
-    try { require('better-sqlite3') } catch
-      try { require('node:sqlite') } catch
+  Check 3 — lmdb or lmdb loadable
+    try { require('lmdb') } catch
+      try { require('lmdb') } catch
         → exit 1:
-          "Neither better-sqlite3 nor node:sqlite is available.
-           Run:  cd banking_api_server && npm install && npm rebuild better-sqlite3
+          "Neither lmdb nor lmdb is available.
+           Run:  cd banking_api_server && npm install && npm rebuild lmdb
            Then retry the import."
       → warn:
-          "better-sqlite3 failed to load (native binary may need rebuild).
-           Falling back to node:sqlite built-in.
+          "lmdb failed to load (native binary may need rebuild).
+           Falling back to lmdb built-in.
            If import health check fails, run:
-             cd banking_api_server && npm rebuild better-sqlite3"
+             cd banking_api_server && npm rebuild lmdb"
   
-  Check 4 — better-sqlite3 native binary architecture match
-    If better-sqlite3 loaded successfully:
+  Check 4 — lmdb native binary architecture match
+    If lmdb loaded successfully:
       try { const db = new Database(':memory:'); db.close(); }
       catch (e if e.message includes 'wrong architecture' or 'invalid ELF')
         → exit 1:
-          "better-sqlite3 native binary is built for a different CPU/Node version.
-           Run:  cd banking_api_server && npm rebuild better-sqlite3
+          "lmdb native binary is built for a different CPU/Node version.
+           Run:  cd banking_api_server && npm rebuild lmdb
            Then retry the import."
   
   Print: "✓ Package pre-flight passed"
@@ -259,7 +258,7 @@ Step 2 — Check server is stopped
     200 → exit 1:
       "The server is running. Stop it before importing:
          ./run-demo.sh stop   (or: npm stop)
-       Reason: better-sqlite3 holds an exclusive write lock.
+       Reason: lmdb holds an exclusive write lock.
        Importing with the server running will corrupt config.db."
     Connection refused → proceed
     Other error → treat as stopped, log warning, proceed
@@ -379,7 +378,7 @@ Step 8 — Print completion summary
 
 ### 3b. Dependencies
 
-Same as export: `better-sqlite3` (health check), `tar` (extraction), Node built-ins. No additional packages beyond `tar` added in §2b.
+Same as export: `lmdb` (health check), `tar` (extraction), Node built-ins. No additional packages beyond `tar` added in §2b.
 
 ---
 
@@ -452,9 +451,9 @@ Add to the **dependencies** section:
 |---------|------------------|------------|
 | `node_modules` absent on Machine B | Step 0 pre-flight | Auto-runs `npm install`; exits 1 if it fails |
 | `tar` not installed (first run on Machine B) | Step 0 pre-flight | Exits 1 with `npm install` remediation before touching any file |
-| `better-sqlite3` native binary wrong arch/Node version | Step 0 pre-flight | Detected by in-memory open test; exits 1 with `npm rebuild better-sqlite3` instructions |
-| `better-sqlite3` unavailable, `node:sqlite` fallback used | Step 0 pre-flight | Warns; import proceeds using built-in driver; health check still works |
-| `better-sqlite3` write lock during import | Step 2 port check | Port check → exit 1 before touching any file |
+| `lmdb` native binary wrong arch/Node version | Step 0 pre-flight | Detected by in-memory open test; exits 1 with `npm rebuild lmdb` instructions |
+| `lmdb` unavailable, `lmdb` fallback used | Step 0 pre-flight | Warns; import proceeds using built-in driver; health check still works |
+| `lmdb` write lock during import | Step 2 port check | Port check → exit 1 before touching any file |
 | Corrupt `.db` mid-copy during export | Step 3 read-only probe | `{ readonly: true }` open verifies file is readable before archiving |
 | Disk full mid-archive write | Step 7 tar stream | Write to temp file; rename atomically; clean up temp on error |
 | Disk full mid-extract during import | Step 6 extract | Backup already exists; rollback command printed in Step 8 |
@@ -462,8 +461,8 @@ Add to the **dependencies** section:
 | User modifies `.env` after import but before server start | Step 7 health check | Same catch; backup `.env` path shown in error message |
 | `.env` absent from archive (v1 archive) | Step 4 warning | Warns with manual copy instructions; does not abort |
 | `sessions.db` accidentally copied into archive by user | Step 6 extract | Explicit skip list in extraction logic |
-| Archive from different OS (line endings in JSON) | Not a risk | SQLite binary format is cross-platform; JSON parsing ignores line endings |
-| Node version mismatch (different `better-sqlite3` native binary) | Step 7 health check | Log `sourceNodeVersion` from manifest as advisory warning; `better-sqlite3` may need `npm rebuild` — document this |
+| Archive from different OS (line endings in JSON) | Not a risk | LMDB binary format is cross-platform; JSON parsing ignores line endings |
+| Node version mismatch (different `lmdb` native binary) | Step 7 health check | Log `sourceNodeVersion` from manifest as advisory warning; `lmdb` may need `npm rebuild` — document this |
 
 ---
 

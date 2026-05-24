@@ -219,10 +219,10 @@ export default function SessionExpiryTimer({ hideOnPaths = [] }) {
           <button
             className="banking-header__logout-btn"
             onClick={performLogout}
-            title="Logout"
-            aria-label="Logout"
+            title="Log Out"
+            aria-label="Log Out"
           >
-            Logout
+            Log Out
           </button>
         </div>
       </div>

@@ -197,7 +197,7 @@ order is:
    `secrets.vault` exists AND `VAULT_PASSWORD` is set.
 2. **`process.env`** — used directly when the vault has no entry for
    the requested key, or when no vault file exists.
-3. **`configStore` SQLite** — encrypted at rest with `SESSION_SECRET`;
+3. **`configStore` LMDB** — encrypted at rest with `SESSION_SECRET`;
    used as a fallback for values written via `/setup` or `/admin`.
 
 The vault NEVER overrides values that are explicitly set in `process.env`
@@ -506,13 +506,13 @@ setup right now.
 A: The vault is **independent** of `SESSION_SECRET`. The vault has its
 own password and its own at-rest encryption (Argon2id KEK).
 
-The configStore's encrypted SQLite at-rest layer IS keyed by
+The configStore's encrypted LMDB at-rest layer IS keyed by
 `SESSION_SECRET`, but vault entries are loaded with `{persist: false}`
-in the BFF startup wiring — they're never written to SQLite. So
+in the BFF startup wiring — they're never written to LMDB. So
 rotating `SESSION_SECRET` does not break the vault.
 
 You will, however, need to recover or re-enter any configStore values
-that *were* persisted to SQLite (e.g. values entered via `/setup` or
+that *were* persisted to LMDB (e.g. values entered via `/setup` or
 `/admin`). That's an existing constraint of `SESSION_SECRET` rotation
 and not new in Phase 269.
 

@@ -13,7 +13,7 @@ const sampleResponses = [
     error: 'unauthorized',
     error_description: 'No token provided',
     error_code: MCPErrorCode.UNAUTHORIZED,
-    resource_metadata: 'https://mcp-server.pingdemo.com/.well-known/oauth-protected-resource',
+    resource_metadata: 'mcpserver.ping.demo/.well-known/oauth-protected-resource',
     timestamp: '2025-04-07T17:00:00.000Z',
     request_id: 'req-123',
     data: {
@@ -32,7 +32,7 @@ const sampleResponses = [
     error_description: 'Token is missing required scope(s): accounts:write',
     error_code: MCPErrorCode.INSUFFICIENT_SCOPE,
     required_scope: 'accounts:write',
-    resource_metadata: 'https://mcp-server.pingdemo.com/.well-known/oauth-protected-resource',
+    resource_metadata: 'mcpserver.ping.demo/.well-known/oauth-protected-resource',
     timestamp: '2025-04-07T17:00:00.000Z',
     request_id: 'req-456',
     data: {

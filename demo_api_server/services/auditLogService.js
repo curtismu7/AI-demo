@@ -7,8 +7,8 @@
  * Requirements: REQ-159-04/05 — State capture at kill time, kill reason logged immutably
  */
 
-const crypto = require('crypto');
-const { v4: uuidv4 } = require('uuid');
+const crypto = require('node:crypto');
+const uuidv4 = () => crypto.randomUUID();
 
 // Use Redis stream for append-only immutable log
 // Or fallback to in-memory with timestamp ordering

@@ -91,11 +91,11 @@ export default function UserMenu({ user, onLogout }) {
 
           <button className="user-menu-item user-menu-item-primary" onClick={handleLogin} type="button">
             <MdLogin className="user-menu-item-icon" />
-            <span>Login</span>
+            <span>Sign In</span>
           </button>
           <button className="user-menu-item user-menu-item-danger" onClick={handleLogout} type="button">
             <MdLogout className="user-menu-item-icon" />
-            <span>Logout</span>
+            <span>Log Out</span>
           </button>
         </div>
       )}

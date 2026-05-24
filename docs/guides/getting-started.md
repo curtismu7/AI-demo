@@ -158,7 +158,7 @@ For full environment variable details, see the [Configuration guide](./configura
 | Browser shows certificate error | Certs not generated or CA not trusted | Run `mkcert -install` and `mkdir -p certs && cd certs && mkcert api.ping.demo localhost 127.0.0.1` |
 | Services won't start (MODULE_NOT_FOUND) | Node version mismatch or missing build step | Verify `node --version` is v20+; try `./run-demo.sh stop && ./run-demo.sh` |
 | `/configure` shows blank fields after import | `.env` encryption key mismatch | Re-run `npm run setup:fresh` with the same archive |
-| `better-sqlite3` binary error | Node version mismatch (binaries built for different Node major) | `nvm use 20 && cd banking_api_server && npm rebuild better-sqlite3` |
+| `lmdb` binary error | Node version mismatch (binaries built for different Node major) | `nvm use 20 && cd banking_api_server && npm rebuild lmdb` |
 
 ## Stopping Services
 

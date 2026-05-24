@@ -24,8 +24,8 @@ jest.mock('axios', () => mockAxios);
 // Default configStore values — re-applied in beforeEach so individual tests
 // can override safely without leaking into subsequent tests.
 const DEFAULT_CONFIG = {
-  pingone_audience_enduser: 'https://ai-agent.pingdemo.com',
-  pingone_resource_mcp_server_uri: 'https://mcp-server.pingdemo.com',
+  pingone_audience_enduser: 'agentgateway.ping.demo',
+  pingone_resource_mcp_server_uri: 'mcpserver.ping.demo',
   pingone_region: 'com',
   pingone_environment_id: 'env-test-123',
   admin_client_id: 'admin-client-id-test',
@@ -107,8 +107,8 @@ const MOCK_APPS = [
 
 const MOCK_RS = [
   // Audience must match DEFAULT_CONFIG.pingone_audience_enduser so the route can find the RS
-  { id: 'rs-1', name: 'Super Banking Resource Server', audience: 'https://ai-agent.pingdemo.com' },
-  { id: 'rs-2', name: 'Super Banking MCP Server', audience: 'https://mcp-server.pingdemo.com' },
+  { id: 'rs-1', name: 'Super Banking Resource Server', audience: 'agentgateway.ping.demo' },
+  { id: 'rs-2', name: 'Super Banking MCP Server', audience: 'mcpserver.ping.demo' },
 ];
 
 const BANKING_SCOPES = [
@@ -441,7 +441,7 @@ describe('pingoneTestRoutes — new Phase 151 endpoints', () => {
       managementService.getResourceServers.mockResolvedValue({
         success: true,
         resourceServers: [
-          { id: 'rs-banking-1', name: 'Super Banking Banking API', audience: 'https://ai-agent.pingdemo.com' },
+          { id: 'rs-banking-1', name: 'Super Banking Banking API', audience: 'agentgateway.ping.demo' },
         ],
       });
 

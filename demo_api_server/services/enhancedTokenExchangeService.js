@@ -329,13 +329,13 @@ class EnhancedTokenExchangeService {
       const agentActorToken = await this.oauthService.getClientCredentialsTokenAs(
         agentClientId,
         agentClientSecret,
-        'https://agent-gateway.pingdemo.com'
+        'agentgateway.ping.demo'
       );
 
       // Step 2: Exchange user token + agent actor token -> agent exchanged token
       const agentExchangedToken = await this.performEnhancedTokenExchange(
         userToken,
-        'https://mcp-server.pingdemo.com', // Intermediate audience
+        'mcpserver.ping.demo', // Intermediate audience
         scopes,
         {
           actorToken: agentActorToken,

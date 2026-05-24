@@ -52,7 +52,7 @@ const TEST_CONFIG = {
 			"sensitive",
 			"ai:agent",
 		],
-		audience: "https://mcp-server.pingdemo.com",
+		audience: "mcpserver.ping.demo",
 		spel: "T1 (user token) → MCP token",
 		agentPrompt: "Show me my account balances",
 	},
@@ -82,14 +82,14 @@ const TEST_CONFIG = {
 		appName: "Super Banking MCP Server",
 		appType: "RESOURCE_SERVER",
 		requiredScopes: null,
-		audience: "https://mcp-server.pingdemo.com",
+		audience: "mcpserver.ping.demo",
 		spel: null,
 	},
 	scopes: {
 		appName: "Super Banking MCP Server",
 		appType: "RESOURCE_SERVER",
 		requiredScopes: ["read", "write", "mcp:invoke"],
-		audience: "https://mcp-server.pingdemo.com",
+		audience: "mcpserver.ping.demo",
 		spel: null,
 	},
 	users: {
@@ -158,7 +158,7 @@ const CONFIG_META = {
 	},
 	resourceMcpServerUri: {
 		envVar: "PINGONE_RESOURCE_MCP_SERVER_URI",
-		format: "URI — e.g. https://mcp-server.pingdemo.com",
+		format: "URI — e.g. mcpserver.ping.demo",
 		failMsg:
 			"Not set — add PINGONE_RESOURCE_MCP_SERVER_URI=<uri> to .env (copy Audience URI from PingOne → Connections → Resource Servers → Super Banking MCP Server)",
 	},
@@ -170,7 +170,7 @@ const CONFIG_META = {
 	},
 	resourceAgentGatewayUri: {
 		envVar: "PINGONE_RESOURCE_AGENT_GATEWAY_URI",
-		format: "URI — e.g. https://agent-gateway.pingdemo.com",
+		format: "URI — e.g. agentgateway.ping.demo",
 		failMsg:
 			"Not set — add PINGONE_RESOURCE_AGENT_GATEWAY_URI=<uri> to .env (copy Audience URI from PingOne → Connections → Resource Servers → Super Banking Agent Gateway)",
 	},
@@ -2066,7 +2066,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 										"write",
 										"mcp:invoke",
 									],
-									audience: "https://mcp-server.pingdemo.com",
+									audience: "mcpserver.ping.demo",
 									spel: "MCP server returns 401 → BFF uses ID token (subject) + Agent CC token (actor) → RFC 8693 dual exchange → MCP Gateway token with act claim",
 								}}
 							pingoneRequest={exchange186PingoneReq}
@@ -2156,7 +2156,7 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 										"write",
 										"mcp:invoke",
 									],
-									audience: "https://mcp-server.pingdemo.com",
+									audience: "mcpserver.ping.demo",
 									spel: "User access token sent to MCP → MCP returns 401 → agent fetches CC token → RFC 8693 access token exchange → retry MCP with MCP token",
 								}}
 							pingoneRequest={exchange401PingoneReq}

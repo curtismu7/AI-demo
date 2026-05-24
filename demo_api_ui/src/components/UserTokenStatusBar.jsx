@@ -36,7 +36,7 @@ export default function UserTokenStatusBar({ user, tokenSecondsLeft, onOpenModal
           className="utsb__login-btn"
           onClick={navigateToCustomerOAuthLogin}
         >
-          Login
+          Sign In
         </button>
       </div>
     );
@@ -69,7 +69,7 @@ export default function UserTokenStatusBar({ user, tokenSecondsLeft, onOpenModal
           className="utsb__login-btn"
           onClick={navigateToCustomerOAuthLogin}
         >
-          Re-login
+          Sign In
         </button>
       </div>
     );

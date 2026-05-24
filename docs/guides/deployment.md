@@ -460,7 +460,7 @@ No additional webhook or CLI command needed — Vercel auto-detects your GitHub 
 **Session data (Upstash)** is ephemeral and expires after 30 days — no backup needed.
 
 **Application data** (user accounts, transactions):
-- Local dev: stored in `banking_api_server/data/banking.db` (SQLite)
+- Local dev: stored in `banking_api_server/data/persistent/lmdb/` (LMDB)
 - Production: implement periodic exports via `/api/export` (if exposed) or PingOne Management API
 
 ### Rollback Procedure

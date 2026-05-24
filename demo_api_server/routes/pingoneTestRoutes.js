@@ -1349,7 +1349,7 @@ router.post('/fix-banking-resource-server', async (req, res) => {
     managementService.initialize(workerToken);
 
     const CANONICAL_BANKING_SCOPES = ['read', 'write', 'admin', 'sensitive', 'ai:agent'];
-    const audienceEnduser = configStore.getEffective('pingone_audience_enduser') || process.env.ENDUSER_AUDIENCE || 'https://ai-agent.pingdemo.com';
+    const audienceEnduser = configStore.getEffective('pingone_audience_enduser') || process.env.ENDUSER_AUDIENCE || 'agentgateway.ping.demo';
 
     // Find or create the banking resource server
     const resourcesResult = await managementService.getResourceServers();
@@ -1807,8 +1807,8 @@ router.post('/update-resources', async (req, res) => {
     }
     managementService.initialize(workerToken);
 
-    const audienceEnduser = configStore.getEffective('pingone_audience_enduser') || process.env.ENDUSER_AUDIENCE || 'https://ai-agent.pingdemo.com';
-    const mcpUri = configStore.getEffective('pingone_resource_mcp_server_uri') || process.env.PINGONE_RESOURCE_MCP_SERVER_URI || 'https://mcp-server.pingdemo.com';
+    const audienceEnduser = configStore.getEffective('pingone_audience_enduser') || process.env.ENDUSER_AUDIENCE || 'agentgateway.ping.demo';
+    const mcpUri = configStore.getEffective('pingone_resource_mcp_server_uri') || process.env.PINGONE_RESOURCE_MCP_SERVER_URI || 'mcpserver.ping.demo';
 
     const RS_TARGETS = [
       { key: 'banking', name: 'Super Banking AI Agent', audience: audienceEnduser,
@@ -1873,8 +1873,8 @@ router.post('/update-scopes', async (req, res) => {
     }
     managementService.initialize(workerToken);
 
-    const audienceEnduser = configStore.getEffective('pingone_audience_enduser') || process.env.ENDUSER_AUDIENCE || 'https://ai-agent.pingdemo.com';
-    const mcpUri = configStore.getEffective('pingone_resource_mcp_server_uri') || process.env.PINGONE_RESOURCE_MCP_SERVER_URI || 'https://mcp-server.pingdemo.com';
+    const audienceEnduser = configStore.getEffective('pingone_audience_enduser') || process.env.ENDUSER_AUDIENCE || 'agentgateway.ping.demo';
+    const mcpUri = configStore.getEffective('pingone_resource_mcp_server_uri') || process.env.PINGONE_RESOURCE_MCP_SERVER_URI || 'mcpserver.ping.demo';
     const SCOPE_MAP = {
       enduser: { audience: audienceEnduser, scopes: ['read', 'write', 'admin', 'sensitive', 'ai:agent'] },
       mcp:     { audience: mcpUri,         scopes: ['read', 'write', 'mcp:invoke'] },
@@ -1923,7 +1923,7 @@ router.post('/update-apps', async (req, res) => {
     }
     managementService.initialize(workerToken);
 
-    const audienceEnduser = configStore.getEffective('pingone_audience_enduser') || process.env.ENDUSER_AUDIENCE || 'https://ai-agent.pingdemo.com';
+    const audienceEnduser = configStore.getEffective('pingone_audience_enduser') || process.env.ENDUSER_AUDIENCE || 'agentgateway.ping.demo';
     const CANONICAL_BANKING_SCOPES = ['read', 'write', 'admin', 'sensitive', 'ai:agent'];
 
     // App name → required banking scope subset
@@ -2062,7 +2062,7 @@ router.post('/update-user-spel', async (req, res) => {
         const name = (rs.name || '').toLowerCase();
         // Match Banking API RS, AI Agent RS, or any RS with a banking/agent audience
         if (aud === audienceEnduser || aud === 'https://resource-server.pingdemo.com'
-            || aud === 'https://ai-agent.pingdemo.com'
+            || aud === 'agentgateway.ping.demo'
             || name.includes('banking') || name.includes('ai agent')) {
           rsTargets.push(rs);
         }
@@ -2348,7 +2348,7 @@ router.get('/check-ai-agent-act', async (req, res) => {
     const axios = require('axios');
     const region = configStore.getEffective('pingone_region') || 'com';
     const envId  = configStore.getEffective('pingone_environment_id');
-    const audienceEnduser = configStore.getEffective('pingone_audience_enduser') || 'https://ai-agent.pingdemo.com';
+    const audienceEnduser = configStore.getEffective('pingone_audience_enduser') || 'agentgateway.ping.demo';
     const apiBase = `https://api.pingone.${region}/v1/environments/${envId}`;
     const mgmtHeaders = { Authorization: `Bearer ${workerToken}`, 'Content-Type': 'application/json' };
     const ACT_SPEL = '{"sub":"${tokenContext.actor.sub}"}';
@@ -2393,7 +2393,7 @@ router.post('/fix-ai-agent-act', async (req, res) => {
     const axios = require('axios');
     const region = configStore.getEffective('pingone_region') || 'com';
     const envId  = configStore.getEffective('pingone_environment_id');
-    const audienceEnduser = configStore.getEffective('pingone_audience_enduser') || 'https://ai-agent.pingdemo.com';
+    const audienceEnduser = configStore.getEffective('pingone_audience_enduser') || 'agentgateway.ping.demo';
     const apiBase = `https://api.pingone.${region}/v1/environments/${envId}`;
     const mgmtHeaders = { Authorization: `Bearer ${workerToken}`, 'Content-Type': 'application/json' };
     const ACT_SPEL = '{"sub":"${tokenContext.actor.sub}"}';

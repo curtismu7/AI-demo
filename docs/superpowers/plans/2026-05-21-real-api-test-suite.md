@@ -6,7 +6,7 @@
 
 **Architecture:** New `tests/real/` tree with shared helper infrastructure (session, fixtures, BFF client, reset) built in Phase 1; per-vertical and shared test files migrated in Phase 2 in priority order. Old `src/__tests__/` suite stays green throughout as a regression floor — files deleted from it only after their `tests/real/` counterpart is green.
 
-**Tech Stack:** Node.js, Jest, axios, better-sqlite3, https (Node built-in), PingOne PKCE headless login
+**Tech Stack:** Node.js, Jest, axios, lmdb, https (Node built-in), PingOne PKCE headless login
 
 ---
 
@@ -295,11 +295,11 @@ async function loginViaBff({ envId, region, clientId, clientSecret, redirectUri,
 
 function loadFromSessionsDb() {
   try {
-    const Database = require('better-sqlite3');
-    const dbPath = path.resolve(__dirname, '../../../data/sessions.db');
+    const { open } = require('lmdb');
+    const dbPath = path.resolve(__dirname, '../../../data/sessions-lmdb');
     if (!fs.existsSync(dbPath)) return null;
-    const db = new Database(dbPath, { readonly: true });
-    const rows = db.prepare('SELECT sid, sess FROM sessions ORDER BY expire DESC LIMIT 20').all();
+    const db = open({ path: dbPath, readOnly: true });
+    const rows = [...db.getRange({ limit: 20 })].map(({ key, value }) => ({ sid: key, sess: value }));
     db.close();
     const now = Math.floor(Date.now() / 1000);
     for (const row of rows) {

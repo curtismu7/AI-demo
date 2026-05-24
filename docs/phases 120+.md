@@ -30,7 +30,7 @@ _Last updated: 2026-04-12 (session 7)_
 | # | Description | Resolution | Commit |
 |---|-------------|-----------|--------|
 | 1 | fmtSub/fmtAct showed raw UUIDs (Phase 126 never executed) | Added identityHints fetch to TokenChainDisplay — friendly names now resolved | `4c01430` |
-| 2 | configStore empty strings (adminClientId etc) | Confirmed already fixed by Phase 127 sqlite rebuild | — |
+| 2 | configStore empty strings (adminClientId etc) | Confirmed already fixed by Phase 127 LMDB rebuild | — |
 | 3 | Phase 133 → 135 ordering dependency | Noted in planning; Phase 133 completed first | — |
 | 4 | Empty `125-124/` directory | Removed | `4c01430` |
 

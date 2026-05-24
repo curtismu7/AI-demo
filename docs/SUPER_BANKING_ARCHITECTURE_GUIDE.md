@@ -57,7 +57,7 @@ The architecture diagram visualizes the complete system including:
 
 **Session Store**
 - **Redis (Vercel)**: Distributed session storage for serverless
-- **SQLite (Local)**: Local session storage for development
+- **LMDB (Local)**: Local session storage for development
 - **Token Storage**: Secure token persistence
 - **Session Persistence**: Cross-function invocation state
 - **Serverless Support**: Cold-start friendly session management
@@ -187,7 +187,7 @@ The architecture diagram visualizes the complete system including:
 ## Deployment Architecture
 
 ### Development Environment
-- **Local Development**: Local SQLite and in-memory session store
+- **Local Development**: Local LMDB and in-memory session store
 - **Docker Support**: Containerized development environment
 - **Hot Reload**: Development-time code reloading
 

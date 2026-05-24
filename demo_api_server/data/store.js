@@ -1,4 +1,4 @@
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID: uuidv4 } = require('node:crypto');
 const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');

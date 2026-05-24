@@ -14,9 +14,7 @@
  *   await configStore.ensureInitialized() → call once before handling requests
  */
 
-'use strict';
-
-const crypto = require('crypto');
+const crypto = require('node:crypto');
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -177,6 +175,25 @@ ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic 
   step_up_enabled:                 { public: true, default: 'true'  }, // Step-up MFA gate; mirrored into runtimeSettings.stepUpEnabled (runtimeKey)
   ff_trat_mode:                    { public: true, default: 'false' }, // Enrich RFC 8693 exchange with Transaction Token (TraT) claims — draft-oauth-transaction-tokens-for-agents-00
   ff_agent_restrictions:           { public: true, default: 'false' }, // P1AZ resource server gate + AgentRestrictions attribute
+  ff_admin_token_exchange:         { public: true, default: 'false' }, // Use token exchange for admin sessions (RFC 8693 with admin app as subject)
+  // MCP Gateway passthrough mode — when true the gateway forwards MCP requests
+  // directly to the MCP server without performing a downstream token exchange.
+  // Consumed by demo_mcp_gateway/src/config.ts via process.env (gateway service);
+  // registered here so the shared .env value is tracked in the config registry.
+  mcp_gw_passthrough_to_mcp_server: { public: true, default: 'false' },
+
+  // Dev-only TLS bypass for the gateway health probe and MCP WebSocket client.
+  // When true AND NODE_ENV != 'production', skips TLS verification on wss:// and
+  // the gateway /health probe. Production code hard-ignores this flag regardless
+  // of the stored value. Set via GATEWAY_HEALTH_PROBE_INSECURE in .env.
+  gateway_health_probe_insecure:   { public: true, default: 'false' },
+
+  // Optional PingOne configuration check at server startup.
+  // When true, validates resource servers (audience) and scopes against the
+  // reference values in docs/PINGONE_CONFIG.md. Requires management worker
+  // credentials (PINGONE_WORKER_CLIENT_ID / PINGONE_WORKER_CLIENT_SECRET).
+  // Non-blocking — warnings only; never prevents startup.
+  pingone_validate_on_startup:     { public: true, default: 'false' },
 
   // Token endpoint auth method overrides (configurable at runtime from Demo Data page)
   // Fallback: env vars AI_AGENT_TOKEN_ENDPOINT_AUTH_METHOD / MCP_EXCHANGER_TOKEN_ENDPOINT_AUTH_METHOD
@@ -188,8 +205,8 @@ ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic 
   // Gateway. (PINGONE_RESOURCE_AGENT_GATEWAY_URI = the AI Agent actor-CC
   // audience.) The gateway re-exchanges downstream.
   PINGONE_AI_AGENT_CLIENT_ID:             { public: true,  default: '' }, // Demo AI Agent App client ID — the RFC 8693 actor
-  PINGONE_RESOURCE_AGENT_GATEWAY_URI:     { public: true,  default: 'https://banking-agent-gateway.banking-demo.com' }, // AI Agent actor client-credentials audience
-  PINGONE_RESOURCE_MCP_GATEWAY_URI:       { public: true,  default: 'https://banking-mcp-gateway.banking-demo.com' },   // Single-exchange output audience (MCP Gateway)
+  PINGONE_RESOURCE_AGENT_GATEWAY_URI:     { public: true,  default: 'agentgateway.ping.demo' }, // AI Agent actor client-credentials audience — matches Demo Agent Gateway resource aud in PingOne
+  PINGONE_RESOURCE_MCP_GATEWAY_URI:       { public: true,  default: 'mcpgateway.ping.demo' },   // Single-exchange output audience (MCP Gateway) — matches Demo MCP Gateway resource aud in PingOne
 
   // RFC 8693 Token Exchange — MCP server resource URI
   // When set, the Backend-for-Frontend (BFF) exchanges user tokens for delegated tokens scoped to this
@@ -200,7 +217,9 @@ ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic 
   // The BFF chat-WS proxy requests a token-exchange to this audience before
   // delivering the token to langchain in session_init. langchain validates
   // `aud` against this value (T-5: per-hop audience, no cascade).
-  PINGONE_RESOURCE_LANGCHAIN_AGENT_URI:   { public: true,  default: 'https://banking-langchain-agent.banking-demo.com' },
+  // No default: this resource server is not provisioned by bootstrap; must be
+  // set explicitly via PINGONE_RESOURCE_LANGCHAIN_AGENT_URI in .env if used.
+  PINGONE_RESOURCE_LANGCHAIN_AGENT_URI:   { public: true,  default: '' },
 
   // Demo Data — persistent demo accounts (JSON string, ignored for local SQLite)
   demo_accounts:              { public: false, default: '' },
@@ -585,7 +604,7 @@ class ConfigStore {
     if (data.demo_accounts) {
       try {
         JSON.parse(data.demo_accounts);
-      } catch (e) {
+      } catch {
         throw new Error('DEMO_ACCOUNTS must be valid JSON string');
       }
     }
@@ -792,7 +811,10 @@ class ConfigStore {
       mcp_gw_client_id:                 ['MCP_GW_CLIENT_ID'],
       mcp_gw_client_secret:             ['MCP_GW_CLIENT_SECRET'],
       mcp_gw_resource_uri:              ['MCP_GW_RESOURCE_URI', 'PINGONE_RESOURCE_MCP_GATEWAY_URI'],
-      mcp_gw_token_endpoint_auth_method: ['MCP_GW_TOKEN_ENDPOINT_AUTH_METHOD'],
+      mcp_gw_token_endpoint_auth_method:      ['MCP_GW_TOKEN_ENDPOINT_AUTH_METHOD'],
+      mcp_gw_passthrough_to_mcp_server:       ['MCP_GW_PASSTHROUGH_TO_MCP_SERVER'],
+      gateway_health_probe_insecure:           ['GATEWAY_HEALTH_PROBE_INSECURE'],
+      pingone_validate_on_startup:             ['PINGONE_VALIDATE_ON_STARTUP'],
       // RFC 8707: single-resource scope for the actor client-credentials token
       // used in the BFF's single subject+actor RFC 8693 exchange. MUST stay in
       // sync with pingoneProvisionService.js grants — the AI Agent / MCP
@@ -1049,7 +1071,8 @@ function buildAllowedScopesByAudience() {
   const mapping = {};
 
   // User End-User banking API (standard 1-exchange)
-  const endUserAudience = configStore.get('PINGONE_AUDIENCE_ENDUSER') || 'https://banking-api.banking-demo.com';
+  // Audience: enduser.ping.demo — see docs/PINGONE_CONFIG.md
+  const endUserAudience = configStore.getEffective('enduser_audience');
   if (endUserAudience) {
     mapping[endUserAudience] = [
       'read',
@@ -1061,7 +1084,8 @@ function buildAllowedScopesByAudience() {
   }
 
   // Agent Gateway (Step 1 actor token) — 2-exchange only
-  const agentGatewayUri = configStore.get('PINGONE_RESOURCE_AGENT_GATEWAY_URI') || 'https://banking-agent-gateway.banking-demo.com';
+  // Audience: agentgateway.ping.demo — see docs/PINGONE_CONFIG.md
+  const agentGatewayUri = configStore.getEffective('pingone_resource_agent_gateway_uri');
   if (agentGatewayUri) {
     mapping[agentGatewayUri] = [
       'ai:agent',
@@ -1072,7 +1096,8 @@ function buildAllowedScopesByAudience() {
   // MCP Gateway — the BFF's single subject+actor RFC 8693 exchange is
   // audienced here (canonical chain). Must allow the tool scopes the exchange
   // requests (read / write) plus the actor/invoke scopes.
-  const mcpGatewayUri = configStore.get('PINGONE_RESOURCE_MCP_GATEWAY_URI') || 'https://banking-mcp-gateway.banking-demo.com';
+  // Audience: mcpgateway.ping.demo — see docs/PINGONE_CONFIG.md
+  const mcpGatewayUri = configStore.getEffective('pingone_resource_mcp_gateway_uri');
   if (mcpGatewayUri) {
     mapping[mcpGatewayUri] = [
       'read',
@@ -1083,7 +1108,8 @@ function buildAllowedScopesByAudience() {
   }
 
   // MCP Resource Server — the gateway re-exchanges to this audience downstream.
-  const mcpServerUri = configStore.get('PINGONE_RESOURCE_MCP_SERVER_URI') || 'https://banking-mcp-server.banking-demo.com';
+  // Audience: mcpserver.ping.demo — see docs/PINGONE_CONFIG.md
+  const mcpServerUri = configStore.getEffective('pingone_resource_mcp_server_uri');
   if (mcpServerUri) {
     mapping[mcpServerUri] = [
       'read',
@@ -1391,7 +1417,7 @@ function getErrorDetails(errorCode) {
  * @param {object} context - Additional context (optional)
  * @returns {string} Error code from ERROR_CODES
  */
-function mapErrorToCode(errorMessage, context = {}) {
+function mapErrorToCode(errorMessage, _context = {}) {
   const msg = String(errorMessage).toLowerCase();
   
   // Configuration errors

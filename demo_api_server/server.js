@@ -82,6 +82,7 @@ const authorizeConfigRoutes = require('./routes/authorizeConfig');
 const setupRoutes = require('./routes/setup');
 const setupWizardRoutes = require('./routes/setupWizard');
 const diagramsRoutes = require('./routes/diagrams');
+const archEventsRoutes = require('./routes/archEvents');
 const devToolsRoutes = require('./routes/devTools');
 const selfServiceUsersRoutes = require('./routes/selfServiceUsers');
 const {
@@ -960,6 +961,7 @@ app.use('/api/admin/management', adminManagementRoutes);
 app.use('/api/admin/setup', setupWizardRoutes);
 app.use('/api/admin/vault', authenticateToken, require('./routes/adminVault'));
 app.use('/api/admin/diagrams', authenticateToken, diagramsRoutes);
+app.use('/api/arch-events', authenticateToken, archEventsRoutes);
 app.use('/api/dev', devToolsRoutes);
 app.use('/api/clients', authenticateToken, clientRegistrationRoutes);
 app.use('/api/oauth/clients', authenticateToken, oauthClientsRoutes);
@@ -1621,6 +1623,19 @@ setImmediate(async () => {
   } catch (err) {
     // Management credentials not configured, or PingOne unreachable — not fatal.
     console.warn('[redirect-uri-guard] Skipped —', err.message);
+  }
+});
+
+// ── Optional PingOne config validator ──────────────────────────────────────
+// Validates resource servers (audience) and scopes against docs/PINGONE_CONFIG.md.
+// Opt-in: set PINGONE_VALIDATE_ON_STARTUP=true in .env or via /config admin UI.
+// Non-blocking: warns on mismatch; never prevents startup or delays requests.
+setImmediate(async () => {
+  try {
+    const { runStartupValidation } = require('./services/pingoneStartupValidator');
+    await runStartupValidation();
+  } catch (err) {
+    console.warn('[pingone-startup] Validation error (non-fatal):', err.message);
   }
 });
 

@@ -46,10 +46,9 @@ function langchainUpstreamUrl() {
 }
 
 function langchainAudience() {
-  return (
-    configStore.getEffective('pingone_resource_langchain_agent_uri') ||
-    'https://banking-langchain-agent.banking-demo.com'
-  );
+  // Returns '' when not provisioned — callers must handle empty string
+  // (performTokenExchange will fail with a clear error, not silently use a wrong audience).
+  return configStore.getEffective('pingone_resource_langchain_agent_uri') || '';
 }
 
 /**

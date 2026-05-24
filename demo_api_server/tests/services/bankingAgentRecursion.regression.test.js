@@ -24,6 +24,7 @@
 
 const TEST_CONFIG = {
   ff_heuristic_enabled: 'false', // force the LLM/reasoning path
+  helix_api_key: 'test-key',    // satisfy the Helix-configured check so the reason loop runs
 };
 
 jest.mock('../../services/configStore', () => ({

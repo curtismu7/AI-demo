@@ -8,6 +8,8 @@
  */
 import React, { useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import AuthButton from './AuthButton';
+import { navigateToCustomerOAuthLogin, navigateToAdminOAuthLogin } from '../utils/authUi';
 
 const OVERLAY_STYLE = {
   position: 'fixed',
@@ -49,32 +51,6 @@ const SUBTITLE_STYLE = {
   lineHeight: 1.5,
 };
 
-const BTN_PRIMARY_STYLE = {
-  display: 'block',
-  width: '100%',
-  padding: '12px 20px',
-  background: '#004687',
-  color: '#ffffff',
-  border: 'none',
-  borderRadius: '8px',
-  fontSize: '0.95rem',
-  fontWeight: 700,
-  cursor: 'pointer',
-  marginBottom: '12px',
-};
-
-const BTN_GHOST_STYLE = {
-  display: 'block',
-  width: '100%',
-  padding: '10px 20px',
-  background: 'transparent',
-  color: '#374151',
-  border: '1px solid #e2e8f0',
-  borderRadius: '8px',
-  fontSize: '0.9rem',
-  fontWeight: 500,
-  cursor: 'pointer',
-};
 
 const CLOSE_STYLE = {
   position: 'absolute',
@@ -117,17 +93,13 @@ export default function QuickLoginModal({ pathname, onClose }) {
   }, [handleClose]);
 
   const handleCustomerLogin = () => {
-    try {
-      sessionStorage.setItem('post_login_redirect', pathname);
-    } catch {}
-    window.location.href = '/api/auth/oauth/user/login';
+    try { sessionStorage.setItem('post_login_redirect', pathname); } catch {}
+    navigateToCustomerOAuthLogin();
   };
 
   const handleAdminLogin = () => {
-    try {
-      sessionStorage.setItem('post_login_redirect', pathname);
-    } catch {}
-    window.location.href = '/api/auth/oauth/login';
+    try { sessionStorage.setItem('post_login_redirect', pathname); } catch {}
+    navigateToAdminOAuthLogin();
   };
 
   return (
@@ -139,15 +111,15 @@ export default function QuickLoginModal({ pathname, onClose }) {
         <p style={SUBTITLE_STYLE}>
           You need to sign in with PingOne to view your {label}.
         </p>
-        <button type="button" style={BTN_PRIMARY_STYLE} onClick={handleCustomerLogin}>
+        <AuthButton variant="customer" onClick={handleCustomerLogin}>
           Customer Sign In
-        </button>
-        <button type="button" style={{ ...BTN_PRIMARY_STYLE, background: '#b91c1c', marginBottom: '12px' }} onClick={handleAdminLogin}>
+        </AuthButton>
+        <AuthButton variant="admin" onClick={handleAdminLogin}>
           Admin Sign In
-        </button>
-        <button type="button" style={BTN_GHOST_STYLE} onClick={handleClose}>
+        </AuthButton>
+        <AuthButton variant="ghost" onClick={handleClose}>
           Back to Home
-        </button>
+        </AuthButton>
       </div>
     </div>
   );

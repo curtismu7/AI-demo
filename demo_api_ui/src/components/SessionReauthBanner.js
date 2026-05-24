@@ -19,7 +19,7 @@ export default function SessionReauthBanner({ message, role, onDismiss, isHITL =
     open(EDU.HUMAN_IN_LOOP, 'what');
   };
 
-  const signInLabel = role === 'admin' ? 'Admin sign in' : 'Sign in';
+  const signInLabel = role === 'admin' ? 'Admin Sign In' : 'Sign In';
 
   return (
     <div className={`session-reauth-banner ${isHITL ? 'session-reauth-banner--hitl' : ''}`} role="alert" aria-live="assertive">

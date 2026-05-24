@@ -22,6 +22,16 @@ const PORT = parseInt(process.env.MORTGAGE_SERVICE_PORT, 10) || 8082;
 const HOST = process.env.MORTGAGE_SERVICE_HOST || '127.0.0.1';
 const API_KEY = process.env.MORTGAGE_SERVICE_API_KEY || 'demo-mortgage-key-0000';
 
+// Startup env validation
+const DEFAULT_MORTGAGE_KEY = 'demo-mortgage-key-0000';
+if (API_KEY === DEFAULT_MORTGAGE_KEY) {
+  console.warn(
+    '[demo-mortgage-service] WARNING: MORTGAGE_SERVICE_API_KEY is not set — ' +
+    'using the insecure default key. Set MORTGAGE_SERVICE_API_KEY in ' +
+    'demo_api_server/.env for a real deployment.'
+  );
+}
+
 const app = express();
 app.disable('x-powered-by');
 app.use(express.json({ limit: '64kb' }));
@@ -164,10 +174,25 @@ app.get('/expense', requireApiKey, (_req, res) => {
 app.use((_req, res) => res.status(404).json({ error: 'not_found' }));
 
 if (require.main === module) {
-  app.listen(PORT, HOST, () => {
-    console.log(`[mortgage-service] listening on http://${HOST}:${PORT}`);
-    console.log(`[mortgage-service] API key (last 4): ...${API_KEY.length >= 4 ? API_KEY.slice(-4) : 'XXXX'}`);
+  const server = app.listen(PORT, HOST, () => {
+    console.log(`[demo-mortgage-service] Ready on :${PORT}`);
+    console.log(`[demo-mortgage-service] API key (last 4): ...${API_KEY.length >= 4 ? API_KEY.slice(-4) : 'XXXX'}`);
   });
+
+  // Graceful shutdown — drain in-flight requests before exit
+  const shutdown = (signal) => {
+    console.log(`[demo-mortgage-service] ${signal} received — shutting down`);
+    server.close(() => {
+      console.log('[demo-mortgage-service] HTTP server closed');
+      process.exit(0);
+    });
+    setTimeout(() => {
+      console.error('[demo-mortgage-service] Drain timeout — forcing exit');
+      process.exit(1);
+    }, 5000);
+  };
+  process.on('SIGINT',  () => shutdown('SIGINT'));
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
 }
 
 module.exports = app;

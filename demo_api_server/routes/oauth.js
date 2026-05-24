@@ -23,6 +23,7 @@ const { logEvent: logAppEvent } = require('../services/appEventService');
 const tokenIntrospectionService = require('../services/tokenIntrospectionService');
 const { decodeJwt } = require('../utils/tokenUtils');
 const posthog = require('../services/posthog');
+const archEmit = require('../services/archEventEmitter');
 
 const _isProd = () => !!(process.env.VERCEL || process.env.REPL_ID || process.env.REPLIT_DEPLOYMENT || process.env.NODE_ENV === 'production');
 
@@ -214,6 +215,7 @@ router.get('/callback', async (req, res) => {
 
     // Exchange authorization code for access token (with PKCE verifier and resource indicators)
     const tokenData = await oauthService.exchangeCodeForToken(code, codeVerifier, redirectUri, sessionResources);
+    archEmit({ nodeId: 'n-bff', edgeId: 'e-browser-bff', label: 'OAuth callback: code exchange complete' });
 
     // Verify nonce in ID token to prevent ID token replay attacks (OIDC Core §3.1.2.7)
     if (expectedNonce && tokenData.id_token) {
@@ -302,6 +304,7 @@ router.get('/callback', async (req, res) => {
       req.session.oauthTokens = oauthTokens;
       req.session.user = authedUser;
       req.session.clientType = clientType;
+      archEmit({ nodeId: 'n-pingone', edgeId: 'e-bff-pingone', label: 'PingOne issued access + ID token' });
 
       // Record initial auth token into token chain so /api/token-chain/current reflects login
       if (oauthTokens.accessToken && authedUser?.id) {

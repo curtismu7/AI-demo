@@ -902,7 +902,9 @@ function AppWithAuth() {
               <Route
                 path="/dashboard"
                 element={
-                  loading ? null : !user ? (
+                  loading ? (
+                    <div className="loading" role="status" aria-live="polite">Loading…</div>
+                  ) : !user ? (
                     <>
                       <AdminSideNav user={null} />
                       <TopNav user={user} onLogout={logout} />

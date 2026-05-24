@@ -20,7 +20,7 @@
  * delegationAuditLogger middleware are mocked. Deterministic, no network.
  */
 
-const TEST_CONFIG = { ff_heuristic_enabled: 'true' };
+const TEST_CONFIG = { ff_heuristic_enabled: 'true', helix_api_key: 'test-key' };
 
 jest.mock('../services/configStore', () => ({
   getEffective: jest.fn((key) => TEST_CONFIG[key] ?? null),
@@ -49,6 +49,25 @@ jest.mock('../data/store', () => ({
 const mockRunReasonLoop = jest.fn();
 jest.mock('../services/agentReasoningClient', () => ({
   runReasonLoop: (...a) => mockRunReasonLoop(...a),
+}));
+
+// executeBffTool (called by the heuristic read path) needs token resolution + tool definitions.
+// Stub them so tests stay deterministic without network / DB.
+jest.mock('../services/agentMcpTokenService', () => ({
+  resolveMcpAccessTokenWithEvents: jest.fn().mockResolvedValue({ token: 'mock-agent-tok', tokenEvents: [] }),
+}));
+jest.mock('../services/agentBuilder', () => ({
+  getBankingToolDefinitions: jest.fn(() => [
+    {
+      name: 'get_my_accounts',
+      description: 'List accounts',
+      schema: null,
+      invoke: jest.fn().mockResolvedValue(JSON.stringify({
+        accounts: [{ id: 'acc-chk', accountType: 'checking', accountNumber: '1111', balance: 5000, currency: 'USD' }],
+      })),
+    },
+  ]),
+  MAX_TOOL_ITERATIONS: 5,
 }));
 
 const { processAgentMessage } = require('../services/bankingAgentLangGraphService');

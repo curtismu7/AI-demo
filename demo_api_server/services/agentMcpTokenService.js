@@ -512,8 +512,8 @@ async function exchangeTokenRfc8693(userToken, actorToken, mcpResourceUri, final
   writeMcpTrafficEntry({ dir: 'BFF→PingOne', type: 'exchange_request', method: 'token_exchange', tool: null, ok: true, summary: `RFC 8693 exchange → scopes: ${(finalScopes||[]).join(' ')} aud: ${mcpResourceUri||'(default)'}`, payload: { grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange', audience: mcpResourceUri, scope: (finalScopes||[]).join(' '), has_actor_token: !!(actorToken) } });
   
   try {
-    const exchangerClientId = configStore.getEffective('pingone_mcp_token_exchanger_client_id') || process.env.AGENT_OAUTH_CLIENT_ID;
-    const exchangerClientSecret = configStore.getEffective('pingone_mcp_token_exchanger_client_secret') || process.env.AGENT_OAUTH_CLIENT_SECRET;
+    const exchangerClientId = configStore.getEffective('pingone_mcp_token_exchanger_client_id');
+    const exchangerClientSecret = configStore.getEffective('pingone_mcp_token_exchanger_client_secret');
     
     if (actorToken && exchangerClientId && exchangerClientSecret) {
       const exchangerAuthMethod = (
@@ -1139,7 +1139,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
   // (the exchanged MCP token carries act: { client_id: <agent> } proving which client is acting).
   // Without PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID the exchange runs subject-only (still RFC 8693; user token
   // is NEVER forwarded to MCP — but the act claim is absent, weakening audit provenance).
-  const useActor = !!(configStore.getEffective('pingone_mcp_token_exchanger_client_id') || process.env.AGENT_OAUTH_CLIENT_ID);
+  const useActor = !!configStore.getEffective('pingone_mcp_token_exchanger_client_id');
 
   if (!mcpResourceUri) {
     tokenEvents.push(buildTokenEvent(
@@ -1241,9 +1241,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
     try {
       actorToken = await oauthService.getMcpExchangerToken();
       const a0Decoded = decodeJwtClaims(actorToken);
-      const exchangerClientId =
-        configStore.getEffective('pingone_mcp_token_exchanger_client_id') ||
-        process.env.AGENT_OAUTH_CLIENT_ID;
+      const exchangerClientId = configStore.getEffective('pingone_mcp_token_exchanger_client_id');
       tokenEvents.push(buildTokenEvent(
         'agent-actor-token',
         'Agent access token (client credentials)',
@@ -1302,12 +1300,8 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
       // Use MCP Token Exchanger credentials to authenticate the exchange when available.
       // This ensures the exchange-performing client has MCP resource scopes in PingOne,
       // not the admin web app (which lacks token-exchange grant + MCP resource scopes).
-      const exchangerClientId =
-        configStore.getEffective('pingone_mcp_token_exchanger_client_id') ||
-        process.env.AGENT_OAUTH_CLIENT_ID;
-      const exchangerClientSecret =
-        configStore.getEffective('pingone_mcp_token_exchanger_client_secret') ||
-        process.env.AGENT_OAUTH_CLIENT_SECRET;
+      const exchangerClientId = configStore.getEffective('pingone_mcp_token_exchanger_client_id');
+      const exchangerClientSecret = configStore.getEffective('pingone_mcp_token_exchanger_client_secret');
       if (exchangerClientId && exchangerClientSecret) {
         const exchangerAuthMethod = (
           process.env.PINGONE_MCP_TOKEN_EXCHANGER_CC_AUTH_METHOD ||
@@ -1481,9 +1475,7 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
       const ffTratMode = _tratRaw === true || _tratRaw === 'true';
 
       if (ffTratMode && exchangedToken) {
-        const agentClientId =
-          configStore.getEffective('pingone_mcp_token_exchanger_client_id') ||
-          process.env.AGENT_OAUTH_CLIENT_ID || '';
+        const agentClientId = configStore.getEffective('pingone_mcp_token_exchanger_client_id') || '';
         const gatewayClientId =
           configStore.getEffective('pingone_ai_agent_client_id') ||
           process.env.PINGONE_AI_AGENT_CLIENT_ID || '';
@@ -1669,7 +1661,7 @@ async function _resolveFinalMcpAudience(gatewayAud, mcpServerAud) {
       // Dev escape hatch: only when explicitly opted in via
       // GATEWAY_HEALTH_PROBE_INSECURE=true AND NODE_ENV != 'production'.
       // Production hard-ignores the flag.
-      const insecureFlag = process.env.GATEWAY_HEALTH_PROBE_INSECURE === 'true';
+      const insecureFlag = configStore.getEffective('gateway_health_probe_insecure') === 'true';
       const isProd = process.env.NODE_ENV === 'production';
       const allowInsecure = insecureFlag && !isProd;
       if (allowInsecure && !_warnedInsecureProbe) {
@@ -1753,7 +1745,7 @@ async function _performTwoExchangeDelegation(
   const mcpServerAudForFallback = configStore.getEffective('pingone_resource_mcp_server_uri') || process.env.PINGONE_RESOURCE_MCP_SERVER_URI || '';
   const twoExFinalAud         = await _resolveFinalMcpAudience(configResult.audiences.finalAud, mcpServerAudForFallback);
   const aiAgentClientSecret   = process.env.PINGONE_AI_AGENT_CLIENT_SECRET || process.env.AI_AGENT_CLIENT_SECRET;
-  const mcpExchangerSecret    = configStore.getEffective('pingone_mcp_token_exchanger_client_secret') || process.env.AGENT_OAUTH_CLIENT_SECRET;
+  const mcpExchangerSecret    = configStore.getEffective('pingone_mcp_token_exchanger_client_secret');
   // ARCHITECTURE TRUTH: all PingOne client connections use client_secret_post.
   // Only the Worker Token CC client (oauthService.getAgentClientCredentialsToken*)
   // stays 'basic'. These are non-worker (AI agent / MCP exchanger) → default 'post'.

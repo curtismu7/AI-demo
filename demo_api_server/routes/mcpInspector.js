@@ -18,6 +18,7 @@ const {
 } = require('../services/mcpWebSocketClient');
 const { callToolLocal, listLocalInspectorTools } = require('../services/mcpLocalTools');
 const runtimeSettings = require('../config/runtimeSettings');
+const archEmit = require('../services/archEventEmitter');
 
 const MCP_SESSION_NEEDED_MSG =
   'MCP discovery needs a real OAuth access token in your Backend-for-Frontend (BFF) session. If you see this after a cold open, sign out and sign in again. Cookie-only restored sessions cannot call the MCP server.';
@@ -266,8 +267,10 @@ router.post('/invoke', express.json(), async (req, res) => {
 
     const started = Date.now();
     try {
+      archEmit({ nodeId: 'n-mcp-gw', edgeId: 'e-bff-mcpgw', label: 'MCP tool call dispatched to gateway' });
       const result = await mcpCallTool(tool, params || {}, agentToken, userSub);
       const durationMs = Date.now() - started;
+      archEmit({ nodeId: 'n-mcp-server', edgeId: 'e-mcpgw-mcpserver', label: 'MCP Server executed tool' });
 
       return res.json({
         result,

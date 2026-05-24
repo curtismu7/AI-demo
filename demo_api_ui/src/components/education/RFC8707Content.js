@@ -34,9 +34,9 @@ export function RFC8707Content() {
       <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '8px', marginBottom: '16px' }}>
         <pre style={{ margin: 0, fontSize: '14px', fontFamily: 'inherit' }}>
 {`Resource Servers (Audiences):
-- https://ai-agent.pingdemo.com     - AI Agent Service
-- https://mcp-server.pingdemo.com  - MCP Server  
-- https://agent-gateway.pingdemo.com - Agent Gateway
+- agentgateway.ping.demo     - AI Agent Service
+- mcpserver.ping.demo  - MCP Server  
+- agentgateway.ping.demo - Agent Gateway
 - https://resource-server.pingdemo.com - Banking API Resources
 - https://api.pingone.com           - PingOne Management API`}
         </pre>
@@ -49,7 +49,7 @@ export function RFC8707Content() {
   client_id={client_id}&
   redirect_uri={redirect_uri}&
   scope=profile%20email%20agent:invoke&
-  resource=https://ai-agent.pingdemo.com&
+  resource=agentgateway.ping.demo&
   state={state}&
   code_challenge={code_challenge}&
   code_challenge_method=S256`}
@@ -62,7 +62,7 @@ export function RFC8707Content() {
   "token_type": "Bearer",
   "expires_in": 3600,
   "scope": "profile email agent:invoke",
-  "aud": ["https://ai-agent.pingdemo.com"]
+  "aud": ["agentgateway.ping.demo"]
 }`}
       </pre>
 
@@ -72,7 +72,7 @@ export function RFC8707Content() {
 {`    User/Client
         |
         | 1. Authorization Request
-        |    resource=https://ai-agent.pingdemo.com
+        |    resource=agentgateway.ping.demo
         v
     PingOne Authorization Server
         |
@@ -84,7 +84,7 @@ export function RFC8707Content() {
     PingOne Authorization Server
         |
         | 3. Issue Access Token
-        |    aud: ["https://ai-agent.pingdemo.com"]
+        |    aud: ["agentgateway.ping.demo"]
         |    scope: "profile email agent:invoke"
         v
     Client Receives Token
@@ -112,7 +112,7 @@ function validateToken(token) {
   const decoded = jwt.decode(token);
   
   // Verify audience matches this service
-  if (!decoded.aud.includes('https://ai-agent.pingdemo.com')) {
+  if (!decoded.aud.includes('agentgateway.ping.demo')) {
     throw new Error('Token audience mismatch');
   }
   
@@ -125,9 +125,9 @@ function validateToken(token) {
       <p>A token intended for the AI Agent cannot be used with the MCP Server:</p>
       <pre className="edu-code">
 {`// This will fail - wrong audience
-fetch('https://mcp-server.pingdemo.com/tools', {
+fetch('mcpserver.ping.demo/tools', {
   headers: {
-    'Authorization': 'Bearer ' + aiAgentToken // aud: ai-agent.pingdemo.com
+    'Authorization': 'Bearer ' + aiAgentToken // aud: agentgateway.ping.demo
   }
 }); // Returns 401 Unauthorized`}
       </pre>
@@ -136,10 +136,10 @@ fetch('https://mcp-server.pingdemo.com/tools', {
       <p>Resource indicators prevent token replay attacks across different services:</p>
       <pre className="edu-code">
 {`// Attacker cannot replay token to different service
-const stolenToken = getStolenToken(); // aud: ai-agent.pingdemo.com
+const stolenToken = getStolenToken(); // aud: agentgateway.ping.demo
 
 // Cannot use with MCP Server
-const response = fetch('https://mcp-server.pingdemo.com/api', {
+const response = fetch('mcpserver.ping.demo/api', {
   headers: { 'Authorization': \`Bearer \${stolenToken}\` }
 }); // Rejected - audience mismatch`}
       </pre>
@@ -151,8 +151,8 @@ const response = fetch('https://mcp-server.pingdemo.com/api', {
       <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '8px', marginBottom: '16px' }}>
         <pre style={{ margin: 0, fontSize: '14px', fontFamily: 'inherit' }}>
 {`Good:
-- https://ai-agent.pingdemo.com
-- https://mcp-server.pingdemo.com
+- agentgateway.ping.demo
+- mcpserver.ping.demo
 - https://api.pingone.com
 
 Bad:
@@ -194,11 +194,11 @@ app.use((req, res, next) => {
 
       <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '8px', marginBottom: '16px' }}>
         <pre style={{ margin: 0, fontSize: '14px', fontFamily: 'inherit' }}>
-{`Subject Token (aud: ai-agent.pingdemo.com)
+{`Subject Token (aud: agentgateway.ping.demo)
     |
     | Token Exchange
     v
-MCP Token (aud: mcp-server.pingdemo.com)
+MCP Token (aud: mcpserver.ping.demo)
     |
     | Token Exchange  
     v
@@ -216,17 +216,17 @@ API Token (aud: api.pingone.com)`}
       <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '8px', marginBottom: '16px' }}>
         <pre style={{ margin: 0, fontSize: '14px', fontFamily: 'inherit' }}>
 {`AI Agent Service:
-- Audience: https://ai-agent.pingdemo.com
+- Audience: agentgateway.ping.demo
 - Scopes: agent:invoke
 - Purpose: AI Agent service validation
 
 MCP Server:
-- Audience: https://mcp-server.pingdemo.com  
+- Audience: mcpserver.ping.demo  
 - Scopes: accounts:read, transactions:read/write
 - Purpose: MCP tool access validation
 
 Agent Gateway:
-- Audience: https://agent-gateway.pingdemo.com
+- Audience: agentgateway.ping.demo
 - Scopes: agent:invoke
 - Purpose: Banking app actor token validation`}
         </pre>

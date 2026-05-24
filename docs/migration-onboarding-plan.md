@@ -82,7 +82,7 @@ Every item below already exists. The implementation calls it directly — do not
 | `getOAuthEndpoints()` | `services/oauthEndpointResolver.js` | Returns all 6 derived PingOne URLs in one call |
 | `configStore.isConfigured()` | `services/configStore.js` | `pingone_environment_id && admin_client_id` both non-empty |
 | `configStore.isUserOAuthConfigured()` | `services/configStore.js` | `pingone_environment_id && user_client_id` both non-empty |
-| `configStore.getEffective(key)` | `services/configStore.js` | Priority: env var → SQLite → hardcoded default |
+| `configStore.getEffective(key)` | `services/configStore.js` | Priority: env var → LMDB → hardcoded default |
 
 ### Reusable BFF routes
 
@@ -115,7 +115,7 @@ Every item below already exists. The implementation calls it directly — do not
 | `scripts/exportMigrationBundle.js` | Node script | See [import-plan.md](import-plan.md) |
 | `scripts/importMigrationBundle.js` | Node script | See [import-plan.md](import-plan.md) |
 | `GET /api/health/readiness` | Handler added to `routes/health.js` | Existing `/ready` checks JWKS/MCP/DB — not credential group completeness |
-| `GET /api/health/packages` | Handler added to `routes/health.js` | New — checks tar, better-sqlite3 native binary, node_modules presence for import pre-flight UI |
+| `GET /api/health/packages` | Handler added to `routes/health.js` | New — checks tar, lmdb native binary, node_modules presence for import pre-flight UI |
 | `POST /api/config/derive-pingone-endpoints` | New file `routes/configDerived.js` | Wraps `getOAuthEndpoints()` for UI preview |
 | Mode selector + UI | JSX in `UnifiedConfigurationPage.tsx` | Quick-start tab has no mode selector or import guide |
 | `<Navigate>` redirects | 2 lines in `App.js` | `/setup` and `/onboarding` have no redirect yet |
@@ -220,27 +220,25 @@ router.get('/packages', (req, res) => {
   // Check 2 — tar
   try { require('tar'); checks.tar = true; } catch { checks.tar = false; }
 
-  // Check 3 — sqlite driver
-  let sqliteDriver = null;
-  try { require('better-sqlite3'); sqliteDriver = 'better-sqlite3'; } catch {
-    try { require('node:sqlite'); sqliteDriver = 'node:sqlite'; } catch { sqliteDriver = null; }
-  }
-  checks.sqlite_driver = sqliteDriver;
+  // Check 3 — LMDB driver
+  let lmdbDriver = null;
+  try { require('lmdb'); lmdbDriver = 'lmdb'; } catch { lmdbDriver = null; }
+  checks.lmdb_driver = lmdbDriver;
 
-  // Check 4 — better-sqlite3 native binary (in-memory open)
-  checks.sqlite_native_ok = null; // null = not tested (driver unavailable)
-  if (sqliteDriver === 'better-sqlite3') {
+  // Check 4 — LMDB native binary (in-memory open)
+  checks.lmdb_native_ok = null; // null = not tested (driver unavailable)
+  if (lmdbDriver === 'lmdb') {
     try {
-      const Database = require('better-sqlite3');
-      const db = new Database(':memory:');
+      const { open } = require('lmdb');
+      const db = open({ path: ':memory:', readOnly: false });
       db.close();
-      checks.sqlite_native_ok = true;
-    } catch { checks.sqlite_native_ok = false; }
+      checks.lmdb_native_ok = true;
+    } catch { checks.lmdb_native_ok = false; }
   }
 
   const ready = checks.node_modules && checks.tar &&
-                checks.sqlite_driver !== null &&
-                checks.sqlite_native_ok !== false;
+                checks.lmdb_driver !== null &&
+                checks.lmdb_native_ok !== false;
 
   res.json({
     ready,
@@ -248,7 +246,7 @@ router.get('/packages', (req, res) => {
     remediation: {
       node_modules: 'cd banking_api_server && npm install',
       tar: 'cd banking_api_server && npm install',
-      sqlite_native_ok: 'cd banking_api_server && npm rebuild better-sqlite3',
+      lmdb_native_ok: 'cd banking_api_server && npm rebuild lmdb',
     }
   });
 });
@@ -375,9 +373,9 @@ The UI calls `GET /api/health/packages` on mount. This endpoint (see §3c below)
 │                                                              │
 │  ✓  node_modules installed                                  │
 │  ✓  tar package available                                    │
-│  ✗  better-sqlite3 native binary needs rebuild              │
+│  ✗  lmdb native binary needs rebuild              │
 │                                                              │
-│  Fix:  cd banking_api_server && npm rebuild better-sqlite3  │
+│  Fix:  cd banking_api_server && npm rebuild lmdb  │
 │                                                    [Copy]   │
 └──────────────────────────────────────────────────────────────┘
 ```
@@ -394,7 +392,7 @@ The UI is a 3-step guide with copy buttons:
 │  Step 1: Stop the server                                     │
 │                                                              │
 │  The import requires the server to be offline.              │
-│  better-sqlite3 holds an exclusive write lock —             │
+│  LMDB write transactions hold exclusive locks —             │
 │  importing with the server running will corrupt the DB.      │
 │                                                              │
 │  > ./run-demo.sh stop                    [Copy]             │

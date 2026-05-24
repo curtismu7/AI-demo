@@ -954,7 +954,7 @@ const MCP_EXCHANGER_CLIENT = 'mcp-exchanger-client-id';
 
 const agentActorJwt = makeJwt({
   sub: AI_AGENT_CLIENT,
-  aud: ['https://agent-gateway.pingdemo.com'],
+  aud: ['agentgateway.ping.demo'],
   scope: 'openid',
   client_id: AI_AGENT_CLIENT,
   exp: Math.floor(Date.now() / 1000) + 3600,
@@ -962,7 +962,7 @@ const agentActorJwt = makeJwt({
 
 const agentExchangedJwt = makeJwt({
   sub: USER_SUB,
-  aud: 'https://mcp-server.pingdemo.com',
+  aud: 'mcpserver.ping.demo',
   scope: 'read',
   act: { sub: AI_AGENT_CLIENT },
   exp: Math.floor(Date.now() / 1000) + 3600,
@@ -976,7 +976,7 @@ const mcpActorJwt = makeJwt({
   exp: Math.floor(Date.now() / 1000) + 3600,
 });
 
-const TWO_EX_MCP_RESOURCE = 'https://mcp-server.pingdemo.com';
+const TWO_EX_MCP_RESOURCE = 'mcpserver.ping.demo';
 
 const finalMcpJwt = makeJwt({
   sub: USER_SUB,
@@ -1323,7 +1323,7 @@ describe('RFC 8693 Compliance - Subject Preservation & may_act Validation', () =
 
 describe('Scope & Audience Mapping (RFC 8707)', () => {
   // Use an audience from the known mapping defaults (configStore.get returns null → uses defaults)
-  const testAudience = 'https://banking-mcp-gateway.banking-demo.com';
+  const testAudience = 'mcpgateway.ping.demo';
   // Allowed scopes for this audience: ['read', 'write', 'mcp:invoke', 'ai:agent']
 
   it('should validate scopes match audience', () => {
@@ -1372,7 +1372,7 @@ describe('Scope & Audience Mapping (RFC 8707)', () => {
     }).toThrow(/SCOPE_ERROR/);
   });
 });describe('Scope & Audience Mapping (RFC 8707) — additional', () => {
-  const testAudience = 'https://banking-mcp-gateway.banking-demo.com';
+  const testAudience = 'mcpgateway.ping.demo';
 
   beforeEach(() => {
     jest.clearAllMocks();

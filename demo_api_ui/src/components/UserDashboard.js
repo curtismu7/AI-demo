@@ -13,7 +13,6 @@ import { useEducationUI } from "../context/EducationUIContext";
 import { useCurrentUserTokenEvent } from "../hooks/useCurrentUserTokenEvent";
 import apiClient from "../services/apiClient";
 import { getCachedJson } from "../services/cachedStatusService";
-import { performLogout } from "../services/logout";
 import {
   notifyError,
   notifyInfo,
@@ -2858,11 +2857,13 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
               credentials: "include",
             });
           } catch (_) {}
-          try { localStorage.removeItem("tokenChainHistory"); } catch (_) {}
+          // Clear theme storage (onLogout does not know about these keys)
           try { localStorage.removeItem("api-traffic-store"); } catch (_) {}
           try { localStorage.removeItem("banking_ui_theme"); } catch (_) {}
           try { sessionStorage.removeItem("banking_ui_theme"); } catch (_) {}
-          performLogout();
+          // Use the App-level logout so userLoggedOut flag is set and the
+          // session-check effect fast-paths past the auth endpoints on reload.
+          onLogout();
         }}
         onCancel={() => setShowResetModal(false)}
       />

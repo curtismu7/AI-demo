@@ -1,112 +1,76 @@
-'use strict';
-
 const axios = require('axios');
 const configStore = require('./configStore');
-const { getTokenEndpoint } = require('./oauthEndpointResolver');
+const { getManagementToken } = require('./pingOneClientService');
 
 /**
- * Reference table: Expected PingOne resources for Super Banking
- * Source: docs/PINGONE_MAY_ACT_SETUP.md Part 1
+ * Reference table: expected PingOne resource servers for this demo.
+ * Source of truth: docs/PINGONE_CONFIG.md (Resource Servers section).
+ *
+ * audience values MUST match the resource server's "audience" field in PingOne exactly.
+ * These are plain strings, NOT URLs (e.g. "enduser.ping.demo", not "https://...").
  */
 const RESOURCE_REFERENCE_TABLE = [
   {
-    name: 'Super Banking AI Agent',
-    audience: 'https://ai-agent.pingdemo.com',
-    expectedScopes: ['agent:invoke'],
-    ttl: 3600,
-    authMethod: 'Client Secret Basic',
+    name: 'Demo API',
+    audience: 'enduser.ping.demo',
+    expectedScopes: [
+      'read', 'write', 'transfer', 'mortgage:read',
+      'accounts:read', 'transactions:read', 'ai_agent',
+      'ai:agent:read', 'users:read', 'users:manage',
+      'admin:read', 'admin:write', 'admin:delete',
+    ],
   },
   {
-    name: 'Super Banking MCP Server',
-    audience: 'https://mcp-server.pingdemo.com',
-    expectedScopes: ['accounts:read', 'transactions:read', 'transactions:write', 'mortgage:read'],
-    ttl: 3600,
-    authMethod: 'Client Secret Basic',
+    name: 'Demo Agent Gateway',
+    audience: 'agentgateway.ping.demo',
+    expectedScopes: ['agent:invoke', 'banking:agent:invoke'],
   },
   {
-    name: 'Super Banking Agent Gateway',
-    audience: 'https://agent-gateway.pingdemo.com',
-    expectedScopes: [],
-    ttl: 3600,
-    authMethod: 'Client Secret Basic',
+    name: 'Demo MCP Gateway',
+    audience: 'mcpgateway.ping.demo',
+    expectedScopes: ['read', 'write', 'transfer', 'mortgage:read', 'mcp:invoke'],
   },
   {
-    name: 'Super Banking Banking API',
-    audience: 'https://banking-api.ping.demo',
-    expectedScopes: ['accounts:read', 'transactions:read', 'transactions:write', 'mortgage:read'],
-    ttl: 3600,
-    authMethod: undefined, // standard resource server
-  },
-  {
-    name: 'PingOne API',
-    audience: 'https://api.pingone.com',
-    expectedScopes: ['p1:read:user', 'p1:update:user'],
-    ttl: 3600,
-    authMethod: undefined, // built-in
+    name: 'Demo MCP Server',
+    audience: 'mcpserver.ping.demo',
+    expectedScopes: [
+      'read', 'write', 'mortgage:read', 'mcp:invoke',
+      'banking:read', 'banking:write', 'banking:mcp:invoke', 'banking:mortgage:read',
+      'ai:agent:read', 'banking:ai:agent:read',
+      'users:read', 'users:manage', 'admin:read', 'admin:write', 'admin:delete',
+    ],
   },
 ];
-
-/**
- * Get PingOne Management API token using client credentials
- */
-async function getManagementToken() {
-  const envId = configStore.getEffective('pingone_environment_id');
-  const clientId = configStore.getEffective('pingone_client_id');
-  const clientSecret = configStore.getEffective('pingone_client_secret');
-
-  if (!envId || !clientId || !clientSecret) {
-    throw new Error('PingOne admin credentials not configured');
-  }
-
-  const tokenUrl = getTokenEndpoint();
-  // Respect configured auth method — admin clients in PingOne often require POST body auth
-  const authMethod = configStore.getEffective('admin_token_endpoint_auth_method')
-    || configStore.getEffective('pingone_mgmt_token_auth_method')
-    || 'basic';
-  const usePostBody = authMethod === 'post';
-  const body = usePostBody
-    ? `grant_type=client_credentials&client_id=${encodeURIComponent(clientId)}&client_secret=${encodeURIComponent(clientSecret)}`
-    : 'grant_type=client_credentials';
-  const requestConfig = {
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    timeout: 10000,
-    ...(usePostBody ? {} : { auth: { username: clientId, password: clientSecret } }),
-  };
-  const response = await axios.post(tokenUrl, body, requestConfig);
-  return response.data.access_token;
-}
 
 /**
  * Validate PingOne resource servers:
  * - Checks existence by name
  * - Validates audience URI matches expected
- * - Verifies auth method (if applicable)
  * - Returns validation results with CORRECT | CONFIG_ERROR | MISSING status
+ *
+ * Unexpected resources (present in PingOne but not in the reference table) are
+ * flagged as UNEXPECTED — this is informational, not an error.
  */
 async function validateResources() {
-  const envId = configStore.getEffective('pingone_environment_id');
-  const region = configStore.getEffective('pingone_region') || 'com';
+  const envId = configStore.getEffective('PINGONE_ENVIRONMENT_ID');
+  const region = configStore.getEffective('PINGONE_REGION') || 'com';
 
   try {
     const token = await getManagementToken();
     const apiBase = `https://api.pingone.${region}/v1/environments/${envId}`;
 
-    // List all resource servers
-    const resourcesUrl = `${apiBase}/resource-servers`;
-    const { data: resourcesData } = await axios.get(resourcesUrl, {
+    const { data: resourcesData } = await axios.get(`${apiBase}/resource-servers`, {
       headers: { Authorization: `Bearer ${token}` },
       timeout: 10000,
     });
 
     const foundResources = resourcesData.resources || resourcesData._embedded?.resource_servers || [];
 
-    // Map found resources by name for lookup
     const resourcesByName = {};
     foundResources.forEach((res) => {
       resourcesByName[res.name] = res;
     });
 
-    // Validate each expected resource
     const results = RESOURCE_REFERENCE_TABLE.map((expected) => {
       const found = resourcesByName[expected.name];
 
@@ -121,24 +85,22 @@ async function validateResources() {
         };
       }
 
-      // Check if audience matches
       const audienceMatches = found.audience === expected.audience;
-      const status = audienceMatches ? 'CORRECT' : 'CONFIG_ERROR';
 
       return {
         resourceId: found.id,
         name: found.name,
         audience: found.audience,
         expectedAudience: expected.audience,
-        status,
+        status: audienceMatches ? 'CORRECT' : 'CONFIG_ERROR',
         attributes: {
-          ttl: found.accessTokenValiditySeconds || expected.ttl,
+          ttl: found.accessTokenValiditySeconds,
           authMethod: found.introspectionEndpointAuthMethod || 'unknown',
         },
       };
     });
 
-    // Also flag unexpected resources
+    // Flag resources that exist in PingOne but are not in the reference table
     const expectedNames = new Set(RESOURCE_REFERENCE_TABLE.map((r) => r.name));
     foundResources.forEach((res) => {
       if (!expectedNames.has(res.name)) {
@@ -162,7 +124,7 @@ async function validateResources() {
       resourceValidation: results,
     };
   } catch (error) {
-    console.error('Error validating PingOne resources:', error.message);
+    console.error('[resourceValidation] Error validating PingOne resources:', error.message);
     return {
       status: 'error',
       error: error.message,

@@ -46,8 +46,10 @@ router.post('/nl', async (req, res) => {
  * full detail for the Config/diagnostics surfaces. */
 router.get('/nl/status', (req, res) => {
   const configStore = require('../services/configStore');
-  const ollamaBase = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-  const ollamaModel = process.env.OLLAMA_MODEL || 'llama3.2';
+  // Read via configStore so setup-page overrides take effect at runtime.
+  // configStore.getEffective() resolves: runtime KV → env var → default.
+  const ollamaBase = configStore.getEffective('ollama_base_url') || 'http://localhost:11434';
+  const ollamaModel = configStore.getEffective('ollama_model') || 'llama3.2';
   const isAuthed = Boolean(req.session?.user);
 
   // Resolve which LLM provider is actually configured.
@@ -56,7 +58,9 @@ router.get('/nl/status', (req, res) => {
   const helixBaseUrl = configStore.getEffective('helix_base_url') || '';
   const helixConfigured = !!(helixApiKey && helixBaseUrl);
 
-  const ollamaConfigured = !!(process.env.OLLAMA_BASE_URL);
+  // Ollama is "configured" when an explicit URL is set (env or setup page).
+  // The default localhost fallback alone does not count as explicitly configured.
+  const ollamaConfigured = !!(configStore.getEffective('ollama_base_url'));
 
   // Determine active LLM provider: helix wins if configured, then ollama, then none.
   const activeLlmProvider = helixConfigured ? 'helix' : ollamaConfigured ? 'ollama' : null;

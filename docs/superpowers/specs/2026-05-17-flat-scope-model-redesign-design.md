@@ -360,7 +360,7 @@ P6 carry **no** cutover. P5's window is minimized to:
 5. `npm run pingone:bootstrap` with P2 reconcile → verify via PingOne API that
    exactly the target set exists per resource, no legacy scope remains (this is
    what makes `SCOPES.md` + P7 diagram truthful).
-6. Invalidate the session store (SQLite/Redis/Upstash) — don't wait for natural
+6. Invalidate the session store (LMDB/Redis/Upstash) — don't wait for natural
    expiry.
 7. Smoke: admin→`/admin`; customer→`/dashboard`; one chip → Token Chain shows
    new names + real `aud`; transfer (HITL); `show_mortgage` (api_key path);

@@ -21,8 +21,8 @@
 jest.mock('../../services/configStore', () => {
   const store = {
     pingone_resource_langchain_agent_uri:
-      'https://banking-langchain-agent.banking-demo.com',
-    pingone_resource_mcp_server_uri: 'https://banking-mcp-server.banking-demo.com',
+      'langchain.ping.demo (not provisioned)',
+    pingone_resource_mcp_server_uri: 'mcpserver.ping.demo',
     mcp_token_exchange_scopes: 'read write',
     ff_langchain_audience_fallback: 'false',
   };
@@ -73,7 +73,7 @@ describe('resolveLangchainToken — Path A token custody', () => {
     const [subject, audience, scopes] =
       oauthService.performTokenExchange.mock.calls[0];
     expect(subject).toBe('user.session.token');
-    expect(audience).toBe('https://banking-langchain-agent.banking-demo.com');
+    expect(audience).toBe('langchain.ping.demo (not provisioned)');
     expect(scopes).toEqual(['read', 'write']);
   });
 
@@ -100,7 +100,7 @@ describe('resolveLangchainToken — Path A token custody', () => {
     expect(token).toBe('mcp.aud.fallback.token');
     expect(oauthService.performTokenExchange).toHaveBeenCalledTimes(2);
     expect(oauthService.performTokenExchange.mock.calls[1][1]).toBe(
-      'https://banking-mcp-server.banking-demo.com'
+      'mcpserver.ping.demo'
     );
   });
 });

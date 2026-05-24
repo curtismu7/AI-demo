@@ -40,10 +40,6 @@ const IGNORED_VARS = new Set([
   // both circular and contradicts the deliberate scrub. Pure infra/bootstrap
   // secret — same category as NODE_ENV, not a config-coverage gap.
   'VAULT_PASSWORD',
-  // MCP_GW_PASSTHROUGH_TO_MCP_SERVER is a provisioning-output-only flag written
-  // into .env by pingoneProvisionService.js for operator reference. No feature
-  // code calls getEffective() for it — it is never consumed via configStore.
-  'MCP_GW_PASSTHROUGH_TO_MCP_SERVER',
 ]);
 
 // Alias-prefix normalizations: maps a .env var prefix to the configStore key

@@ -1,5 +1,8 @@
 # Scope-Audience Mapping Reference (RFC 8707)
 
+> **Canonical audience values** are maintained in [`docs/PINGONE_CONFIG.md`](PINGONE_CONFIG.md).
+> This document provides conceptual context; `PINGONE_CONFIG.md` is the source of truth for actual audience strings and resource IDs.
+
 ## Overview
 
 This document maps each OAuth scope to the audiences where it can be applied per RFC 8707 "OAuth 2.0 Resource Indicators" and RFC 8693 token exchange.
@@ -9,7 +12,7 @@ Scope-to-audience mapping is explicit and mandatory. All scopes for a token exch
 ## Scope-Audience Mapping Table
 
 ### End-User Banking API (Standard 1-Exchange)
-Audience: `https://banking-api.banking-demo.com` (configurable via `PINGONE_AUDIENCE_ENDUSER`)  
+Audience: `enduser.ping.demo` (configurable via `PINGONE_AUDIENCE_ENDUSER`)  
 Resource: Super Banking API  
 Purpose: User access to banking operations (accounts, transactions)
 
@@ -24,7 +27,7 @@ Purpose: User access to banking operations (accounts, transactions)
 | banking:mcp:invoke | MCP authorization (not for end-user) | ❌ No |
 
 ### Agent Gateway (2-Exchange Step 1)
-Audience: `https://banking-agent-gateway.banking-demo.com` (configurable via `PINGONE_RESOURCE_AGENT_GATEWAY_URI`)  
+Audience: `agentgateway.ping.demo` (configurable via `PINGONE_RESOURCE_AGENT_GATEWAY_URI`)  
 Resource: Super Banking Agent Gateway  
 OAuth app: `PINGONE_AI_AGENT_CLIENT_ID` (worker/service account)  
 Purpose: Initial actor token for agent delegation chain
@@ -38,7 +41,7 @@ Purpose: Initial actor token for agent delegation chain
 | banking:mcp:invoke | MCP authorization (used later) | ❌ No |
 
 ### AI Agent Intermediate (2-Exchange Step 2)
-Audience: `https://banking-ai-agent.banking-demo.com` (configurable via `PINGONE_AUDIENCE_AI_AGENT` or `AI_AGENT_INTERMEDIATE_AUDIENCE`)  
+Audience: `agentgateway.ping.demo` (configurable via `PINGONE_AUDIENCE_AI_AGENT` or `AI_AGENT_INTERMEDIATE_AUDIENCE`)  
 Resource: Super Banking AI Agent Service  
 OAuth resource server: Receives on-behalf-of delegation token  
 Purpose: Intermediate token in delegation chain; subject = user, actor = agent
@@ -55,7 +58,7 @@ Purpose: Intermediate token in delegation chain; subject = user, actor = agent
 | banking:mcp:invoke | MCP authorization (used in step 3) | ❌ No (used in next step) |
 
 ### MCP Gateway (2-Exchange Step 3)
-Audience: `https://banking-mcp-gateway.banking-demo.com` (configurable via `PINGONE_RESOURCE_MCP_GATEWAY_URI`)  
+Audience: `mcpgateway.ping.demo` (configurable via `PINGONE_RESOURCE_MCP_GATEWAY_URI`)  
 Resource: Super Banking MCP Gateway  
 OAuth app: MCP Gateway service  
 Purpose: Actor token for final MCP resource server exchange
@@ -70,7 +73,7 @@ Purpose: Actor token for final MCP resource server exchange
 | banking:write | User data modification (not for MCP actor) | ❌ No |
 
 ### MCP Resource Server (Final Token - Both Exchanges)
-Audience: `https://banking-mcp-server.banking-demo.com` (configurable via `PINGONE_RESOURCE_MCP_SERVER_URI`)  
+Audience: `mcpserver.ping.demo` (configurable via `PINGONE_RESOURCE_MCP_SERVER_URI`)  
 Resource: Super Banking MCP Server  
 Resource server: Accepts RFC 8693 token exchange; validates scopes per MCP tool requirements  
 Purpose: Authorization for MCP tool execution; scopes identify which tools are callable
@@ -89,7 +92,7 @@ Purpose: Authorization for MCP tool execution; scopes identify which tools are c
 | banking:agent:invoke | Agent delegation (not for resource server) | ❌ No |
 
 ### 2-Exchange Final Resource (Alternative Path)
-Audience: `https://banking-resource-server.banking-demo.com` (configurable via `PINGONE_RESOURCE_TWO_EXCHANGE_URI`)  
+Audience: `mcpserver.ping.demo` (configurable via `PINGONE_RESOURCE_TWO_EXCHANGE_URI`)  
 Resource: Super Banking Resource Server  
 Purpose: Alternative final audience for 2-exchange; differs from MCP server for compliance/multi-resource scenarios
 
@@ -128,12 +131,12 @@ The scope-audience mapping is now configured dynamically in `banking_api_server/
 
 **Environment Variables** (read by configStore):
 ```bash
-PINGONE_AUDIENCE_ENDUSER=https://banking-api.banking-demo.com
-PINGONE_AUDIENCE_AI_AGENT=https://banking-ai-agent.banking-demo.com
-PINGONE_RESOURCE_AGENT_GATEWAY_URI=https://banking-agent-gateway.banking-demo.com
-PINGONE_RESOURCE_MCP_GATEWAY_URI=https://banking-mcp-gateway.banking-demo.com
-PINGONE_RESOURCE_MCP_SERVER_URI=https://banking-mcp-server.banking-demo.com
-PINGONE_RESOURCE_TWO_EXCHANGE_URI=https://banking-resource-server.banking-demo.com
+PINGONE_AUDIENCE_ENDUSER=enduser.ping.demo
+PINGONE_AUDIENCE_AI_AGENT=agentgateway.ping.demo
+PINGONE_RESOURCE_AGENT_GATEWAY_URI=agentgateway.ping.demo
+PINGONE_RESOURCE_MCP_GATEWAY_URI=mcpgateway.ping.demo
+PINGONE_RESOURCE_MCP_SERVER_URI=mcpserver.ping.demo
+PINGONE_RESOURCE_TWO_EXCHANGE_URI=mcpserver.ping.demo
 ```
 
 **Usage Example:**
@@ -144,7 +147,7 @@ const configStore = require('../services/configStore');
 // Validate user scopes for end-user banking API
 const result = configStore.validateScopeAudience(
   ['banking:read', 'banking:write', 'transfer:execute'],  // User's token scopes
-  'https://banking-api.banking-demo.com'                   // Target audience
+  'enduser.ping.demo'                   // Target audience
 );
 
 // Returns: { valid: true, scopes: ['banking:read', 'banking:write', 'transfer:execute'], narrowed: false }
@@ -153,7 +156,7 @@ const result = configStore.validateScopeAudience(
 // Validate same scopes for MCP server (narrower audience)
 const mcpResult = configStore.validateScopeAudience(
   ['banking:read', 'banking:write', 'transfer:execute'],
-  'https://banking-mcp-server.banking-demo.com'
+  'mcpserver.ping.demo'
 );
 
 // Returns: { valid: true, scopes: ['transfer:execute'], narrowed: true }
@@ -166,7 +169,7 @@ const mcpResult = configStore.validateScopeAudience(
 ```
 User logs in → Gets token with scopes: [banking:read, banking:write, transfer:execute]
 Agent calls: "Show my accounts" 
-Target: https://banking-mcp-server.banking-demo.com
+Target: mcpserver.ping.demo
 Allowed for MCP: [get_accounts:read, transfer:execute, check:read]
 Result Scopes: [transfer:execute] (banking:read/write narrowed to tool-specific)
 Narrowed: true ✅
@@ -175,7 +178,7 @@ Narrowed: true ✅
 ### Example 2: Valid 2-Exchange (Agent Gateway → AI Agent)
 ```
 Agent app gets credential token with scopes: [banking:agent:invoke, ai_agent]
-Exchange to: https://banking-ai-agent.banking-demo.com
+Exchange to: agentgateway.ping.demo
 Allowed for AI Agent: [banking:read, banking:write, banking:agent:invoke]
 Result Scopes: [banking:agent:invoke] (delegation maintained)
 Narrowed: true ✅
@@ -184,7 +187,7 @@ Narrowed: true ✅
 ### Example 3: Valid with No Narrowing (End-User Direct)
 ```
 User token has: [banking:read, banking:write]
-Target: https://banking-api.banking-demo.com
+Target: enduser.ping.demo
 Allowed for Banking API: [banking:read, banking:write, ...]
 Result Scopes: [banking:read, banking:write] (all valid)
 Narrowed: false ✅
@@ -193,20 +196,20 @@ Narrowed: false ✅
 ### Example 4: Scope Escalation Detected ❌
 ```
 User token has: [banking:read]  (no write permission)
-Target: https://banking-mcp-server.banking-demo.com
+Target: mcpserver.ping.demo
 Attempts to call: create_transfer tool (requires transfer:execute)
 Problem: User only has banking:read, cannot be escalated to transfer:execute
 Result: ❌ SCOPE_MISMATCH Error
-Message: "User scopes [banking:read] do not match allowed scopes for https://banking-mcp-server.banking-demo.com"
+Message: "User scopes [banking:read] do not match allowed scopes for mcpserver.ping.demo"
 ```
 
 ### Example 5: Invalid Scope ❌
 ```
 User token somehow has: [invalid:scope]
-Target: https://banking-agent-gateway.banking-demo.com
+Target: agentgateway.ping.demo
 Allowed for Agent Gateway: [banking:agent:invoke, ai_agent]
 Result: ❌ SCOPE_MISMATCH Error
-Message: "User scopes [invalid:scope] do not match allowed scopes for https://banking-agent-gateway.banking-demo.com [banking:agent:invoke, ai_agent]"
+Message: "User scopes [invalid:scope] do not match allowed scopes for agentgateway.ping.demo [banking:agent:invoke, ai_agent]"
 ```
 
 ### Example 6: Unknown Audience (Graceful Degrade)
@@ -220,9 +223,9 @@ Result: { valid: true, scopes: [...all original...], narrowed: false, note: 'Unk
 ### Example 7: Empty Scope List ❌
 ```
 User token has no scopes: []
-Target: https://banking-api.banking-demo.com
+Target: enduser.ping.demo
 Result: ❌ SCOPE_ERROR
-Message: "No scopes provided for audience https://banking-api.banking-demo.com"
+Message: "No scopes provided for audience enduser.ping.demo"
 ```
 ```
 

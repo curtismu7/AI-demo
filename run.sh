@@ -213,26 +213,41 @@ preflight_checks() {
     fi
   done
 
-  # Ollama (local LLM for NL intent fallback) — optional but recommended
+  # Ollama (local LLM for NL intent fallback) — optional, local-only.
+  # If OLLAMA_BASE_URL points to a remote host we skip the local start attempt
+  # and just verify reachability. If unset, default to localhost:11434.
   local ollama_model="${OLLAMA_MODEL:-llama3.2}"
-  if ! command -v ollama >/dev/null 2>&1; then
+  local ollama_base="${OLLAMA_BASE_URL:-http://localhost:11434}"
+  # Extract host and port from the URL (handles http://host:port and http://host)
+  local ollama_host ollama_port
+  ollama_host=$(echo "$ollama_base" | sed -E 's|https?://([^:/]+).*|\1|')
+  ollama_port=$(echo "$ollama_base" | sed -E 's|https?://[^:]+:([0-9]+).*|\1|')
+  [[ "$ollama_port" == "$ollama_base" ]] && ollama_port="11434"  # sed produced no match → default
+
+  if [[ "$ollama_host" != "localhost" && "$ollama_host" != "127.0.0.1" ]]; then
+    # Remote Ollama — just check reachability, never try to start locally
+    if curl -sf --max-time 3 "${ollama_base}/api/tags" >/dev/null 2>&1; then
+      ok "Ollama reachable at ${ollama_base} — model: ${ollama_model}"
+    else
+      warn "Ollama at ${ollama_base} not reachable — NL fallback may be disabled"
+    fi
+  elif ! command -v ollama >/dev/null 2>&1; then
     warn "ollama not found — NL fallback LLM disabled. Install: https://ollama.ai"
-  elif port_listening 11434; then
-    ok "Ollama running on :11434 — model: ${ollama_model}"
+  elif port_listening "${ollama_port}"; then
+    ok "Ollama running on :${ollama_port} — model: ${ollama_model}"
   else
     echo -e "  ${CYAN}[SPIN]${RESET}  Starting Ollama (model: ${ollama_model})…"
     ollama serve > /tmp/demo-ollama.log 2>&1 &
     echo $! > /tmp/demo-ollama.pid
-    # Give it a moment to start
     local i=0
     while [[ $i -lt 8 ]]; do
-      port_listening 11434 && break
+      port_listening "${ollama_port}" && break
       sleep 1; (( i++ )) || true
     done
-    if port_listening 11434; then
-      ok "Ollama started on :11434 — model: ${ollama_model}"
+    if port_listening "${ollama_port}"; then
+      ok "Ollama started on :${ollama_port} — model: ${ollama_model}"
     else
-      warn "Ollama did not start on :11434 — check /tmp/demo-ollama.log"
+      warn "Ollama did not start on :${ollama_port} — check /tmp/demo-ollama.log"
     fi
   fi
 
@@ -366,31 +381,100 @@ wait_for_port() {
   echo "timeout"
 }
 
-# Print a single-line status row for a service
+# Verify a service is truly healthy: first wait for TCP port, then poll HTTP /health
+# until HTTP 200. On timeout, prints the last 20 lines of the service log.
+# Args: port path timeout label log_file
+# Returns "up" or "timeout" on stdout (same contract as wait_for_port).
+wait_for_health() {
+  local port="$1" path="$2" timeout="${3:-25}" label="${4:-:$1}" log_file="${5:-}"
+  local interactive=0
+  [[ -t 2 ]] && interactive=1
+
+  # Phase 1: wait for TCP port (half the timeout budget)
+  local port_timeout=$(( timeout / 2 ))
+  if [[ "$(wait_for_port "$port" "$port_timeout" "$label")" == "timeout" ]]; then
+    _health_timeout_report "$label" "$log_file"
+    echo "timeout"; return 1
+  fi
+
+  # Phase 2: poll /health until HTTP 200
+  local i=0 remaining=$(( timeout - port_timeout ))
+  [[ $interactive -eq 1 ]] && printf "    polling health for %s" "$label" >&2
+  while [[ $i -lt $remaining ]]; do
+    local http_code
+    http_code=$(curl -s -o /dev/null -w "%{http_code}" \
+      --max-time 2 --insecure "http://localhost:${port}${path}" 2>/dev/null || echo "000")
+    if [[ "$http_code" == "200" ]]; then
+      [[ $interactive -eq 1 ]] && printf " — healthy after %ds\n" "$i" >&2
+      echo "up"; return 0
+    fi
+    [[ $interactive -eq 1 ]] && printf "." >&2
+    sleep 1; (( i++ )) || true
+  done
+  [[ $interactive -eq 1 ]] && printf " — TIMEOUT after %ds\n" "$timeout" >&2
+
+  _health_timeout_report "$label" "$log_file"
+  echo "timeout"; return 1
+}
+
+# Print last 20 lines of a service log when health check times out.
+# All output goes to stderr so it isn't swallowed by >/dev/null at call sites.
+_health_timeout_report() {
+  local label="$1" log_file="$2"
+  echo "" >&2
+  err "$label did not become healthy"
+  if [[ -n "$log_file" && -f "$log_file" ]]; then
+    echo -e "  ${DIM}Last 20 lines of ${log_file}:${RESET}" >&2
+    echo -e "  ${DIM}$(printf '─%.0s' {1..60})${RESET}" >&2
+    tail -20 "$log_file" | sed 's/^/    /' >&2
+    echo -e "  ${DIM}$(printf '─%.0s' {1..60})${RESET}" >&2
+  fi
+  echo "" >&2
+  warn "Run ./run.sh status to see current service state." >&2
+}
+
+# Print a single-line status row for a service.
+# Args: label port health_path url
+# health_path — the HTTP path to check (e.g. /health). Pass "" to skip health check.
 service_status_line() {
-  local label="$1" port="$2" url="${3:-}"
+  local label="$1" port="$2" health_path="${3:-}" url="${4:-}"
   if port_listening "$port"; then
-    printf "  ${GREEN}${BOLD}  [OK]  %-24s${RESET}  ${MAGENTA}:%-6s${RESET}  ${YELLOW}%s${RESET}\n" "$label" "$port" "$url"
+    local health_status="port-up"
+    local health_color="${YELLOW}"
+    if [[ -n "$health_path" ]]; then
+      local hcode
+      hcode=$(curl -s -o /dev/null -w "%{http_code}" \
+        --max-time 2 --insecure "http://localhost:${port}${health_path}" 2>/dev/null || echo "000")
+      if [[ "$hcode" == "200" ]]; then
+        health_status="healthy"
+        health_color="${GREEN}"
+      fi
+    fi
+    printf "  ${GREEN}${BOLD}  [OK]  %-24s${RESET}  ${MAGENTA}:%-6s${RESET}  ${health_color}%-10s${RESET}  ${YELLOW}%s${RESET}\n" \
+      "$label" "$port" "$health_status" "$url"
   else
-    printf "  ${RED}${BOLD}  [ERROR]  %-24s${RESET}  ${MAGENTA}:%-6s${RESET}  ${DIM}not yet ready${RESET}\n" "$label" "$port"
+    printf "  ${RED}${BOLD}  [DOWN]  %-24s${RESET}  ${MAGENTA}:%-6s${RESET}  ${DIM}%-10s${RESET}\n" \
+      "$label" "$port" "offline"
   fi
 }
 
 # Print the full status table (used by both 'start' and 'status' subcommands)
 print_status_table() {
   echo -e "${WHITE}${BOLD}  SERVICES${RESET}"
-  service_status_line "Demo API Server"      ${API_PORT}  "${API_URL}"
-  service_status_line "Demo MCP Server"     8080         "ws://localhost:8080 (internal)"
-  service_status_line "MCP Gateway"          3005         "http://localhost:3005 (internal)"
-  service_status_line "MCP Invest Server"   8081         "ws://localhost:8081 (internal)"
-  service_status_line "Mortgage Service"    8082         "http://localhost:8082 (Phase 266 Path A backend)"
-  service_status_line "Agent Service"       3006         "http://localhost:3006 (internal)"
-  service_status_line "HITL Service"        3009         "http://localhost:3009 (internal)"
-  service_status_line "LangChain Agent"     8890         "ws://localhost:8889 (chat WS); http://localhost:8890 (health/inspector)"
+  service_status_line "Demo API Server"      ${API_PORT}  "/api/healthz"  "${API_URL}"
+  service_status_line "Demo MCP Server"      8080         "/health"        "ws://localhost:8080 (internal)"
+  service_status_line "MCP Gateway"          3005         "/health"        "http://localhost:3005 (internal)"
+  service_status_line "MCP Invest Server"    8081         "/health"        "ws://localhost:8081 (internal)"
+  service_status_line "Mortgage Service"     8082         "/health"        "http://localhost:8082 (internal)"
+  service_status_line "Agent Service"        3006         "/health"        "http://localhost:3006 (internal)"
+  service_status_line "HITL Service"         3009         "/health"        "http://localhost:3009 (internal)"
+  service_status_line "LangChain Agent"      8890         "/health"        "ws://localhost:8889 (chat WS)"
   if port_listening ${UI_PORT}; then
-    printf "  ${GREEN}${BOLD}  [OK]  %-24s${RESET}  ${MAGENTA}:%-6s${RESET}  ${YELLOW}%s${RESET}\n" "Demo UI (React)" "${UI_PORT}" "${CLIENT_URL}"
+    printf "  ${GREEN}${BOLD}  [OK]  %-24s${RESET}  ${MAGENTA}:%-6s${RESET}  ${GREEN}%-10s${RESET}  ${YELLOW}%s${RESET}\n" \
+      "Demo UI (React)" "${UI_PORT}" "port-up" "${CLIENT_URL}"
   else
-    printf "  ${YELLOW}  [WAIT]  %-24s${RESET}  ${MAGENTA}:%-6s${RESET}  ${DIM}compiling… %s${RESET}\n" "Demo UI (React)" "${UI_PORT}" "${CLIENT_URL}"
+    printf "  ${YELLOW}  [WAIT]  %-24s${RESET}  ${MAGENTA}:%-6s${RESET}  ${DIM}%-10s${RESET}  %s${RESET}\n" \
+      "Demo UI (React)" "${UI_PORT}" "compiling…" "${CLIENT_URL}"
   fi
 }
 
@@ -682,23 +766,6 @@ if [[ -f "$VAULT_FILE" ]]; then
   echo "[VAULT] secrets.vault detected — passing VAULT_PASSWORD to vault-aware services."
 fi
 
-echo "[LAUNCH] Starting Demo API Server on ${API_HOST}:${API_PORT}..."
-(
-  cd "$BASEDIR/demo_api_server"
-  PORT=${API_PORT} \
-  NODE_EXTRA_CA_CERTS="${NODE_EXTRA_CA_CERTS:-}" \
-  REACT_APP_CLIENT_URL=${CLIENT_URL} \
-  FRONTEND_ADMIN_URL=${CLIENT_URL}/admin \
-  FRONTEND_DASHBOARD_URL=${CLIENT_URL}/dashboard \
-  MCP_GATEWAY_HTTP_URL="${MCP_GATEWAY_HTTP_URL:-https://api.ping.demo:3005}" \
-  VAULT_PASSWORD="${VAULT_PASSWORD:-}" \
-  VAULT_PATH="${VAULT_PATH:-}" \
-  npm start > /tmp/demo-api.log 2>&1
-) &
-echo $! > "$PID_API"
-
-sleep 1
-
 # Helper: ensure a sibling Node service has a .env that points at the API
 # server's .env. Without this, services that do `dotenv.config()` find no
 # .env and fail with "Missing required env var" even though every key they
@@ -719,31 +786,63 @@ ensure_service_env() {
     return
   fi
 
-  # No service-specific .env.development → link to API server's .env.
+  # No service-specific .env.development → copy from API server's .env.
+  # Using cp (not ln -s) so each service has its own independent file;
+  # no symlink brittleness and no cross-service sync risk.
+  # Guard with || true: if svc_env is a symlink to api_env (same inode),
+  # cp fails with "identical" on macOS; the env is already correct, so
+  # treat that as success.
   if [[ -f "$api_env" ]]; then
-    # Drop any existing link/copy so we get the current source of truth.
-    rm -f "${svc_env}"
-    ln -s "$api_env" "${svc_env}"
+    cp "$api_env" "${svc_env}" || true
   fi
 }
+
+# ── Pre-launch: symlink all service .envs before any process starts ──────────
+# Done as a single pass here so no service can start before its .env is in place.
+# (Previously each ensure_service_env was called inline just before that service's
+# launch block, creating a race on the first service.)
+for _svc in demo_mcp_server demo_mcp_gateway demo_hitl_service \
+            demo_agent_service demo_mcp_invest; do
+  [[ -d "$BASEDIR/$_svc" ]] && ensure_service_env "$_svc"
+done
+unset _svc
+
+# ── Tier 1: Demo API Server (Express) on :3001 ───────────────────────────────
+echo "[LAUNCH] Starting Demo API Server on ${API_HOST}:${API_PORT}..."
+(
+  cd "$BASEDIR/demo_api_server"
+  PORT=${API_PORT} \
+  NODE_EXTRA_CA_CERTS="${NODE_EXTRA_CA_CERTS:-}" \
+  REACT_APP_CLIENT_URL=${CLIENT_URL} \
+  FRONTEND_ADMIN_URL=${CLIENT_URL}/admin \
+  FRONTEND_DASHBOARD_URL=${CLIENT_URL}/dashboard \
+  MCP_GATEWAY_HTTP_URL="${MCP_GATEWAY_HTTP_URL:-https://api.ping.demo:3005}" \
+  VAULT_PASSWORD="${VAULT_PASSWORD:-}" \
+  VAULT_PATH="${VAULT_PATH:-}" \
+  npm start > "${LOG_API}" 2>&1
+) &
+echo $! > "$PID_API"
+
+# Gate: Tier 2 blocked until API server is healthy
+wait_for_health "${API_PORT}" "/api/healthz" 30 "Demo API Server" "${LOG_API}" >/dev/null
+
+# ── Tier 2: MCP Server, Gateway, HITL ────────────────────────────────────────
 
 # ── Demo MCP Server on :8080 ──────────────────────────────────────────────
 if [[ -d "$BASEDIR/demo_mcp_server" ]]; then
   echo "[BOT] Starting Demo MCP Server on :8080..."
-  ensure_service_env demo_mcp_server
   (
     cd "$BASEDIR/demo_mcp_server"
-    npm start > /tmp/demo-mcp.log 2>&1
+    npm start > "${LOG_MCP}" 2>&1
   ) &
   echo $! > "$PID_MCP"
 fi
 
-# ── MCP Gateway on :3005 (Phase 243) ────────────────────────────────────────────
+# ── MCP Gateway on :3005 (Phase 243) ─────────────────────────────────────────
 # Build is handled by the dependency check loop above — don't re-run it here,
 # and don't swallow its errors silently (that's how MODULE_NOT_FOUND happens).
 if [[ -d "$BASEDIR/demo_mcp_gateway" ]]; then
   echo "[SHIELD]  Starting MCP Gateway on :3005..."
-  ensure_service_env demo_mcp_gateway
   (
     cd "$BASEDIR/demo_mcp_gateway"
     VAULT_PASSWORD="${VAULT_PASSWORD:-}" \
@@ -756,7 +855,6 @@ fi
 # ── HITL Service on :3009 ───────────────────────────────────────────────────
 if [[ -d "$BASEDIR/demo_hitl_service" ]]; then
   echo "[ALERT] Starting HITL Service on :3009..."
-  ensure_service_env demo_hitl_service
   (
     cd "$BASEDIR/demo_hitl_service"
     PORT=3009 npm start > "${LOG_HITL}" 2>&1
@@ -764,11 +862,17 @@ if [[ -d "$BASEDIR/demo_hitl_service" ]]; then
   echo $! > "$PID_HITL"
 fi
 
+# Wait for Tier 2 services; gate Tier 3 on gateway health
+wait_for_health 8080 "/health" 25 "Demo MCP Server"  "${LOG_MCP}"  >/dev/null
+wait_for_health 3005 "/health" 15 "MCP Gateway"      "${LOG_GW}"   >/dev/null
+wait_for_health 3009 "/health" 15 "HITL Service"     "${LOG_HITL}" >/dev/null
+
+# ── Tier 3: Agent Service, MCP Invest, Mortgage, UI, LangChain ───────────────
+
 # ── Agent Service on :3006 ──────────────────────────────────────────────────
 # dist/ is guaranteed by the dependency check loop above (it builds or aborts).
 if [[ -d "$BASEDIR/demo_agent_service" ]]; then
   echo "[CONNECT] Starting Agent Service on :3006..."
-  ensure_service_env demo_agent_service
   (
     cd "$BASEDIR/demo_agent_service"
     PORT=3006 \
@@ -782,7 +886,6 @@ fi
 # ── MCP Invest Server on :8081 ──────────────────────────────────────────────
 if [[ -d "$BASEDIR/demo_mcp_invest" ]]; then
   echo "[INVEST] Starting MCP Invest Server on :8081..."
-  ensure_service_env demo_mcp_invest
   (
     cd "$BASEDIR/demo_mcp_invest"
     PORT=8081 npm start > "${LOG_INVEST}" 2>&1
@@ -803,28 +906,9 @@ if [[ -d "$BASEDIR/demo_mortgage_service" ]]; then
   echo $! > "$PID_MORTGAGE"
 fi
 
-# ── LangChain Agent (chat WS :8889 + health :8890) ───────────────────────────
-# Entry point is src/main.py, run as a module (`python -m src.main`) — it is an
-# asyncio app that manages its own websockets server (8889) and health server
-# (8890); it is NOT a uvicorn ASGI app and there is no :8888 listener. It reads
-# its own langchain_agent/.env via python-dotenv. The venv is `.venv`.
-if [[ -f "$BASEDIR/langchain_agent/src/main.py" ]]; then
-  echo "[CHAIN] Starting LangChain Agent (chat WS :8889, health :8890)..."
-  (
-    cd "$BASEDIR/langchain_agent"
-    if [[ -x ".venv/bin/python" ]]; then
-      PY=".venv/bin/python"
-    elif [[ -x "venv/bin/python" ]]; then
-      PY="venv/bin/python"
-    else
-      PY="python3"
-    fi
-    "$PY" -m src.main > /tmp/demo-langchain.log 2>&1
-  ) &
-  echo $! > "$PID_AGENT"
-fi
-
 # ── Demo UI (CRA) on :4000 ────────────────────────────────────────────────
+# Launched here (before the Tier 3 waits) so CRA's slow compile runs in parallel
+# with the ~40s of agent/invest/mortgage health checks rather than after them.
 # REACT_APP_API_PORT  → picked up by src/setupProxy.js to proxy /api/* to :3001
 # REACT_APP_API_URL   → used by apiClient.js for absolute axios calls
 # HOST                → binds CRA dev server to 0.0.0.0 so api.ping.demo resolves
@@ -843,28 +927,42 @@ echo "[WEB] Starting Demo UI on ${CLIENT_URL}..."
   REACT_APP_CLIENT_URL=${CLIENT_URL} \
   DANGEROUSLY_DISABLE_HOST_CHECK=true \
   WDS_SOCKET_PORT=0 \
-  npm start > /tmp/demo-ui.log 2>&1
+  npm start > "${LOG_UI}" 2>&1
 ) &
 echo $! > "$PID_UI"
 
-# ── Banner + health check ────────────────────────────────────────────────────
-echo ""
-echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-echo -e "${CYAN}${BOLD}   [DEMO]  AI DEMO — STARTING                                          ${RESET}"
-echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-echo ""
-echo -e "${DIM}  Waiting for services to come up (this can take 30-60 seconds on first start)…${RESET}"
+# ── LangChain Agent (chat WS :8889 + health :8890) ───────────────────────────
+# Entry point is src/main.py, run as a module (`python -m src.main`) — it is an
+# asyncio app that manages its own websockets server (8889) and health server
+# (8890); it is NOT a uvicorn ASGI app and there is no :8888 listener. It reads
+# its own langchain_agent/.env via python-dotenv. The venv is `.venv`.
+if [[ -f "$BASEDIR/langchain_agent/src/main.py" ]]; then
+  echo "[CHAIN] Starting LangChain Agent (chat WS :8889, health :8890)..."
+  (
+    cd "$BASEDIR/langchain_agent"
+    if [[ -x ".venv/bin/python" ]]; then
+      PY=".venv/bin/python"
+    elif [[ -x "venv/bin/python" ]]; then
+      PY="venv/bin/python"
+    else
+      PY="python3"
+    fi
+    "$PY" -m src.main > "${LOG_AGENT}" 2>&1
+  ) &
+  echo $! > "$PID_AGENT"
+fi
 
-wait_for_port "${API_PORT}" 25 "Demo API Server"    >/dev/null
-wait_for_port 8080         25 "Demo MCP Server"    >/dev/null
-wait_for_port 3005         15 "MCP Gateway"        >/dev/null
-wait_for_port 3009         15 "HITL Service"       >/dev/null
-wait_for_port 3006         15 "Agent Service"      >/dev/null
-wait_for_port 8081         15 "MCP Invest Server"  >/dev/null
-wait_for_port 8082         10 "Demo Mortgage"      >/dev/null
-wait_for_port "${UI_PORT}" 60 "Demo UI"            >/dev/null
-sleep 1   # give LangChain agent a moment too
+# Wait for Tier 3 services (UI and LangChain were launched above to run in parallel)
+wait_for_health 3006 "/health" 15 "Agent Service"     "${LOG_AGENT_SVC}" >/dev/null
+wait_for_health 8081 "/health" 15 "MCP Invest Server" "${LOG_INVEST}"    >/dev/null
+wait_for_health 8082 "/health" 10 "Demo Mortgage"     "${LOG_MORTGAGE}"  >/dev/null
+# UI: port-only (CRA has no /health endpoint); full 90s budget since UI launched before waits
+wait_for_port "${UI_PORT}" 90 "Demo UI" >/dev/null
+# LangChain: warn-only, not a gate
+wait_for_health 8890 "/health" 20 "LangChain Agent" "${LOG_AGENT}" >/dev/null || true
 
+# ── Banner ───────────────────────────────────────────────────────────────────
+echo ""
 echo -e "${GREEN}${BOLD}  [CLEAR]  DEMO STATE CLEARED${RESET} — all in-memory state reset on startup:"
 echo -e "${DIM}      Token chain · App events · MCP audit · Pending consents${RESET}"
 
