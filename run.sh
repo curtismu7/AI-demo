@@ -366,6 +366,57 @@ wait_for_port() {
   echo "timeout"
 }
 
+# Verify a service is truly healthy: first wait for TCP port, then poll HTTP /health
+# until HTTP 200. On timeout, prints the last 20 lines of the service log.
+# Args: port path timeout label log_file
+# Returns "up" or "timeout" on stdout (same contract as wait_for_port).
+wait_for_health() {
+  local port="$1" path="$2" timeout="${3:-25}" label="${4:-:$1}" log_file="${5:-}"
+  local interactive=0
+  [[ -t 2 ]] && interactive=1
+
+  # Phase 1: wait for TCP port (half the timeout budget)
+  local port_timeout=$(( timeout / 2 ))
+  if [[ "$(wait_for_port "$port" "$port_timeout" "$label")" == "timeout" ]]; then
+    _health_timeout_report "$label" "$log_file"
+    echo "timeout"; return 1
+  fi
+
+  # Phase 2: poll /health until HTTP 200
+  local i=0 remaining=$(( timeout - port_timeout ))
+  [[ $interactive -eq 1 ]] && printf "    polling health for %s" "$label" >&2
+  while [[ $i -lt $remaining ]]; do
+    local http_code
+    http_code=$(curl -s -o /dev/null -w "%{http_code}" \
+      --max-time 2 --insecure "http://localhost:${port}${path}" 2>/dev/null || echo "000")
+    if [[ "$http_code" == "200" ]]; then
+      [[ $interactive -eq 1 ]] && printf " — healthy after %ds\n" "$i" >&2
+      echo "up"; return 0
+    fi
+    [[ $interactive -eq 1 ]] && printf "." >&2
+    sleep 1; (( i++ )) || true
+  done
+  [[ $interactive -eq 1 ]] && printf " — TIMEOUT after %ds\n" "$timeout" >&2
+
+  _health_timeout_report "$label" "$log_file"
+  echo "timeout"; return 1
+}
+
+# Print last 20 lines of a service log when health check times out.
+_health_timeout_report() {
+  local label="$1" log_file="$2"
+  echo "" >&2
+  err "$label did not become healthy"
+  if [[ -n "$log_file" && -f "$log_file" ]]; then
+    echo -e "  ${DIM}Last 20 lines of ${log_file}:${RESET}"
+    echo -e "  ${DIM}$(printf '─%.0s' {1..60})${RESET}"
+    tail -20 "$log_file" | sed 's/^/    /'
+    echo -e "  ${DIM}$(printf '─%.0s' {1..60})${RESET}"
+  fi
+  echo ""
+  warn "Run ./run.sh status to see current service state."
+}
+
 # Print a single-line status row for a service
 service_status_line() {
   local label="$1" port="$2" url="${3:-}"
