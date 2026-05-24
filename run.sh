@@ -403,18 +403,19 @@ wait_for_health() {
 }
 
 # Print last 20 lines of a service log when health check times out.
+# All output goes to stderr so it isn't swallowed by >/dev/null at call sites.
 _health_timeout_report() {
   local label="$1" log_file="$2"
   echo "" >&2
   err "$label did not become healthy"
   if [[ -n "$log_file" && -f "$log_file" ]]; then
-    echo -e "  ${DIM}Last 20 lines of ${log_file}:${RESET}"
-    echo -e "  ${DIM}$(printf '─%.0s' {1..60})${RESET}"
-    tail -20 "$log_file" | sed 's/^/    /'
-    echo -e "  ${DIM}$(printf '─%.0s' {1..60})${RESET}"
+    echo -e "  ${DIM}Last 20 lines of ${log_file}:${RESET}" >&2
+    echo -e "  ${DIM}$(printf '─%.0s' {1..60})${RESET}" >&2
+    tail -20 "$log_file" | sed 's/^/    /' >&2
+    echo -e "  ${DIM}$(printf '─%.0s' {1..60})${RESET}" >&2
   fi
-  echo ""
-  warn "Run ./run.sh status to see current service state."
+  echo "" >&2
+  warn "Run ./run.sh status to see current service state." >&2
 }
 
 # Print a single-line status row for a service.
