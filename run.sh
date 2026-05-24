@@ -417,31 +417,48 @@ _health_timeout_report() {
   warn "Run ./run.sh status to see current service state."
 }
 
-# Print a single-line status row for a service
+# Print a single-line status row for a service.
+# Args: label port health_path url
+# health_path — the HTTP path to check (e.g. /health). Pass "" to skip health check.
 service_status_line() {
-  local label="$1" port="$2" url="${3:-}"
+  local label="$1" port="$2" health_path="${3:-}" url="${4:-}"
   if port_listening "$port"; then
-    printf "  ${GREEN}${BOLD}  [OK]  %-24s${RESET}  ${MAGENTA}:%-6s${RESET}  ${YELLOW}%s${RESET}\n" "$label" "$port" "$url"
+    local health_status="port-up"
+    local health_color="${YELLOW}"
+    if [[ -n "$health_path" ]]; then
+      local hcode
+      hcode=$(curl -s -o /dev/null -w "%{http_code}" \
+        --max-time 2 --insecure "http://localhost:${port}${health_path}" 2>/dev/null || echo "000")
+      if [[ "$hcode" == "200" ]]; then
+        health_status="healthy"
+        health_color="${GREEN}"
+      fi
+    fi
+    printf "  ${GREEN}${BOLD}  [OK]  %-24s${RESET}  ${MAGENTA}:%-6s${RESET}  ${health_color}%-10s${RESET}  ${YELLOW}%s${RESET}\n" \
+      "$label" "$port" "$health_status" "$url"
   else
-    printf "  ${RED}${BOLD}  [ERROR]  %-24s${RESET}  ${MAGENTA}:%-6s${RESET}  ${DIM}not yet ready${RESET}\n" "$label" "$port"
+    printf "  ${RED}${BOLD}  [DOWN]  %-24s${RESET}  ${MAGENTA}:%-6s${RESET}  ${DIM}%-10s${RESET}\n" \
+      "$label" "$port" "offline"
   fi
 }
 
 # Print the full status table (used by both 'start' and 'status' subcommands)
 print_status_table() {
   echo -e "${WHITE}${BOLD}  SERVICES${RESET}"
-  service_status_line "Demo API Server"      ${API_PORT}  "${API_URL}"
-  service_status_line "Demo MCP Server"     8080         "ws://localhost:8080 (internal)"
-  service_status_line "MCP Gateway"          3005         "http://localhost:3005 (internal)"
-  service_status_line "MCP Invest Server"   8081         "ws://localhost:8081 (internal)"
-  service_status_line "Mortgage Service"    8082         "http://localhost:8082 (Phase 266 Path A backend)"
-  service_status_line "Agent Service"       3006         "http://localhost:3006 (internal)"
-  service_status_line "HITL Service"        3009         "http://localhost:3009 (internal)"
-  service_status_line "LangChain Agent"     8890         "ws://localhost:8889 (chat WS); http://localhost:8890 (health/inspector)"
+  service_status_line "Demo API Server"      ${API_PORT}  "/api/healthz"  "${API_URL}"
+  service_status_line "Demo MCP Server"      8080         "/health"        "ws://localhost:8080 (internal)"
+  service_status_line "MCP Gateway"          3005         "/health"        "http://localhost:3005 (internal)"
+  service_status_line "MCP Invest Server"    8081         "/health"        "ws://localhost:8081 (internal)"
+  service_status_line "Mortgage Service"     8082         "/health"        "http://localhost:8082 (internal)"
+  service_status_line "Agent Service"        3006         "/health"        "http://localhost:3006 (internal)"
+  service_status_line "HITL Service"         3009         "/health"        "http://localhost:3009 (internal)"
+  service_status_line "LangChain Agent"      8890         "/health"        "ws://localhost:8889 (chat WS)"
   if port_listening ${UI_PORT}; then
-    printf "  ${GREEN}${BOLD}  [OK]  %-24s${RESET}  ${MAGENTA}:%-6s${RESET}  ${YELLOW}%s${RESET}\n" "Demo UI (React)" "${UI_PORT}" "${CLIENT_URL}"
+    printf "  ${GREEN}${BOLD}  [OK]  %-24s${RESET}  ${MAGENTA}:%-6s${RESET}  ${GREEN}%-10s${RESET}  ${YELLOW}%s${RESET}\n" \
+      "Demo UI (React)" "${UI_PORT}" "port-up" "${CLIENT_URL}"
   else
-    printf "  ${YELLOW}  [WAIT]  %-24s${RESET}  ${MAGENTA}:%-6s${RESET}  ${DIM}compiling… %s${RESET}\n" "Demo UI (React)" "${UI_PORT}" "${CLIENT_URL}"
+    printf "  ${YELLOW}  [WAIT]  %-24s${RESET}  ${MAGENTA}:%-6s${RESET}  ${DIM}%-10s${RESET}  %s${RESET}\n" \
+      "Demo UI (React)" "${UI_PORT}" "compiling…" "${CLIENT_URL}"
   fi
 }
 
