@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * GatewayIntrospectionClient — RFC 7662 active-token introspection.
  *
@@ -12,8 +10,8 @@
  * so dev environments work without configuring the endpoint.
  */
 
+import { createHash } from 'node:crypto';
 import axios from 'axios';
-import { createHash } from 'crypto';
 import type { GatewayConfig } from '../config';
 
 export interface IntrospectionResult {
@@ -63,19 +61,40 @@ export class GatewayIntrospectionClient {
         token_type_hint: 'access_token',
       });
 
-      // Use the gateway's own client credentials for introspection auth (client_secret_basic)
-      const credentials = Buffer.from(
-        `${this.config.clientId}:${this.config.clientSecret}`
-      ).toString('base64');
+      // Authenticate introspection request using the gateway's configured method.
+      // PingOne apps provisioned with token_endpoint_auth_method=post require
+      // client credentials in the POST body (client_secret_post); apps using
+      // client_secret_basic require an Authorization: Basic header.
+      // MCP_GW_TOKEN_ENDPOINT_AUTH_METHOD controls this (default: 'basic').
+      // Use dedicated introspection credentials when configured; otherwise
+      // fall back to the gateway's own client credentials. PingOne only returns
+      // active:true for a token when the introspecting client is the issuing
+      // client or a resource server that owns the token's audience — so if the
+      // gateway is not that resource server, set GW_INTROSPECTION_CLIENT_ID +
+      // GW_INTROSPECTION_CLIENT_SECRET to the appropriate client.
+      const introspectClientId = this.config.introspectionClientId || this.config.clientId;
+      const introspectClientSecret = this.config.introspectionClientSecret || this.config.clientSecret;
+
+      const introspectHeaders: Record<string, string> = {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      };
+      if (this.config.tokenEndpointAuthMethod === 'post') {
+        // client_secret_post: credentials go in the POST body
+        params.set('client_id', introspectClientId);
+        params.set('client_secret', introspectClientSecret);
+      } else {
+        // client_secret_basic: credentials go in the Authorization header
+        const credentials = Buffer.from(
+          `${introspectClientId}:${introspectClientSecret}`
+        ).toString('base64');
+        introspectHeaders.Authorization = `Basic ${credentials}`;
+      }
 
       const response = await axios.post(
         this.config.introspectionEndpoint,
         params.toString(),
         {
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'Authorization': `Basic ${credentials}`,
-          },
+          headers: introspectHeaders,
           timeout: 5000,
         }
       );

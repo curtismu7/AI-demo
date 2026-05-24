@@ -61,6 +61,16 @@ export class BankingToolProvider {
   }
 
   /**
+   * Wire in a TokenExchangeService after construction.
+   * Called from index.ts after the Logger singleton is initialized (which happens
+   * inside this constructor) so TokenExchangeService can safely call Logger.getInstance().
+   */
+  setTokenExchangeService(svc: TokenExchangeService): void {
+    this.tokenExchangeService = svc;
+    this.tokenResolver = new TokenResolver({ authManager: this.authManager, tokenExchangeService: svc, logger: this.logger });
+  }
+
+  /**
    * Remove the chain-index entry for a session when it ends.
    * Callers (e.g. BankingSessionManager) should invoke this on session teardown.
    */

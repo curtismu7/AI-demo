@@ -69,6 +69,8 @@ export interface TokenExchangeValidationResult {
 export interface TokenExchangeConfig {
   pingoneBaseUrl: string;
   environmentId: string;
+  /** Explicit token endpoint URL. When set, overrides the baseUrl+environmentId construction. */
+  tokenEndpoint?: string;
   clientId: string;
   clientSecret: string;
   requireMayAct: boolean;

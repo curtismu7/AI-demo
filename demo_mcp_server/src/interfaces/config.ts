@@ -64,9 +64,11 @@ export interface EnvironmentVariables {
   PINGONE_CLIENT_ID?: string;
   PINGONE_CLIENT_SECRET?: string;
   // RFC 7662 introspection identity. PingOne binds introspection to the
-  // token's requesting client; the gateway exchanges as MCP_GW_CLIENT_ID,
-  // so the MCP server introspects as that same app (these take precedence
-  // over PINGONE_CLIENT_ID/SECRET in environments.ts). REGRESSION_PLAN §4.
+  // token's requesting client; in passthrough mode the exchanger client
+  // (GW_INTROSPECTION_CLIENT_ID) issued the token so must introspect it.
+  // Falls back to MCP_GW_CLIENT_ID (gateway's client) for non-passthrough.
+  GW_INTROSPECTION_CLIENT_ID?: string;
+  GW_INTROSPECTION_CLIENT_SECRET?: string;
   MCP_GW_CLIENT_ID?: string;
   MCP_GW_CLIENT_SECRET?: string;
   PINGONE_INTROSPECTION_ENDPOINT?: string;

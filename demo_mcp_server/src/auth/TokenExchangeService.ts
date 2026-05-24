@@ -30,8 +30,13 @@ export class TokenExchangeService {
     this.config = config;
     this.logger = logger || Logger.getInstance();
     this.auditLogger = AuditLogger.getInstance(this.logger);
+    // If an explicit tokenEndpoint is provided, use its base (everything up to /as).
+    // This avoids the Management API base URL + empty environmentId producing a broken path.
+    const authBase = config.tokenEndpoint
+      ? config.tokenEndpoint.replace(/\/token$/, '')   // strip /token → .../as
+      : `${config.pingoneBaseUrl}/${config.environmentId}/as`;
     this.client = axios.create({
-      baseURL: `${config.pingoneBaseUrl}/${config.environmentId}/as`,
+      baseURL: authBase,
       timeout: 30000,
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded'
@@ -62,19 +67,30 @@ export class TokenExchangeService {
       // Prepare request parameters
       const params = this.buildTokenExchangeParams(request);
       
-      // Make token exchange request
-      const response = await this.client.post('/token', params.toString(), {
-        auth: {
-          username: this.config.clientId,
-          password: this.config.clientSecret
-        }
-      });
+      // Debug: log exchange request params (excluding token values)
+      this.logger.info(`[TokenExchangeService] Exchange request — client_id: ${this.config.clientId}, audience: ${params.get('audience')}, scope: ${params.get('scope')}, baseURL: ${String(this.client.defaults.baseURL ?? '')}`);
+
+      // Make token exchange request.
+      // ARCHITECTURE TRUTH (T-9): PingOne non-worker clients use client_secret_post —
+      // credentials go in the request body, not the Authorization header.
+      // The MCP Exchanger app (d3f8fead) is CLIENT_SECRET_POST; sending Basic Auth
+      // causes PingOne to return 403 "Insufficient permissions for token exchange".
+      const response = await this.client.post('/token', params.toString());
 
       const tokenResponse = response.data as TokenExchangeResponse;
-      
+
+      // Debug: log what PingOne returned so we can verify aud/scope
+      try {
+        const parts = tokenResponse.access_token?.split('.');
+        if (parts?.length === 3) {
+          const claims = JSON.parse(Buffer.from(parts[1], 'base64url').toString());
+          this.logger.info(`[TokenExchangeService] Step 9 token issued — aud: ${JSON.stringify(claims.aud)}, scope: ${claims.scope}, sub: ${claims.sub}`);
+        }
+      } catch { /* non-fatal */ }
+
       // Validate response
       this.validateTokenExchangeResponse(tokenResponse);
-      
+
       // Update audit log
       auditLog.success = true;
 
@@ -135,8 +151,10 @@ export class TokenExchangeService {
             AuthErrorCodes.INVALID_AGENT_TOKEN
           );
         } else if (statusCode === 403) {
+          // Log the full PingOne error body for debugging
+          this.logger.error(`[TokenExchangeService] PingOne 403 response body:`, { errorData });
           throw new AuthenticationError(
-            'Insufficient permissions for token exchange',
+            errorData?.error_description || errorData?.message || 'Insufficient permissions for token exchange',
             AuthErrorCodes.INSUFFICIENT_SCOPE
           );
         }
@@ -264,8 +282,11 @@ export class TokenExchangeService {
    * Build token exchange request parameters
    */
   private buildTokenExchangeParams(request: TokenExchangeRequest): URLSearchParams {
+    // client_secret_post: credentials in request body (T-9 architecture truth)
     const params = new URLSearchParams({
       grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
+      client_id: this.config.clientId,
+      client_secret: this.config.clientSecret,
       subject_token: request.subject_token,
       subject_token_type: request.subject_token_type
     });
