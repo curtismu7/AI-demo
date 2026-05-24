@@ -89,13 +89,13 @@ Register these in PingOne as Resource Servers; they define the `aud` (audience) 
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `PINGONE_AUDIENCE_ENDUSER` | No | `https://banking-api.banking-demo.com` | End-user banking API audience (1-exchange) |
-| `PINGONE_RESOURCE_MCP_SERVER_URI` | No | `https://banking-mcp-server.banking-demo.com` | MCP server audience (1-exchange final) |
-| `PINGONE_RESOURCE_AGENT_GATEWAY_URI` | No | `https://banking-agent-gateway.banking-demo.com` | Agent gateway (2-exchange Step 1 actor) |
+| `PINGONE_AUDIENCE_ENDUSER` | No | `enduser.ping.demo` | End-user banking API audience (1-exchange) |
+| `PINGONE_RESOURCE_MCP_SERVER_URI` | No | `mcpserver.ping.demo` | MCP server audience (1-exchange final) |
+| `PINGONE_RESOURCE_AGENT_GATEWAY_URI` | No | `agentgateway.ping.demo` | Agent gateway (2-exchange Step 1 actor) |
 | `AI_AGENT_INTERMEDIATE_AUDIENCE` | No | — | 2-exchange Step 2 output audience (Agent intermediate) |
-| `PINGONE_RESOURCE_MCP_GATEWAY_URI` | No | `https://banking-mcp-gateway.banking-demo.com` | MCP gateway (2-exchange Step 3 actor) |
-| `PINGONE_RESOURCE_TWO_EXCHANGE_URI` | No | `https://banking-resource-server.banking-demo.com` | 2-exchange final output audience |
-| `PINGONE_RESOURCE_LANGCHAIN_AGENT_URI` | No | `https://banking-langchain-agent.banking-demo.com` | LangChain agent (Path A) audience |
+| `PINGONE_RESOURCE_MCP_GATEWAY_URI` | No | `mcpgateway.ping.demo` | MCP gateway (2-exchange Step 3 actor) |
+| `PINGONE_RESOURCE_TWO_EXCHANGE_URI` | No | `mcpserver.ping.demo` | 2-exchange final output audience |
+| `PINGONE_RESOURCE_LANGCHAIN_AGENT_URI` | No | `langchain.ping.demo (not provisioned)` | LangChain agent (Path A) audience |
 
 ### Session & Security
 

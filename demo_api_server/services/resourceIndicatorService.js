@@ -12,7 +12,7 @@ const configStore = require('./configStore');
  * Resource indicator configuration and definitions
  */
 const RESOURCE_DEFINITIONS = {
-  'https://banking-api.ping.demo/': {
+  'enduser.ping.demo/': {
     name: 'Banking API',
     description: 'Core banking operations and account management',
     scopes: ['read', 'write', 'transactions:read', 'accounts:read'],
@@ -20,7 +20,7 @@ const RESOURCE_DEFINITIONS = {
     category: 'core',
     required: false
   },
-  'https://mcp-server.pingdemo.com/': {
+  'mcpserver.ping.demo/': {
     name: 'AI Agent Server',
     description: 'AI agent and MCP protocol server',
     scopes: ['ai:act', 'ai:read', 'ai:write', 'agent:manage'],
@@ -51,7 +51,7 @@ const RESOURCE_DEFINITIONS = {
  */
 const RESOURCE_CONFIG = {
   enabled: configStore.getEffective('ff_rfc_9728_enabled') === true,
-  defaultResources: ['https://banking-api.ping.demo/'],
+  defaultResources: ['enduser.ping.demo/'],
   maxResources: configStore.getEffective('max_resources_per_token') || 3,
   requireUserConsent: true,
   resourceSelection: {
@@ -148,10 +148,10 @@ function getClientResourceConfig(clientId) {
   const clientConfigs = {
     'banking-demo-client': {
       allowedResources: [
-        'https://banking-api.ping.demo/',
-        'https://mcp-server.pingdemo.com/'
+        'enduser.ping.demo/',
+        'mcpserver.ping.demo/'
       ],
-      defaultResources: ['https://banking-api.ping.demo/'],
+      defaultResources: ['enduser.ping.demo/'],
       maxResources: 2,
       requireConsent: true
     },
@@ -237,8 +237,8 @@ function validateResourceSelection(clientId, selectedResources) {
  */
 function validateScopeResourceCompatibility(scopes, resources) {
   const resourceScopeMap = {
-    'https://banking-api.ping.demo/': ['read', 'write', 'transfer', 'transactions:', 'accounts:', 'mortgage:', 'ai:', 'admin:', 'users:'],
-    'https://mcp-server.pingdemo.com/': ['ai:', 'agent:', 'mcp:'],
+    'enduser.ping.demo/': ['read', 'write', 'transfer', 'transactions:', 'accounts:', 'mortgage:', 'ai:', 'admin:', 'users:'],
+    'mcpserver.ping.demo/': ['ai:', 'agent:', 'mcp:'],
     'https://admin-api.ping.demo/': ['admin:', 'users:', 'config:'],
     'https://config-api.ping.demo/': ['config:', 'settings:']
   };
@@ -376,9 +376,9 @@ function getResourceFromRequest(req) {
   // Derive from request path
   const path = req.path;
   if (path.startsWith('/banking')) {
-    return 'https://banking-api.ping.demo/';
+    return 'enduser.ping.demo/';
   } else if (path.startsWith('/mcp')) {
-    return 'https://mcp-server.pingdemo.com/';
+    return 'mcpserver.ping.demo/';
   } else if (path.startsWith('/admin')) {
     return 'https://admin-api.ping.demo/';
   } else if (path.startsWith('/config')) {

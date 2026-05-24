@@ -87,11 +87,11 @@ const tabs = [
             </thead>
             <tbody>
               {[
-                ['1', 'User Access Token', 'ai-agent.pingdemo.com', 'Subject token for Exchange #1'],
+                ['1', 'User Access Token', 'agentgateway.ping.demo', 'Subject token for Exchange #1'],
                 ['2', 'User ID Token', '(BFF client ID)', 'Identity verification, claims to UI'],
                 ['3', 'Refresh Token', 'n/a', 'Silent token renewal'],
-                ['4', 'AI Agent CC Token', 'agent-gateway.pingdemo.com', 'Actor token for Exchange #1'],
-                ['5', 'Intermediate Agent Token', 'ai-agent.pingdemo.com', 'Subject token for Exchange #2'],
+                ['4', 'AI Agent CC Token', 'agentgateway.ping.demo', 'Actor token for Exchange #1'],
+                ['5', 'Intermediate Agent Token', 'agentgateway.ping.demo', 'Subject token for Exchange #2'],
                 ['6', 'MCP Exchanger CC Token', 'mcp-gateway.pingdemo.com', 'Actor token for Exchange #2'],
                 ['7', 'Final MCP Token', 'resource-server.pingdemo.com', 'Bearer sent to MCP Server'],
               ].map(([n, name, aud, use]) => (
@@ -118,7 +118,7 @@ const tabs = [
           <pre style={{ background: '#0f172a', color: '#e2e8f0', padding: 14, borderRadius: 6, fontSize: 12 }}>
 {`{
   "sub": "<user-sub>",
-  "aud": "https://ai-agent.pingdemo.com",
+  "aud": "agentgateway.ping.demo",
   "scope": "openid profile email offline_access read write ai:agent",
   "may_act": { "sub": "<ai-agent-client-id>" }
 }`}
@@ -146,7 +146,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 &subject_token_type=urn:ietf:params:oauth:token-type:access_token
 &actor_token=<ai-agent-cc-token>
 &actor_token_type=urn:ietf:params:oauth:token-type:access_token
-&audience=https://ai-agent.pingdemo.com
+&audience=agentgateway.ping.demo
 &client_id=<PINGONE_AI_AGENT_CLIENT_ID>
 &client_secret=<PINGONE_AI_AGENT_CLIENT_SECRET>`}
           </pre>
@@ -162,7 +162,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
           <pre style={{ background: '#0f172a', color: '#e2e8f0', padding: 14, borderRadius: 6, fontSize: 12 }}>
 {`{
   "sub": "<user-sub>",              // preserved
-  "aud": "https://ai-agent.pingdemo.com",
+  "aud": "agentgateway.ping.demo",
   "scope": "read write",
   "act": { "sub": "<ai-agent-client-id>" }
 }`}
@@ -223,8 +223,8 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
             </thead>
             <tbody>
               {[
-                ['https://ai-agent.pingdemo.com', 'User AT audience + Exchange #1 intermediate token', 'PINGONE_RESOURCE_URI / MCP_RESOURCE_URI'],
-                ['https://agent-gateway.pingdemo.com', 'AI Agent CC Token audience', 'PINGONE_AGENT_GATEWAY_URI'],
+                ['agentgateway.ping.demo', 'User AT audience + Exchange #1 intermediate token', 'PINGONE_RESOURCE_URI / MCP_RESOURCE_URI'],
+                ['agentgateway.ping.demo', 'AI Agent CC Token audience', 'PINGONE_AGENT_GATEWAY_URI'],
                 ['https://mcp-gateway.pingdemo.com', 'MCP Exchanger CC Token audience', 'PINGONE_MCP_GATEWAY_URI'],
                 ['https://resource-server.pingdemo.com', 'Final MCP Token audience', 'PINGONE_RESOURCE_SERVER_URI / MCP_RESOURCE_SERVER_URI'],
               ].map(([uri, use, env]) => (
@@ -371,7 +371,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
                     color: '#d97706',
                     bg: '#1c1a0d',
                     rows: [
-                      ['aud set →', 'https://ai-agent.pingdemo.com  (broad user-facing resource)'],
+                      ['aud set →', 'agentgateway.ping.demo  (broad user-facing resource)'],
                       ['scope set →', 'openid profile email offline_access read write ai:agent'],
                       ['may_act added →', '{ "sub": "<ai-agent-client-id>" }  — pre-approval for Exchange #1'],
                       ['act', '(absent — no delegation yet)'],
@@ -397,7 +397,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
                     bg: '#1a1033',
                     rows: [
                       ['sub', 'UNCHANGED — still <user-id>'],
-                      ['aud', 'UNCHANGED — still https://ai-agent.pingdemo.com'],
+                      ['aud', 'UNCHANGED — still agentgateway.ping.demo'],
                       ['scope', 'NARROWED → read  write  (OIDC claims removed)'],
                       ['may_act', 'REMOVED — no further prospective delegation'],
                       ['act added →', '{ "sub": "<ai-agent-client-id>" }  — delegation fact recorded'],

@@ -275,10 +275,10 @@ describe('Delegation Validation Middleware', () => {
       const claims = {
         sub: 'user-12345',
         act: {
-          sub: 'https://mcp-server.pingdemo.com/mcp/test-mcp',
+          sub: 'mcpserver.ping.demo/mcp/test-mcp',
           act: { sub: 'https://banking-agent.pingdemo.com/agent/test-agent' }
         },
-        aud: 'https://mcp-server.pingdemo.com'
+        aud: 'mcpserver.ping.demo'
       };
 
       const validation = { valid: true, errors: [], warnings: [] };
@@ -309,7 +309,7 @@ describe('Delegation Validation Middleware', () => {
       const claims = {
         sub: 'user-12345',
         act: 'invalid-string',
-        aud: 'https://mcp-server.pingdemo.com'
+        aud: 'mcpserver.ping.demo'
       };
 
       const validation = { valid: true, errors: [], warnings: [] };
@@ -325,10 +325,10 @@ describe('Delegation Validation Middleware', () => {
       const claims = {
         sub: 'user-12345',
         act: {
-          sub: 'https://mcp-server.pingdemo.com/mcp/test-mcp',
+          sub: 'mcpserver.ping.demo/mcp/test-mcp',
           act: 'invalid-string'
         },
-        aud: 'https://mcp-server.pingdemo.com'
+        aud: 'mcpserver.ping.demo'
       };
 
       const validation = { valid: true, errors: [], warnings: [] };
@@ -343,7 +343,7 @@ describe('Delegation Validation Middleware', () => {
       const claims = {
         sub: 'user-12345',
         act: {
-          sub: 'https://mcp-server.pingdemo.com/mcp/test-mcp'
+          sub: 'mcpserver.ping.demo/mcp/test-mcp'
         },
         aud: 'https://unexpected-audience.com'
       };

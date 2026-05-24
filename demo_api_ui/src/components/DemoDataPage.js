@@ -1926,7 +1926,7 @@ export default function DemoDataPage({ user, onLogout }) {
               <p style={{ margin: '0 0 0.75rem', fontSize: '0.9rem', lineHeight: 1.6 }}>
                 The <code>act</code> claim in the exchanged token proves <em>which agent</em> performed the RFC&nbsp;8693 exchange
                 on behalf of the user. It must be mapped on the{' '}
-                <strong>AI-Agent resource</strong> (<code>https://ai-agent.pingdemo.com</code>) in PingOne using the SPEL expression{' '}
+                <strong>AI-Agent resource</strong> (<code>agentgateway.ping.demo</code>) in PingOne using the SPEL expression{' '}
                 <code>{'{"sub":"$'}{'{tokenContext.actor.sub}'}{'"}'}</code>.
                 Use <strong>Check</strong> to verify the mapping exists, and <strong>Fix</strong> to create or correct it automatically.
               </p>

@@ -67,7 +67,7 @@ describe("PingOneAudit Component", () => {
 				resourceValidation: [
 					{
 						resourceName: "Super Banking AI Agent",
-						audienceUri: "https://ai-agent.pingdemo.com",
+						audienceUri: "agentgateway.ping.demo",
 						authMethod: "CLIENT_CREDENTIALS",
 						status: "CORRECT",
 					},
@@ -137,7 +137,7 @@ describe("PingOneAudit Component", () => {
 				resourceValidation: [
 					{
 						resourceName: "Super Banking AI Agent",
-						audienceUri: "https://ai-agent.pingdemo.com",
+						audienceUri: "agentgateway.ping.demo",
 						authMethod: "CLIENT_CREDENTIALS",
 						status: "CORRECT",
 					},
@@ -169,7 +169,7 @@ describe("PingOneAudit Component", () => {
 				resourceValidation: [
 					{
 						resourceName: "Super Banking AI Agent",
-						audienceUri: "https://ai-agent.pingdemo.com",
+						audienceUri: "agentgateway.ping.demo",
 						authMethod: "CLIENT_CREDENTIALS",
 						status: "CORRECT",
 					},

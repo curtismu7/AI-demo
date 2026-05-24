@@ -312,7 +312,7 @@ class OAuthService {
    * ID token is passed, and the BFF exchanges it for a narrowly-scoped MCP token.
    *
    * @param {string} idToken - User's ID token (from session.oauthTokens.idToken)
-   * @param {string} audience - Target resource server URI (e.g. https://mcp-server.pingdemo.com)
+   * @param {string} audience - Target resource server URI (e.g. mcpserver.ping.demo)
    * @param {string|string[]} scopes - Scopes to request on the output token
    */
   async performTokenExchangeFromIdToken(idToken, audience, scopes) {

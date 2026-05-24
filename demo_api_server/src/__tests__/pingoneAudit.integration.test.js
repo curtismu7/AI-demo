@@ -59,8 +59,8 @@ describe('GET /api/pingone/audit', () => {
     mockValidateResources.mockResolvedValueOnce({
       status: 'success',
       resourceValidation: [
-        { resourceName: 'Super Banking AI Agent', audienceUri: 'https://ai-agent.pingdemo.com', status: 'CORRECT' },
-        { resourceName: 'Super Banking MCP Server', audienceUri: 'https://mcp-server.pingdemo.com', status: 'CORRECT' },
+        { resourceName: 'Super Banking AI Agent', audienceUri: 'agentgateway.ping.demo', status: 'CORRECT' },
+        { resourceName: 'Super Banking MCP Server', audienceUri: 'mcpserver.ping.demo', status: 'CORRECT' },
       ],
     });
     mockAuditResourceScopes.mockResolvedValueOnce({
@@ -85,7 +85,7 @@ describe('GET /api/pingone/audit', () => {
     mockValidateResources.mockResolvedValueOnce({
       status: 'success',
       resourceValidation: [
-        { resourceName: 'Super Banking AI Agent', audienceUri: 'https://ai-agent.pingdemo.com', status: 'CORRECT' },
+        { resourceName: 'Super Banking AI Agent', audienceUri: 'agentgateway.ping.demo', status: 'CORRECT' },
       ],
     });
     mockAuditResourceScopes.mockResolvedValueOnce({
@@ -104,7 +104,7 @@ describe('GET /api/pingone/audit', () => {
     expect(resourceValidation).toContainEqual(
       expect.objectContaining({
         resourceName: 'Super Banking AI Agent',
-        audienceUri: 'https://ai-agent.pingdemo.com',
+        audienceUri: 'agentgateway.ping.demo',
         status: 'CORRECT'
       })
     );
@@ -114,7 +114,7 @@ describe('GET /api/pingone/audit', () => {
     mockValidateResources.mockResolvedValueOnce({
       status: 'success',
       resourceValidation: [
-        { resourceName: 'Super Banking AI Agent', audienceUri: 'https://ai-agent.pingdemo.com', status: 'CORRECT' },
+        { resourceName: 'Super Banking AI Agent', audienceUri: 'agentgateway.ping.demo', status: 'CORRECT' },
       ],
     });
     mockAuditResourceScopes.mockResolvedValueOnce({

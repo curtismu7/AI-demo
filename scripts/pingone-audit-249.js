@@ -131,9 +131,9 @@ async function main() {
 
   console.log('\n1. MCP Token Exchanger (6380065f) — resource grants:');
   var needsMcpGw = !excAuds.includes('https://mcp-gateway.pingdemo.com');
-  var hasMcpServer = excAuds.includes('https://mcp-server.pingdemo.com');
+  var hasMcpServer = excAuds.includes('mcpserver.ping.demo');
   console.log('   mcp-gateway.pingdemo.com: ' + (needsMcpGw ? '❌ MISSING — needs mcp:invoke read write' : '✓ ' + excScopesByAud['https://mcp-gateway.pingdemo.com'].join(' ')));
-  console.log('   mcp-server.pingdemo.com:  ' + (hasMcpServer ? '✓ ' + excScopesByAud['https://mcp-server.pingdemo.com'].join(' ') : '❌ MISSING — needs read write'));
+  console.log('   mcpserver.ping.demo:  ' + (hasMcpServer ? '✓ ' + excScopesByAud['mcpserver.ping.demo'].join(' ') : '❌ MISSING — needs read write'));
 
   // Check AI Agent App
   var agentGrants = await getGrants('2533a614-fcb6-4ab9-82cc-9ab407f1dbda');
@@ -149,8 +149,8 @@ async function main() {
     });
   }
   console.log('\n2. AI Agent App (2533a614) — resource grants:');
-  console.log('   agent-gateway.pingdemo.com: ' + (agentAuds.includes('https://agent-gateway.pingdemo.com') ? '✓ ' + (agentScopesByAud['https://agent-gateway.pingdemo.com'] || []).join(' ') : '❌ MISSING — needs grant for CC actor token'));
-  console.log('   ai-agent.pingdemo.com:      ' + (agentAuds.includes('https://ai-agent.pingdemo.com') ? '✓ ' + agentScopesByAud['https://ai-agent.pingdemo.com'].join(' ') : '❌ MISSING'));
+  console.log('   agentgateway.ping.demo: ' + (agentAuds.includes('agentgateway.ping.demo') ? '✓ ' + (agentScopesByAud['agentgateway.ping.demo'] || []).join(' ') : '❌ MISSING — needs grant for CC actor token'));
+  console.log('   agentgateway.ping.demo:      ' + (agentAuds.includes('agentgateway.ping.demo') ? '✓ ' + agentScopesByAud['agentgateway.ping.demo'].join(' ') : '❌ MISSING'));
 
   // Check User App scopes
   var userGrants = await getGrants('b2752071-2d03-4927-b865-089dc40b9c85');
@@ -187,12 +187,12 @@ async function main() {
   }
 
   // Scope cleanliness on mcp-server (should NOT have mcp:invoke)
-  var mcpServerRes = resources.find(function(r) { return r.audience === 'https://mcp-server.pingdemo.com'; });
+  var mcpServerRes = resources.find(function(r) { return r.audience === 'mcpserver.ping.demo'; });
   if (mcpServerRes) {
     var msd = await request(API_BASE + '/resources/' + mcpServerRes.id + '/scopes?limit=100', { headers: authHdr });
     var mscopes = (msd.body._embedded && msd.body._embedded.scopes) || msd.body.scopes || [];
     var mnames = mscopes.map(function(s) { return s.name; });
-    console.log('\n5. mcp-server.pingdemo.com scopes: ' + mnames.join(', '));
+    console.log('\n5. mcpserver.ping.demo scopes: ' + mnames.join(', '));
     if (mnames.includes('mcp:invoke')) {
       console.log('   ⚠️  mcp:invoke is on mcp-server — should be mcp-gateway only');
     }

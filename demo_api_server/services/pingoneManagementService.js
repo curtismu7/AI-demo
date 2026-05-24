@@ -464,7 +464,7 @@ class PingOneManagementService {
       mcpServer: {
         name: 'Super Banking AI Agent Service',
         description: 'Resource server for MCP AI agent access with banking capabilities',
-        audienceUri: 'https://ai-agent.pingdemo.com',
+        audienceUri: 'agentgateway.ping.demo',
         scopes: [
           {
             name: 'agent:invoke',

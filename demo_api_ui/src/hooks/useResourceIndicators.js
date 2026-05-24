@@ -15,7 +15,7 @@ const resourceApiService = {
     const mockResources = {
       'banking-demo-client': [
         {
-          uri: 'https://banking-api.ping.demo/',
+          uri: 'enduser.ping.demo/',
           name: 'Banking API',
           description: 'Core banking operations and account management',
           scopes: ['read', 'write', 'transactions:read', 'accounts:read'],
@@ -24,7 +24,7 @@ const resourceApiService = {
           required: false
         },
         {
-          uri: 'https://mcp-server.pingdemo.com/',
+          uri: 'mcpserver.ping.demo/',
           name: 'AI Agent Server',
           description: 'AI agent and MCP protocol server',
           scopes: ['ai:act', 'ai:read', 'ai:write', 'agent:manage'],
@@ -86,8 +86,8 @@ const resourceApiService = {
 
     // Check for unknown resources
     const knownResources = [
-      'https://banking-api.ping.demo/',
-      'https://mcp-server.pingdemo.com/',
+      'enduser.ping.demo/',
+      'mcpserver.ping.demo/',
       'https://admin-api.ping.demo/',
       'https://config-api.ping.demo/'
     ];
@@ -111,7 +111,7 @@ const resourceApiService = {
   getDefaultResources: async (clientId) => {
     // Get default resources for client
     const defaults = {
-      'banking-demo-client': ['https://banking-api.ping.demo/'],
+      'banking-demo-client': ['enduser.ping.demo/'],
       'admin-client': ['https://admin-api.ping.demo/']
     };
 

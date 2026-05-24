@@ -27,13 +27,13 @@ describe('Delegation Chain Validation Service', () => {
     test('should create chain node with required properties', () => {
       const node = new ChainNode('user', 'user-12345', {
         scopes: ['read'],
-        audience: 'https://banking-api.ping.demo'
+        audience: 'enduser.ping.demo'
       });
 
       expect(node.type).toBe('user');
       expect(node.sub).toBe('user-12345');
       expect(node.scopes).toEqual(['read']);
-      expect(node.audience).toBe('https://banking-api.ping.demo');
+      expect(node.audience).toBe('enduser.ping.demo');
       expect(node.timestamp).toBeDefined();
       expect(node.getIdentifier()).toBe('user:user-12345');
     });
@@ -71,7 +71,7 @@ describe('Delegation Chain Validation Service', () => {
 
       // Subject preservation compares user.sub with mcpNode.sub (URL) — always fails
       expect(result.valid).toBe(false);
-      expect(result.errors).toContain('Subject not preserved: expected user-12345, got https://mcp-server.pingdemo.com/mcp/test-mcp');
+      expect(result.errors).toContain('Subject not preserved: expected user-12345, got mcpserver.ping.demo/mcp/test-mcp');
       // Chain includes intermediate from act.act
       expect(result.chain).toHaveLength(4);
       expect(result.chain[0].type).toBe('user');
@@ -106,7 +106,7 @@ describe('Delegation Chain Validation Service', () => {
       const result = await service.validateDelegationChain(userToken, exchangedToken);
 
       expect(result.valid).toBe(false);
-      expect(result.errors).toContain('Subject not preserved: expected user-12345, got https://mcp-server.pingdemo.com/mcp/test-mcp');
+      expect(result.errors).toContain('Subject not preserved: expected user-12345, got mcpserver.ping.demo/mcp/test-mcp');
     });
 
     test('should reject chain with circular delegation', async () => {
@@ -127,7 +127,7 @@ describe('Delegation Chain Validation Service', () => {
 
       expect(result.valid).toBe(false);
       // Subject preservation error fires first (mcpNode.sub is URL, not user sub)
-      expect(result.errors).toContain('Subject not preserved: expected user-12345, got https://mcp-server.pingdemo.com/mcp/test-mcp');
+      expect(result.errors).toContain('Subject not preserved: expected user-12345, got mcpserver.ping.demo/mcp/test-mcp');
     });
 
     test('should handle chain length mismatches (subject preservation fails)', async () => {
@@ -138,7 +138,7 @@ describe('Delegation Chain Validation Service', () => {
 
       // Subject preservation check compares user.sub with mcpNode.sub (URL)
       expect(result.valid).toBe(false);
-      expect(result.errors).toContain('Subject not preserved: expected user-12345, got https://mcp-server.pingdemo.com/mcp/test-mcp');
+      expect(result.errors).toContain('Subject not preserved: expected user-12345, got mcpserver.ping.demo/mcp/test-mcp');
     });
   });
 
@@ -156,9 +156,9 @@ describe('Delegation Chain Validation Service', () => {
       expect(chain[1].type).toBe('agent');
       expect(chain[1].sub).toBe('https://banking-agent.pingdemo.com/agent/test-agent');
       expect(chain[2].type).toBe('intermediate');
-      expect(chain[2].sub).toBe('https://agent-gateway.pingdemo.com/agent/agent-client');
+      expect(chain[2].sub).toBe('agentgateway.ping.demo/agent/agent-client');
       expect(chain[3].type).toBe('mcp_server');
-      expect(chain[3].sub).toBe('https://mcp-server.pingdemo.com/mcp/test-mcp');
+      expect(chain[3].sub).toBe('mcpserver.ping.demo/mcp/test-mcp');
     });
 
     test('should handle tokens without may_act claim', async () => {
@@ -181,7 +181,7 @@ describe('Delegation Chain Validation Service', () => {
 
       expect(chain).toHaveLength(4);
       expect(chain[2].type).toBe('intermediate');
-      expect(chain[2].sub).toBe('https://agent-gateway.pingdemo.com/agent/agent-client');
+      expect(chain[2].sub).toBe('agentgateway.ping.demo/agent/agent-client');
     });
 
     test('should handle invalid JWT format', async () => {
@@ -224,7 +224,7 @@ describe('Delegation Chain Validation Service', () => {
       // No circular delegation, but subject preservation check fails
       expect(result.valid).toBe(false);
       expect(result.errors.filter(e => e.includes('Circular delegation'))).toHaveLength(0);
-      expect(result.errors).toContain('Subject not preserved: expected user-12345, got https://mcp-server.pingdemo.com/mcp/test-mcp');
+      expect(result.errors).toContain('Subject not preserved: expected user-12345, got mcpserver.ping.demo/mcp/test-mcp');
     });
   });
 
@@ -233,7 +233,7 @@ describe('Delegation Chain Validation Service', () => {
       const chain = [
         new ChainNode('user', 'user-12345'),
         new ChainNode('agent', 'https://banking-agent.pingdemo.com/agent/test-agent'),
-        new ChainNode('mcp_server', 'https://mcp-server.pingdemo.com/mcp/test-mcp')
+        new ChainNode('mcp_server', 'mcpserver.ping.demo/mcp/test-mcp')
       ];
 
       const stats = service.getChainStatistics(chain);
@@ -248,7 +248,7 @@ describe('Delegation Chain Validation Service', () => {
       expect(stats.subjectPreserved).toBe(false); // No MCP node with same subject as user
       expect(stats.userSubject).toBe('user-12345');
       expect(stats.agentSubject).toBe('https://banking-agent.pingdemo.com/agent/test-agent');
-      expect(stats.mcpServerSubject).toBe('https://mcp-server.pingdemo.com/mcp/test-mcp');
+      expect(stats.mcpServerSubject).toBe('mcpserver.ping.demo/mcp/test-mcp');
     });
 
     test('should detect subject preservation (ChainNode metadata.sub ignored)', () => {
@@ -270,7 +270,7 @@ describe('Delegation Chain Validation Service', () => {
       const chain = [
         new ChainNode('user', 'user-12345'),
         new ChainNode('agent', 'user-12345'), // Circular reference
-        new ChainNode('mcp_server', 'https://mcp-server.pingdemo.com/mcp/test-mcp')
+        new ChainNode('mcp_server', 'mcpserver.ping.demo/mcp/test-mcp')
       ];
 
       const stats = service.getChainStatistics(chain);
@@ -293,12 +293,12 @@ describe('Delegation Chain Validation Service', () => {
       const chain = [
         new ChainNode('user', 'user-12345'),
         new ChainNode('agent', 'https://banking-agent.pingdemo.com/agent/test-agent'),
-        new ChainNode('mcp_server', 'https://mcp-server.pingdemo.com/mcp/test-mcp')
+        new ChainNode('mcp_server', 'mcpserver.ping.demo/mcp/test-mcp')
       ];
 
       const visualization = service.generateChainVisualization(chain);
 
-      expect(visualization).toBe('user(user-12345) →  agent(https://banking-agent.pingdemo.com/agent/test-agent) →  mcp_server(https://mcp-server.pingdemo.com/mcp/test-mcp)');
+      expect(visualization).toBe('user(user-12345) →  agent(https://banking-agent.pingdemo.com/agent/test-agent) →  mcp_server(mcpserver.ping.demo/mcp/test-mcp)');
     });
 
     test('should handle empty chain', () => {
@@ -438,7 +438,7 @@ describe('Delegation Chain Validation Service', () => {
 
       expect(result.valid).toBe(false);
       // Subject preservation error fires before strict node type check
-      expect(result.errors).toContain('Subject not preserved: expected user-12345, got https://mcp-server.pingdemo.com/mcp/test-mcp');
+      expect(result.errors).toContain('Subject not preserved: expected user-12345, got mcpserver.ping.demo/mcp/test-mcp');
     });
 
     test('should fail strict validation (subject preservation)', async () => {
@@ -449,7 +449,7 @@ describe('Delegation Chain Validation Service', () => {
 
       // Subject preservation: user.sub vs mcpNode.sub (URL) always fails
       expect(result.valid).toBe(false);
-      expect(result.errors).toContain('Subject not preserved: expected user-12345, got https://mcp-server.pingdemo.com/mcp/test-mcp');
+      expect(result.errors).toContain('Subject not preserved: expected user-12345, got mcpserver.ping.demo/mcp/test-mcp');
       // No "Missing required node types" since all types are present in 4-node chain
       expect(result.errors.filter(e => e.includes('Missing required node types'))).toHaveLength(0);
     });

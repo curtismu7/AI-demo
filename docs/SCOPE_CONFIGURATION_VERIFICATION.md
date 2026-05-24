@@ -1,8 +1,11 @@
 # Scope Configuration Verification Guide
 
+> **Canonical audience values and resource names** are in [`docs/PINGONE_CONFIG.md`](PINGONE_CONFIG.md).
+> For the automated startup check, set `PINGONE_VALIDATE_ON_STARTUP=true` — it runs `resourceValidationService` and `scopeAuditService` at boot.
+
 ## Overview
 
-This guide explains how to verify and fix your PingOne scope configuration for the Super Banking demo.
+This guide explains how to verify and fix your PingOne scope configuration for this demo.
 
 The verification process checks:
 1. ✅ All PingOne resources exist and have the correct URIs
@@ -38,10 +41,10 @@ PINGONE_MGMT_CLIENT_ID=<worker app client ID>
 PINGONE_MGMT_CLIENT_SECRET=<worker app client secret>
 
 # PingOne resource URIs (customize if not using defaults)
-PINGONE_RESOURCE_MCP_SERVER_URI=https://banking-mcp-server.banking-demo.com
-PINGONE_RESOURCE_AGENT_GATEWAY_URI=https://banking-agent-gateway.banking-demo.com
-PINGONE_RESOURCE_MCP_GATEWAY_URI=https://banking-mcp-gateway.banking-demo.com
-PINGONE_RESOURCE_TWO_EXCHANGE_URI=https://banking-resource-server.banking-demo.com
+PINGONE_RESOURCE_MCP_SERVER_URI=mcpserver.ping.demo
+PINGONE_RESOURCE_AGENT_GATEWAY_URI=agentgateway.ping.demo
+PINGONE_RESOURCE_MCP_GATEWAY_URI=mcpgateway.ping.demo
+PINGONE_RESOURCE_TWO_EXCHANGE_URI=mcpserver.ping.demo
 ```
 
 ---
@@ -81,15 +84,15 @@ Example output:
 ℹ️  Fetching PingOne resources...
 ✅ Found 7 resources
 
-ℹ️  Checking: Super Banking API (https://banking-api.banking-demo.com)
+ℹ️  Checking: Super Banking API (enduser.ping.demo)
   Description: Super Banking API (End-User)
-  URI: https://banking-api.banking-demo.com
+  URI: enduser.ping.demo
   Current scopes: banking:read, banking:write, banking:accounts:read
 ✅ All required scopes present
 
-ℹ️  Checking: Super Banking Agent Gateway (https://agent-gateway.banking-demo.com)
+ℹ️  Checking: Super Banking Agent Gateway (agentgateway.ping.demo)
   Description: Super Banking Agent Gateway
-  URI: https://agent-gateway.banking-demo.com
+  URI: agentgateway.ping.demo
   Current scopes: banking:agent:invoke
 ⚠️  Missing REQUIRED scopes: ai_agent
   (Run with --fix to auto-create)
@@ -103,12 +106,12 @@ Example output:
 ℹ️  Resource Configuration Summary:
 
 Resource: Super Banking API
-  URI: https://banking-api.banking-demo.com
+  URI: enduser.ping.demo
   ID: e9f8a7b6-c5d4-3c2b-1a09-f8e7d6c5b4a3
   Scopes: banking:read, banking:write
 
 Resource: Super Banking Agent Gateway
-  URI: https://agent-gateway.banking-demo.com
+  URI: agentgateway.ping.demo
   ID: d6c5b4a3-9f8e-7d6c-5b4a-39f8e7d6c5b4
   Scopes: banking:agent:invoke
 ```
@@ -194,12 +197,12 @@ The `configStore.js` now dynamically builds the `ALLOWED_SCOPES_BY_AUDIENCE` map
 **Required Environment Variables:**
 
 ```bash
-PINGONE_RESOURCE_MCP_SERVER_URI=https://banking-mcp-server.banking-demo.com
-PINGONE_RESOURCE_AGENT_GATEWAY_URI=https://banking-agent-gateway.banking-demo.com
-PINGONE_RESOURCE_MCP_GATEWAY_URI=https://banking-mcp-gateway.banking-demo.com
-PINGONE_RESOURCE_TWO_EXCHANGE_URI=https://banking-resource-server.banking-demo.com
-PINGONE_AUDIENCE_ENDUSER=https://banking-api.banking-demo.com
-PINGONE_AUDIENCE_AI_AGENT=https://banking-ai-agent.banking-demo.com
+PINGONE_RESOURCE_MCP_SERVER_URI=mcpserver.ping.demo
+PINGONE_RESOURCE_AGENT_GATEWAY_URI=agentgateway.ping.demo
+PINGONE_RESOURCE_MCP_GATEWAY_URI=mcpgateway.ping.demo
+PINGONE_RESOURCE_TWO_EXCHANGE_URI=mcpserver.ping.demo
+PINGONE_AUDIENCE_ENDUSER=enduser.ping.demo
+PINGONE_AUDIENCE_AI_AGENT=agentgateway.ping.demo
 ```
 
 **How it works:**
@@ -216,7 +219,7 @@ When `validateScopeAudience()` is called, it:
 // In code:
 const result = configStore.validateScopeAudience(
   ['banking:read', 'banking:write', 'transfer:execute'],
-  'https://banking-mcp-server.banking-demo.com'
+  'mcpserver.ping.demo'
 );
 // Returns: { valid: true, scopes: ['get_accounts:read', 'transfer:execute'] }
 // (narrowed to the MCP server's allowed scopes)

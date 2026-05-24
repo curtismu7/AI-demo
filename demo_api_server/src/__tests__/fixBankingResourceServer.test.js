@@ -90,7 +90,7 @@ let app;
 beforeAll(() => {
   process.env.PINGONE_ENVIRONMENT_ID = 'test-env-id';
   process.env.PINGONE_REGION = 'com';
-  process.env.ENDUSER_AUDIENCE = 'https://ai-agent.pingdemo.com';
+  process.env.ENDUSER_AUDIENCE = 'agentgateway.ping.demo';
 
   app = express();
   app.use(express.json());
@@ -111,7 +111,7 @@ describe('POST /api/pingone-test/fix-banking-resource-server', () => {
   describe('when RS exists and has 2 missing canonical scopes', () => {
     beforeEach(() => {
       managementService.getResourceServers.mockResolvedValue(
-        mockRSList([{ id: 'rs-existing-id', name: 'Super Banking Resource Server', audience: 'https://ai-agent.pingdemo.com' }])
+        mockRSList([{ id: 'rs-existing-id', name: 'Super Banking Resource Server', audience: 'agentgateway.ping.demo' }])
       );
       // Only 3 of 5 canonical scopes present → 'sensitive' and 'ai:agent' are missing
       managementService.getScopes.mockResolvedValue(
@@ -171,7 +171,7 @@ describe('POST /api/pingone-test/fix-banking-resource-server', () => {
       await request(app).post('/api/pingone-test/fix-banking-resource-server');
 
       expect(managementService.createResourceServer).toHaveBeenCalledWith(
-        expect.objectContaining({ audience: 'https://ai-agent.pingdemo.com' })
+        expect.objectContaining({ audience: 'agentgateway.ping.demo' })
       );
     });
 

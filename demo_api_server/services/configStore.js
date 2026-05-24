@@ -1071,7 +1071,8 @@ function buildAllowedScopesByAudience() {
   const mapping = {};
 
   // User End-User banking API (standard 1-exchange)
-  const endUserAudience = configStore.get('PINGONE_AUDIENCE_ENDUSER') || 'https://banking-api.banking-demo.com';
+  // Audience: enduser.ping.demo — see docs/PINGONE_CONFIG.md
+  const endUserAudience = configStore.getEffective('enduser_audience');
   if (endUserAudience) {
     mapping[endUserAudience] = [
       'read',
@@ -1083,7 +1084,8 @@ function buildAllowedScopesByAudience() {
   }
 
   // Agent Gateway (Step 1 actor token) — 2-exchange only
-  const agentGatewayUri = configStore.get('PINGONE_RESOURCE_AGENT_GATEWAY_URI') || 'https://banking-agent-gateway.banking-demo.com';
+  // Audience: agentgateway.ping.demo — see docs/PINGONE_CONFIG.md
+  const agentGatewayUri = configStore.getEffective('pingone_resource_agent_gateway_uri');
   if (agentGatewayUri) {
     mapping[agentGatewayUri] = [
       'ai:agent',
@@ -1094,7 +1096,8 @@ function buildAllowedScopesByAudience() {
   // MCP Gateway — the BFF's single subject+actor RFC 8693 exchange is
   // audienced here (canonical chain). Must allow the tool scopes the exchange
   // requests (read / write) plus the actor/invoke scopes.
-  const mcpGatewayUri = configStore.get('PINGONE_RESOURCE_MCP_GATEWAY_URI') || 'https://banking-mcp-gateway.banking-demo.com';
+  // Audience: mcpgateway.ping.demo — see docs/PINGONE_CONFIG.md
+  const mcpGatewayUri = configStore.getEffective('pingone_resource_mcp_gateway_uri');
   if (mcpGatewayUri) {
     mapping[mcpGatewayUri] = [
       'read',
@@ -1105,7 +1108,8 @@ function buildAllowedScopesByAudience() {
   }
 
   // MCP Resource Server — the gateway re-exchanges to this audience downstream.
-  const mcpServerUri = configStore.get('PINGONE_RESOURCE_MCP_SERVER_URI') || 'https://banking-mcp-server.banking-demo.com';
+  // Audience: mcpserver.ping.demo — see docs/PINGONE_CONFIG.md
+  const mcpServerUri = configStore.getEffective('pingone_resource_mcp_server_uri');
   if (mcpServerUri) {
     mapping[mcpServerUri] = [
       'read',

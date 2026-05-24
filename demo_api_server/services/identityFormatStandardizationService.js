@@ -20,14 +20,14 @@ const IDENTITY_FORMATS = {
     pattern: 'https://{domain}.pingdemo.com/agent/{agent-id}',
     examples: [
       'https://banking-agent.pingdemo.com/agent/test-agent',
-      'https://ai-agent.pingdemo.com/agent/assistant-123'
+      'agentgateway.ping.demo/agent/assistant-123'
     ]
   },
   mcp_server: {
     standard: /^https:\/\/[a-zA-Z0-9.-]+\.pingdemo\.com\/mcp\/[a-zA-Z0-9-]+$/,
     pattern: 'https://{domain}.pingdemo.com/mcp/{mcp-id}',
     examples: [
-      'https://mcp-server.pingdemo.com/mcp/banking-mcp',
+      'mcpserver.ping.demo/mcp/banking-mcp',
       'https://ai-mcp.pingdemo.com/mcp/assistant-mcp'
     ]
   },

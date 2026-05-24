@@ -39,7 +39,7 @@ const mockDualTokenResponse = {
   color: "teal",
   accessTokenClaims: {
     sub: "user-uuid-alice",
-    aud: "https://mcp-server.pingdemo.com",
+    aud: "mcpserver.ping.demo",
     scope: "banking:read openid",
     exp: 9999999999,
     act: { sub: "gateway-client-id" },

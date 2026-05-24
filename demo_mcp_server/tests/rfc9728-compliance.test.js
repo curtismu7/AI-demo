@@ -17,7 +17,7 @@ describe('RFC 9728 Compliance Tests', () => {
       port: 3001,
       httpTransport: true,
       authServerUrl: 'https://auth.pingone.com/test-env/as',
-      resourceUrl: 'https://mcp-server.pingdemo.com'
+      resourceUrl: 'mcpserver.ping.demo'
     };
     
     server = new BankingMCPServer(config);
@@ -391,7 +391,7 @@ async function calculateComplianceScore() {
     port: 3001,
     httpTransport: true,
     authServerUrl: 'https://auth.pingone.com/test-env/as',
-    resourceUrl: 'https://mcp-server.pingdemo.com'
+    resourceUrl: 'mcpserver.ping.demo'
   };
   
   const server = new BankingMCPServer(config);

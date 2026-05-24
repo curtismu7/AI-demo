@@ -36,8 +36,8 @@ jest.mock('../../services/configStore', () => ({
     admin_client_id: 'admin-cid',
     user_client_id: 'user-cid',
     pingone_mcp_token_exchanger_client_id: 'mcp-cid',
-    pingone_audience_enduser: 'https://ai-agent.pingdemo.com',
-    pingone_resource_mcp_server_uri: 'https://mcp-server.pingdemo.com',
+    pingone_audience_enduser: 'agentgateway.ping.demo',
+    pingone_resource_mcp_server_uri: 'mcpserver.ping.demo',
   }[key] || null)),
 }));
 
