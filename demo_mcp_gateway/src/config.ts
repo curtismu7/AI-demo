@@ -30,6 +30,14 @@ export interface GatewayConfig {
   // Set GW_INTROSPECTION_ENDPOINT to enable active-token validation at the gateway.
   // Falls back to PINGONE_INTROSPECTION_ENDPOINT if unset.
   introspectionEndpoint: string;
+  // Credentials used for RFC 7662 introspection requests.
+  // PingOne only returns active:true for a token when the introspecting client
+  // is the token's issuing client or a resource server that owns the audience.
+  // Set GW_INTROSPECTION_CLIENT_ID + GW_INTROSPECTION_CLIENT_SECRET to use a
+  // dedicated introspection principal (e.g. the MCP exchanger client) rather
+  // than the gateway's own client credentials.  Falls back to clientId/Secret.
+  introspectionClientId: string;
+  introspectionClientSecret: string;
   // Dev/mock bypass — when true, skip required-var guards and make auth pipeline passthrough.
   devBypass: boolean;
   // When true, skip RFC 8693 re-exchange on olb/invest WebSocket legs.
@@ -130,6 +138,8 @@ export function loadConfig(): GatewayConfig {
     hitlServiceUrl: optional('HITL_SERVICE_URL', ''),
     introspectionEndpoint: optional('GW_INTROSPECTION_ENDPOINT',
       optional('PINGONE_INTROSPECTION_ENDPOINT', '')),
+    introspectionClientId: optional('GW_INTROSPECTION_CLIENT_ID', ''),
+    introspectionClientSecret: optional('GW_INTROSPECTION_CLIENT_SECRET', ''),
     devBypass: DEV_BYPASS,
     mcpServerPassthrough: process.env.MCP_GW_PASSTHROUGH_TO_MCP_SERVER === 'true',
     // Phase 266 fields

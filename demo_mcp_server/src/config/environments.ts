@@ -36,13 +36,15 @@ export abstract class BaseEnvironmentConfig {
       pingone: {
         baseUrl: env.PINGONE_BASE_URL!,
         // RFC 7662 introspection client. PingOne returns active:true ONLY to
-        // the client that requested the token; the gateway performs the
-        // downstream RFC 8693 exchange as MCP_GW_CLIENT_ID, so the MCP server
-        // MUST introspect as that same app. Prefer MCP_GW_* (sourced from the
-        // vault); fall back to PINGONE_CLIENT_* for back-compat / .env-only
-        // dev. Invariant + rationale: REGRESSION_PLAN.md §4 2026-05-18.
-        clientId: env.MCP_GW_CLIENT_ID || env.PINGONE_CLIENT_ID!,
-        clientSecret: env.MCP_GW_CLIENT_SECRET || env.PINGONE_CLIENT_SECRET!,
+        // the client that ISSUED the token (or a resource server that owns the
+        // audience). In passthrough mode (MCP_GW_PASSTHROUGH_TO_MCP_SERVER=true)
+        // the token arriving at the MCP server has aud=mcpgateway.ping.demo and
+        // was issued by the MCP exchanger (GW_INTROSPECTION_CLIENT_ID). Use that
+        // client for introspection; fall back to MCP_GW_CLIENT_ID (gateway's own
+        // client) for non-passthrough mode, then PINGONE_CLIENT_* for back-compat.
+        // Invariant + rationale: REGRESSION_PLAN.md §4.
+        clientId: env.GW_INTROSPECTION_CLIENT_ID || env.MCP_GW_CLIENT_ID || env.PINGONE_CLIENT_ID!,
+        clientSecret: env.GW_INTROSPECTION_CLIENT_SECRET || env.MCP_GW_CLIENT_SECRET || env.PINGONE_CLIENT_SECRET!,
         tokenIntrospectionEndpoint: env.PINGONE_INTROSPECTION_ENDPOINT!,
         authorizationEndpoint: env.PINGONE_AUTHORIZATION_ENDPOINT!,
         tokenEndpoint: env.PINGONE_TOKEN_ENDPOINT!

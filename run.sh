@@ -27,6 +27,29 @@ set -euo pipefail
 
 BASEDIR="$(cd "$(dirname "$0")" && pwd)"
 
+# ── Auto-load VAULT_PASSWORD from .env files ──────────────────────────────────
+# If VAULT_PASSWORD is not already set in the shell environment, try to source
+# it from the root .env or demo_api_server/.env (in that order). This lets
+# operators put VAULT_PASSWORD in their .env file rather than manually
+# exporting it before each ./run.sh invocation.
+#
+# Security: these files are plaintext on disk — same risk profile as any other
+# secret in .env. Only VAULT_PASSWORD is extracted; we don't source the entire
+# file to avoid polluting the run.sh shell environment with unrelated vars.
+if [[ -z "${VAULT_PASSWORD:-}" ]]; then
+  for _env_candidate in "${BASEDIR}/.env" "${BASEDIR}/demo_api_server/.env"; do
+    if [[ -f "$_env_candidate" ]]; then
+      _vp=$(grep -E '^VAULT_PASSWORD=' "$_env_candidate" 2>/dev/null | head -1 | sed 's/^VAULT_PASSWORD=//' | sed 's/^"//' | sed 's/"$//' | tr -d "'")
+      if [[ -n "$_vp" ]]; then
+        export VAULT_PASSWORD="$_vp"
+        echo "[VAULT] Auto-loaded VAULT_PASSWORD from ${_env_candidate}"
+        break
+      fi
+    fi
+  done
+  unset _env_candidate _vp
+fi
+
 API_HOST="api.ping.demo"
 API_PORT=3001
 UI_PORT=4000
@@ -807,7 +830,9 @@ ensure_service_env() {
 # Done as a single pass here so no service can start before its .env is in place.
 # (Previously each ensure_service_env was called inline just before that service's
 # launch block, creating a race on the first service.)
-for _svc in demo_mcp_server demo_mcp_gateway demo_hitl_service \
+# demo_mcp_server is excluded: it has a standalone .env with its own
+# PINGONE_CLIENT_* and GW_INTROSPECTION_* values — don't overwrite it.
+for _svc in demo_mcp_gateway demo_hitl_service \
             demo_agent_service demo_mcp_invest; do
   [[ -d "$BASEDIR/$_svc" ]] && ensure_service_env "$_svc"
 done
@@ -839,6 +864,9 @@ if [[ -d "$BASEDIR/demo_mcp_server" ]]; then
   echo "[BOT] Starting Demo MCP Server on :8080..."
   (
     cd "$BASEDIR/demo_mcp_server"
+    VAULT_PASSWORD="${VAULT_PASSWORD:-}" \
+    VAULT_PATH="${VAULT_PATH:-}" \
+    NODE_EXTRA_CA_CERTS="${NODE_EXTRA_CA_CERTS:-}" \
     npm start > "${LOG_MCP}" 2>&1
   ) &
   echo $! > "$PID_MCP"

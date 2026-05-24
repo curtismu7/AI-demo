@@ -15,6 +15,8 @@ import { BankingAuthenticationManager } from './auth/BankingAuthenticationManage
 import { BankingSessionManager } from './storage/BankingSessionManager';
 import { BankingToolProvider } from './tools/BankingToolProvider';
 import { BankingAPIClient } from './banking/BankingAPIClient';
+import { TokenExchangeService } from './auth/TokenExchangeService';
+import { Logger, createDefaultLoggerConfig } from './utils/Logger';
 
 // Export all types and interfaces for library usage
 export * from './types';
@@ -96,8 +98,36 @@ async function main(): Promise<void> {
       circuitBreakerThreshold: config.bankingApi.circuitBreakerThreshold
     });
     
-    // Initialize tool provider
+    // Initialize tool provider (also initialises the Logger singleton — must happen before TokenExchangeService)
     const toolProvider = new BankingToolProvider(bankingClient, authManager, sessionManager);
+
+    // Step 9 token exchange: when BANKING_API_RESOURCE_URI is set, the MCP server
+    // must exchange the gateway-scoped token (aud=mcpgateway.ping.demo) for a
+    // resource-scoped token (aud=enduser.ping.demo) before calling the Banking API.
+    // The exchanger client is the same MCP exchanger app used by the BFF (d3f8fead).
+    // Gated: if neither env var is set, tokenExchangeService is undefined and
+    // TokenResolver falls back to agent-passthrough (backward compat / direct WS mode).
+    const tokenExchangerClientId = process.env.PINGONE_MCP_EXCHANGER_CLIENT_ID || process.env.AGENT_OAUTH_CLIENT_ID;
+    const tokenExchangerClientSecret = process.env.PINGONE_MCP_EXCHANGER_CLIENT_SECRET || process.env.AGENT_OAUTH_CLIENT_SECRET;
+    const bankingApiResourceUri = process.env.BANKING_API_RESOURCE_URI;
+    if (tokenExchangerClientId && tokenExchangerClientSecret && bankingApiResourceUri) {
+      // Logger singleton is now initialised (by BankingToolProvider above) — safe to use here
+      const logger = Logger.getInstance(createDefaultLoggerConfig());
+      // PINGONE_TOKEN_ENDPOINT points at the auth server (auth.pingone.com/.../as/token).
+      // PINGONE_BASE_URL points at the Management API — not usable for token operations.
+      // Pass tokenEndpoint explicitly so TokenExchangeService uses the correct host.
+      const tokenExchangeService = new TokenExchangeService({
+        pingoneBaseUrl: config.pingone.baseUrl,
+        environmentId: config.pingone.environmentId || '',
+        tokenEndpoint: process.env.PINGONE_TOKEN_ENDPOINT,
+        clientId: tokenExchangerClientId,
+        clientSecret: tokenExchangerClientSecret,
+        requireMayAct: false,  // Step 9: act claim already established in Exchange #1/#2
+        resourceUri: bankingApiResourceUri,
+      }, logger);
+      toolProvider.setTokenExchangeService(tokenExchangeService);
+      console.log(`[MCP] Step 9 token exchange enabled — audience: ${bankingApiResourceUri}`);
+    }
     
     // Initialize and start MCP server
     const serverConfig = {

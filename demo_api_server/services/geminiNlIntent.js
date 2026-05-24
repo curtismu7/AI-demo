@@ -161,7 +161,19 @@ async function parseNaturalLanguage(message, context = {}, provider = 'auto', la
     return { source: 'heuristic', result: heuristicResult };
   }
 
-  if (heuristicEnabled && heuristicResult && heuristicResult.kind !== 'none') {
+  // agent_mode controls heuristicRouting per the five-mode spec.
+  // When mode is helix_google (Helix only), bypass the heuristic fast-return
+  // so the LLM path is always taken — matching heuristicRouting:false in agentModeResolver.
+  const { resolveAgentMode } = require('./agentModeResolver');
+  const rawAgentMode = configStore.getEffective('agent_mode');
+  const resolvedAgentMode = rawAgentMode
+    ? resolveAgentMode(rawAgentMode, configStore.getEffective('agent_external_wiring'))
+    : null;
+  const heuristicRoutingEnabled = resolvedAgentMode
+    ? resolvedAgentMode.heuristicRouting
+    : heuristicEnabled;
+
+  if (heuristicRoutingEnabled && heuristicResult && heuristicResult.kind !== 'none') {
     return { source: 'heuristic', result: heuristicResult };
   }
 
