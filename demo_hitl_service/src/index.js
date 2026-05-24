@@ -40,6 +40,18 @@ const ALLOWED_ORIGINS = (process.env.HITL_ALLOWED_ORIGINS || '')
   .map((s) => s.trim())
   .filter(Boolean);
 
+// Startup env validation — warn loudly so run.sh log tail shows the issue
+if (!ALLOWED_ORIGINS.length) {
+  console.warn(
+    '[demo-hitl-service] WARNING: HITL_ALLOWED_ORIGINS is not set. ' +
+    'CORS will allow all origins — set this to a comma-separated list of ' +
+    'allowed origins (e.g. https://api.ping.demo:4000,https://api.ping.demo:3005) ' +
+    'in demo_api_server/.env'
+  );
+}
+
+const _envOk = ALLOWED_ORIGINS.length > 0;
+
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   if (!ALLOWED_ORIGINS.length || (origin && ALLOWED_ORIGINS.includes(origin))) {
@@ -51,9 +63,16 @@ app.use((req, res, next) => {
   next();
 });
 
-// Health
+// Health — includes uptime and env check result
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', service: 'banking-hitl-service', ts: new Date().toISOString() });
+  res.json({
+    status: 'ok',
+    service: 'banking-hitl-service',
+    uptime: process.uptime(),
+    checks: {
+      env: _envOk ? 'ok' : 'warn',
+    },
+  });
 });
 
 // Challenge routes
@@ -68,14 +87,27 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
-app.listen(PORT, HOST, () => {
+const server = app.listen(PORT, HOST, () => {
   teachLog.info('hitl service listening', {
     host: HOST,
     port: PORT,
     notifyMode: process.env.HITL_NOTIFY_MODE || 'log',
     dashboardUrl: process.env.HITL_DASHBOARD_URL || 'http://localhost:3000/dashboard/approve',
   });
+  console.log(`[demo-hitl-service] Ready on :${PORT}`);
 });
 
-process.on('SIGINT', () => process.exit(0));
-process.on('SIGTERM', () => process.exit(0));
+// Graceful shutdown — drain in-flight requests before exit
+const shutdown = (signal) => {
+  console.log(`[demo-hitl-service] ${signal} received — shutting down`);
+  server.close(() => {
+    console.log('[demo-hitl-service] HTTP server closed');
+    process.exit(0);
+  });
+  setTimeout(() => {
+    console.error('[demo-hitl-service] Drain timeout — forcing exit');
+    process.exit(1);
+  }, 5000);
+};
+process.on('SIGINT',  () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
