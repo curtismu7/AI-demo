@@ -38,6 +38,7 @@ const _SECRET_KEYS_RAW = [
   'demo_admin_password',
   'mcp_gw_client_secret',
   'RECOGNIZE_API_KEY',
+  'gw_introspection_client_secret',
 ];
 // Membership is UPPER-canonical: config keys are stored UPPER everywhere
 // (in-memory cache + SQLite rows), so secret detection must match regardless
@@ -205,8 +206,10 @@ ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic 
   // Gateway. (PINGONE_RESOURCE_AGENT_GATEWAY_URI = the AI Agent actor-CC
   // audience.) The gateway re-exchanges downstream.
   PINGONE_AI_AGENT_CLIENT_ID:             { public: true,  default: '' }, // Demo AI Agent App client ID — the RFC 8693 actor
-  PINGONE_RESOURCE_AGENT_GATEWAY_URI:     { public: true,  default: 'agentgateway.ping.demo' }, // AI Agent actor client-credentials audience — matches Demo Agent Gateway resource aud in PingOne
-  PINGONE_RESOURCE_MCP_GATEWAY_URI:       { public: true,  default: 'mcpgateway.ping.demo' },   // Single-exchange output audience (MCP Gateway) — matches Demo MCP Gateway resource aud in PingOne
+  // No defaults for audience URIs — an unconfigured audience must fail explicitly,
+  // not silently use a stale fallback value that produces a confusing token error.
+  PINGONE_RESOURCE_AGENT_GATEWAY_URI:     { public: true,  default: '' }, // AI Agent actor client-credentials audience — matches Demo Agent Gateway resource aud in PingOne
+  PINGONE_RESOURCE_MCP_GATEWAY_URI:       { public: true,  default: '' }, // Single-exchange output audience (MCP Gateway) — matches Demo MCP Gateway resource aud in PingOne
 
   // RFC 8693 Token Exchange — MCP server resource URI
   // When set, the Backend-for-Frontend (BFF) exchanges user tokens for delegated tokens scoped to this
@@ -408,6 +411,12 @@ ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic 
   // PingOne Recognize — biometric / device intelligence
   RECOGNIZE_API_KEY:    { public: false, default: '' },
   RECOGNIZE_TENANT_NAME: { public: true,  default: '' },
+
+  // MCP Gateway token introspection credentials (GW_INTROSPECTION_*).
+  // Consumed by demo_mcp_gateway/src/config.ts via process.env; registered here
+  // so the shared .env coverage guard can verify they are reachable via configStore.
+  gw_introspection_client_id:     { public: true,  default: '' },
+  gw_introspection_client_secret: { public: false, default: '' },
 };
 
 // ---------------------------------------------------------------------------
@@ -940,6 +949,10 @@ class ConfigStore {
       // Agent mode (five-mode provider)
       agent_mode:                           ['AGENT_MODE'],
       agent_external_wiring:                ['AGENT_EXTERNAL_WIRING'],
+
+      // MCP Gateway token introspection (consumed by demo_mcp_gateway via process.env)
+      gw_introspection_client_id:           ['GW_INTROSPECTION_CLIENT_ID'],
+      gw_introspection_client_secret:       ['GW_INTROSPECTION_CLIENT_SECRET'],
     };
 
     const envVars = envFallbackMap[key] || [];
@@ -1118,26 +1131,36 @@ function buildAllowedScopesByAudience() {
     ];
   }
 
+  // WR-19: warn when no resource URIs are configured (pre-bootstrap state)
+  // so operators don't wonder why scope enforcement is silent.
+  if (Object.keys(mapping).length === 0) {
+    console.warn(
+      '[configStore] buildAllowedScopesByAudience: no resource URIs configured — ' +
+      'scope-audience enforcement is disabled until bootstrap completes.'
+    );
+  }
+
   return mapping;
 }
 
 /**
  * Validate that provided scopes are allowed for the given audience.
  * Implements explicit scope-audience mapping (RFC 8707).
- * 
- * Throws error if:
- *   - scopes list is empty
- *   - audience is unknown
- *   - no scopes match the audience allowlist
- * 
- * @param {string[]} scopes - OAuth scopes to validate
- * @param {string} audience - Target audience URI (resource indicator)
- * @returns {object} { valid: true, scopes: narrowedScopes[], narrowed: boolean }
- * @throws {Error} with descriptive message for validation failures
+ *
+ * @param {string|string[]} scopes  OAuth scopes (array or space-separated string)
+ * @param {string}          audience  Target audience URI (resource indicator)
+ * @returns {{ valid: true, scopes: string[], narrowed: boolean }}
+ * @throws {Error} SCOPE_ERROR when no scopes provided
+ * @throws {Error} SCOPE_MISMATCH when none of the provided scopes are valid for the audience
+ *
+ * Note: unknown audiences pass through with a warning (WR-09).
  */
 function validateScopeAudience(scopes, audience) {
-  // Check: scopes not empty
-  if (!scopes || scopes.length === 0) {
+  // WR-20: coerce a space-separated string to an array
+  if (typeof scopes === 'string') {
+    scopes = scopes.split(/\s+/).filter(Boolean);
+  }
+  if (!Array.isArray(scopes) || scopes.length === 0) {
     throw new Error(
       `SCOPE_ERROR: No scopes provided for audience ${audience}`
     );
@@ -1149,13 +1172,16 @@ function validateScopeAudience(scopes, audience) {
   // Check: audience is known in mapping
   const allowedForAudience = ALLOWED_SCOPES_BY_AUDIENCE[audience];
   if (!allowedForAudience) {
-    // Unknown audience - gracefully degrade by allowing all scopes
-    // This allows the validator to be added without breaking existing deployments
+    // WR-09: log a warning so operators notice unconfigured audiences
+    console.warn(
+      '[configStore] validateScopeAudience: unknown audience "%s" — scopes not validated.',
+      audience
+    );
     return {
       valid: true,
-      scopes: scopes,
+      scopes,
       narrowed: false,
-      note: `Unknown audience (not in ALLOWED_SCOPES_BY_AUDIENCE mapping): ${audience}`,
+      note: `Unknown audience — scopes not validated: ${audience}`,
     };
   }
 

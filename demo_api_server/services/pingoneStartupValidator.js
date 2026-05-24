@@ -35,18 +35,26 @@ const TAG = '[pingone-startup]';
  * Always resolves (never throws) so callers don't need try/catch.
  */
 async function runStartupValidation() {
-  const enabled = configStore.getEffective('pingone_validate_on_startup');
-  if (enabled !== 'true' && enabled !== true) {
-    return; // opt-in only
+  // WR-02: normalize to lowercase 'true' so TRUE / 1 / true all work
+  const enabledRaw = configStore.getEffective('pingone_validate_on_startup');
+  const enabled = String(enabledRaw || '').toLowerCase() === 'true';
+  if (!enabled) {
+    return; // opt-in only — PINGONE_VALIDATE_ON_STARTUP=true to enable
   }
 
-  // Skip if management credentials are not configured — avoids noisy errors on
-  // machines that have not run bootstrap yet.
-  const mgmtClientId = configStore.getEffective('PINGONE_MGMT_CLIENT_ID')
-    || configStore.getEffective('PINGONE_MANAGEMENT_CLIENT_ID');
+  // CR-01: The downstream getManagementToken() reads worker credentials
+  // (pingone_worker_client_id), not MGMT_CLIENT_ID. Check the actual key it
+  // uses so we don't silently skip on freshly bootstrapped machines.
+  // WR-01: use consistent snake_case keys throughout this function.
+  const mgmtClientId =
+    configStore.getEffective('pingone_worker_client_id') ||
+    configStore.getEffective('pingone_mgmt_client_id') ||
+    configStore.getEffective('pingone_management_client_id');
   if (!mgmtClientId) {
-    console.warn(`${TAG} Skipped — management worker credentials not configured.`
-      + ' Set PINGONE_WORKER_CLIENT_ID + PINGONE_WORKER_CLIENT_SECRET (or PINGONE_MGMT_CLIENT_ID) to enable.');
+    console.warn(
+      `${TAG} Skipped — management worker credentials not configured.` +
+      ' Set PINGONE_WORKER_CLIENT_ID + PINGONE_WORKER_CLIENT_SECRET to enable.'
+    );
     return;
   }
 

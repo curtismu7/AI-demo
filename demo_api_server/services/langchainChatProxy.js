@@ -37,17 +37,19 @@ const { getSessionBearerForMcp } = require('./mcpWebSocketClient');
 const LANGCHAIN_WS_PATH = '/ws/langchain';
 
 function langchainUpstreamUrl() {
-  // Loopback only; mirrors run-demo.sh chat WS port (8889).
-  return (
+  const url =
     configStore.getEffective('langchain_chat_ws_url') ||
-    process.env.LANGCHAIN_CHAT_WS_URL ||
-    'ws://localhost:8889'
-  );
+    process.env.LANGCHAIN_CHAT_WS_URL;
+  if (!url) {
+    throw new Error(
+      'Langchain upstream URL not configured. ' +
+      'Set langchain_chat_ws_url via /config or LANGCHAIN_CHAT_WS_URL in .env.'
+    );
+  }
+  return url;
 }
 
 function langchainAudience() {
-  // Returns '' when not provisioned — callers must handle empty string
-  // (performTokenExchange will fail with a clear error, not silently use a wrong audience).
   return configStore.getEffective('pingone_resource_langchain_agent_uri') || '';
 }
 
@@ -79,6 +81,16 @@ async function resolveLangchainToken(req) {
     .split(/\s+/)
     .filter(Boolean);
   const primaryAud = langchainAudience();
+  // CR-06: Fail explicitly when audience is unconfigured — passing an empty
+  // string to performTokenExchange causes PingOne to issue a token with the
+  // default audience, silently violating the T-5 per-hop audience guarantee.
+  if (!primaryAud) {
+    const err = new Error(
+      'langchain audience not configured (pingone_resource_langchain_agent_uri)'
+    );
+    err.code = 'audience_unconfigured';
+    throw err;
+  }
 
   try {
     const exchanged = await oauthService.performTokenExchange(
@@ -118,16 +130,27 @@ async function resolveLangchainToken(req) {
   }
 }
 
+// Maximum frames to buffer before upstream opens. Bounded to prevent memory
+// exhaustion from a client that fires messages before the upstream connects.
+const PRE_OPEN_QUEUE_MAX = 64;
+// How long to wait for the upstream WebSocket to open before giving up.
+const UPSTREAM_CONNECT_TIMEOUT_MS = 5000;
+
 /**
  * Pipe frames between the browser WS and the langchain WS for the life of the
- * session. The FIRST `session_init` frame from the browser is rewritten to
- * carry the BFF-resolved token (the browser's frame never contains one).
+ * session. The `session_init` frame from the browser is rewritten to carry the
+ * BFF-resolved token; identity fields are stripped from every frame so the
+ * browser can never influence the authenticated identity.
  *
- * @param {WebSocket} browserWs   accepted browser connection
+ * @param {WebSocket} browserWs      accepted browser connection
  * @param {string}    langchainToken token to inject into session_init
  */
 function pipe(browserWs, langchainToken) {
-  const upstream = new WebSocket(langchainUpstreamUrl());
+  // handshakeTimeout closes the upstream if it never opens — prevents
+  // preOpenQueue growing unbounded when the langchain agent is unreachable.
+  const upstream = new WebSocket(langchainUpstreamUrl(), {
+    handshakeTimeout: UPSTREAM_CONNECT_TIMEOUT_MS,
+  });
   let upstreamOpen = false;
   let sessionInitInjected = false;
   const preOpenQueue = [];
@@ -169,27 +192,35 @@ function pipe(browserWs, langchainToken) {
   browserWs.on('message', (raw) => {
     let outbound = raw;
 
-    // Inject the BFF-resolved token into the first session_init only. The
-    // browser-supplied frame is parsed defensively; on any parse failure we
-    // forward unchanged (langchain will refuse a tokenless session_init).
-    if (!sessionInitInjected) {
-      try {
-        const msg = JSON.parse(raw.toString());
-        if (msg && msg.type === 'session_init') {
-          // Strip any client-claimed identity — Path A: identity is
-          // token-derived. Never let the browser influence it.
-          delete msg.userEmail;
+    // Always sanitize identity fields from every browser frame — not just the
+    // first session_init. This prevents a spoofed re-send of session_init with
+    // a crafted auth_token after the session is established (CR-07).
+    try {
+      const msg = JSON.parse(raw.toString());
+      if (msg && (msg.auth_token !== undefined || msg.userEmail !== undefined || msg.type === 'session_init')) {
+        // Strip any client-claimed identity. Path A: identity is token-derived.
+        delete msg.userEmail;
+        delete msg.auth_token;
+
+        // On the first session_init, inject the BFF-resolved token.
+        if (msg.type === 'session_init' && !sessionInitInjected) {
           msg.auth_token = langchainToken;
-          outbound = JSON.stringify(msg);
           sessionInitInjected = true;
         }
-      } catch (_) {
-        // non-JSON / not session_init — forward as-is
+        outbound = JSON.stringify(msg);
       }
+    } catch (_) {
+      // non-JSON frame — forward as-is
     }
 
-    if (upstreamOpen) upstream.send(outbound);
-    else preOpenQueue.push(outbound);
+    if (upstreamOpen) {
+      upstream.send(outbound);
+    } else if (preOpenQueue.length < PRE_OPEN_QUEUE_MAX) {
+      preOpenQueue.push(outbound);
+    } else {
+      // Queue full — upstream is not responding in time; close the connection.
+      closeBoth(1013, 'upstream not available');
+    }
   });
 
   browserWs.on('close', () => closeBoth(1000, 'client closed'));
@@ -221,12 +252,10 @@ function attachLangchainChatProxy(server, sessionMiddleware) {
     }
 
     // Run express-session to populate req.session from the connect.sid cookie.
-    sessionMiddleware(req, {}, () => {
+    sessionMiddleware(req, {}, async () => {
       const authed =
-        req.session &&
-        req.session.oauthTokens &&
-        (req.session.oauthTokens.accessToken ||
-          req.session.oauthTokens.access_token);
+        req.session?.oauthTokens?.accessToken ||
+        req.session?.oauthTokens?.access_token;
 
       if (!authed) {
         socket.write(
@@ -236,26 +265,33 @@ function attachLangchainChatProxy(server, sessionMiddleware) {
         return;
       }
 
-      wss.handleUpgrade(req, socket, head, async (browserWs) => {
+      // WR-13: Resolve the token BEFORE accepting the WebSocket upgrade so that
+      // a failure results in an HTTP 503 (clean refusal) rather than a 101
+      // upgrade followed by a JSON error frame and close — which is harder for
+      // clients to handle and exposes the upgrade leg unnecessarily.
+      let langchainToken;
+      try {
+        langchainToken = await resolveLangchainToken(req);
+      } catch (err) {
+        console.warn(
+          '[langchain-proxy] token resolution failed (code=%s): %s',
+          err.code || 'unknown',
+          err.message
+        );
+        socket.write(
+          'HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\n\r\n'
+        );
+        socket.destroy();
+        return;
+      }
+
+      wss.handleUpgrade(req, socket, head, (browserWs) => {
         try {
-          const token = await resolveLangchainToken(req);
-          pipe(browserWs, token);
+          pipe(browserWs, langchainToken);
         } catch (err) {
-          try {
-            browserWs.send(
-              JSON.stringify({
-                type: 'error',
-                error_code: 'identity_unresolved',
-                error_message:
-                  'Could not establish an authenticated chat identity',
-              })
-            );
-          } catch (_) {}
-          browserWs.close(1011, 'identity unresolved');
-          console.warn(
-            '[langchain-proxy] token resolution failed: %s',
-            err.message
-          );
+          // langchainUpstreamUrl() throws if not configured
+          console.warn('[langchain-proxy] pipe setup failed (code=%s): %s', err.code || 'config', err.message);
+          try { browserWs.close(1011, 'proxy not configured'); } catch (_) {}
         }
       });
     });

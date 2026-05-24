@@ -4,51 +4,70 @@ const scopeTopology = require('./scopeTopology');
 const { getManagementToken } = require('./pingOneClientService');
 
 /**
- * Scope audit reference table.
+ * Build the scope audit reference table lazily so that a topology load failure
+ * only affects callers of auditResourceScopes, not every module that requires
+ * this file (WR-07).
  *
  * Keys are the ACTUAL PingOne resource server display names (as seen in the
  * Management API response and in docs/PINGONE_CONFIG.md).
  *
  * scope-topology.json uses internal "Super Banking *" names; the provisioning
- * block maps those to the "Demo *" names used in PingOne.  Where a resource is
- * owned by the topology manifest we derive scopes from it; otherwise we pin them
- * explicitly so they stay in sync with docs/PINGONE_CONFIG.md.
+ * block maps those to the "Demo *" names used in PingOne.
  *
  * Source of truth: docs/PINGONE_CONFIG.md (Resource Scopes section).
  */
-const SCOPE_REFERENCE_TABLE = {
-  // Topology-managed resources — scopes derived from scope-topology.json
-  'Demo API':          scopeTopology.resourceScopes('Super Banking API'),
-  'Demo Agent Gateway': scopeTopology.resourceScopes('Super Banking Agent Gateway'),
-  'Demo MCP Gateway':  scopeTopology.resourceScopes('Super Banking MCP Gateway'),
-  'Demo MCP Server':   scopeTopology.resourceScopes('Super Banking MCP Server'),
-};
+function buildScopeReferenceTable() {
+  const entries = [
+    ['Demo API',           'Super Banking API'],
+    ['Demo Agent Gateway', 'Super Banking Agent Gateway'],
+    ['Demo MCP Gateway',   'Super Banking MCP Gateway'],
+    ['Demo MCP Server',    'Super Banking MCP Server'],
+  ];
+  const table = {};
+  for (const [demoName, topologyName] of entries) {
+    try {
+      table[demoName] = scopeTopology.resourceScopes(topologyName);
+    } catch (e) {
+      console.warn('[scopeAudit] Could not load scopes for "%s" from topology: %s', demoName, e.message);
+      table[demoName] = [];
+    }
+  }
+  return table;
+}
+
+// Built lazily on first audit call so a topology load failure doesn't crash the
+// module at require time. Exported for test inspection only.
+let _scopeReferenceTableCache = null;
+function getScopeReferenceTable() {
+  if (!_scopeReferenceTableCache) {
+    _scopeReferenceTableCache = buildScopeReferenceTable();
+  }
+  return _scopeReferenceTableCache;
+}
 
 /**
  * Compare current scopes against expected (order-independent set comparison).
  */
 function compareScopes(current, expected) {
-  const currentSet = new Set(current || []);
+  const currentSet  = new Set(current  || []);
   const expectedSet = new Set(expected || []);
 
-  if (currentSet.size === expectedSet.size && [...currentSet].every((s) => expectedSet.has(s))) {
+  const missing = [...expectedSet].filter((s) => !currentSet.has(s));
+  const extra   = [...currentSet].filter((s)  => !expectedSet.has(s));
+
+  // CR-04: removed unreachable NEEDS_REVIEW branch — after filtering missing
+  // and extra, the only remaining case is both empty, which means CORRECT.
+  if (missing.length === 0 && extra.length === 0) {
     return { status: 'CORRECT', mismatches: null };
   }
 
-  const missing = [...expectedSet].filter((s) => !currentSet.has(s));
-  const extra   = [...currentSet].filter((s) => !expectedSet.has(s));
-
-  if (missing.length > 0 || extra.length > 0) {
-    return {
-      status: 'MISMATCH',
-      mismatches: {
-        missing: missing.length > 0 ? missing : undefined,
-        extra:   extra.length   > 0 ? extra   : undefined,
-      },
-    };
-  }
-
-  return { status: 'NEEDS_REVIEW', mismatches: null };
+  return {
+    status: 'MISMATCH',
+    mismatches: {
+      missing: missing.length > 0 ? missing : undefined,
+      extra:   extra.length   > 0 ? extra   : undefined,
+    },
+  };
 }
 
 /**
@@ -62,6 +81,10 @@ function compareScopes(current, expected) {
 async function auditResourceScopes(validatedResources) {
   const envId  = configStore.getEffective('PINGONE_ENVIRONMENT_ID');
   const region = configStore.getEffective('PINGONE_REGION') || 'com';
+
+  // Build (or retrieve cached) reference table at call time, not at require
+  // time, so topology failures don't crash module load (WR-07).
+  const refTable = getScopeReferenceTable();
 
   try {
     const token   = await getManagementToken();
@@ -77,29 +100,30 @@ async function auditResourceScopes(validatedResources) {
               { headers: { Authorization: `Bearer ${token}` }, timeout: 10000 }
             );
 
-            const scopeList     = (scopesData.scopes || []).map((s) => s.name);
-            const expectedScopes = SCOPE_REFERENCE_TABLE[res.name] || [];
+            const scopeList      = (scopesData.scopes || []).map((s) => s.name);
+            const expectedScopes = refTable[res.name] || [];
             const scopeResult    = compareScopes(scopeList, expectedScopes);
 
             return {
-              resourceId:     res.resourceId,
-              name:           res.name,
-              audience:       res.audience,
-              currentScopes:  scopeList,
+              resourceId:    res.resourceId,
+              name:          res.name,
+              audience:      res.audience,
+              currentScopes: scopeList,
               expectedScopes,
-              status:         scopeResult.status,
-              mismatches:     scopeResult.mismatches,
+              status:        scopeResult.status,
+              mismatches:    scopeResult.mismatches,
             };
           } catch (error) {
-            console.error(`[scopeAudit] Error auditing scopes for ${res.name}:`, error.message);
+            // WR-08: warn, not error — a 404/401 from PingOne is recoverable
+            console.warn(`[scopeAudit] Could not audit scopes for "${res.name}": ${error.message}`);
             return {
-              resourceId:     res.resourceId,
-              name:           res.name,
-              audience:       res.audience,
-              currentScopes:  [],
-              expectedScopes: SCOPE_REFERENCE_TABLE[res.name] || [],
-              status:         'ERROR',
-              error:          error.message,
+              resourceId:    res.resourceId,
+              name:          res.name,
+              audience:      res.audience,
+              currentScopes: [],
+              expectedScopes: refTable[res.name] || [],
+              status:        'ERROR',
+              error:         error.message,
             };
           }
         })
@@ -111,7 +135,7 @@ async function auditResourceScopes(validatedResources) {
       scopeAudit: results,
     };
   } catch (error) {
-    console.error('[scopeAudit] Error auditing PingOne resource scopes:', error.message);
+    console.warn('[scopeAudit] Scope audit failed: %s', error.message);
     return {
       status:     'error',
       error:      error.message,
@@ -123,5 +147,9 @@ async function auditResourceScopes(validatedResources) {
 
 module.exports = {
   auditResourceScopes,
-  SCOPE_REFERENCE_TABLE,
+  // Tests and external callers that need to inspect the table can use either
+  // the getter or the lazily-evaluated property alias below.
+  getScopeReferenceTable,
+  // Back-compat alias — returns the built table (triggers lazy build on access).
+  get SCOPE_REFERENCE_TABLE() { return getScopeReferenceTable(); },
 };

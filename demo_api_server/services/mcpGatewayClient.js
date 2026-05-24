@@ -13,23 +13,32 @@
  *   Env var fallback: MCP_GATEWAY_HTTP_URL
  *   Default: https://api.ping.demo:3005
  *
+ * TLS validation:
+ *   Default: ENABLED (rejectUnauthorized: true). Set MCP_GATEWAY_REJECT_UNAUTHORIZED=0
+ *   to opt out for local dev (mkcert self-signed). This flag is forbidden in production.
+ *
  * Other env vars:
  *   MCP_GATEWAY_TIMEOUT_MS — per-request timeout in ms (default: 30000)
  */
 
+const crypto = require('node:crypto');
 const axios = require('axios');
 const https = require('node:https');
 const configStore = require('./configStore');
 
-// mkcert TLS cert covers api.ping.demo — rejectUnauthorized off for local dev.
-// Set MCP_GATEWAY_REJECT_UNAUTHORIZED=1 to enforce cert validation in prod.
-const _gatewayRejectUnauthorized = process.env.MCP_GATEWAY_REJECT_UNAUTHORIZED === '1';
-const _devHttpsAgent = new https.Agent({ rejectUnauthorized: _gatewayRejectUnauthorized });
+// TLS cert validation is ON by default. Opt out only for local dev.
+// Refusing opt-out in production prevents MITM exfil of bearer tokens.
+const _allowInsecureTls = process.env.MCP_GATEWAY_REJECT_UNAUTHORIZED === '0';
+if (_allowInsecureTls && process.env.NODE_ENV === 'production') {
+    // Hard-fail: insecure TLS in production would expose MCP bearer tokens.
+    console.error('[FATAL] MCP_GATEWAY_REJECT_UNAUTHORIZED=0 is not permitted in production.');
+    process.exit(1);
+}
+const _httpsAgent = new https.Agent({ rejectUnauthorized: !_allowInsecureTls });
 
-// Fallback used only when configStore has no value and env var is unset.
-const DEFAULT_GATEWAY_URL = 'https://api.ping.demo:3005';
-const DEFAULT_TIMEOUT_MS  = 30_000;
-const MCP_PROTOCOL_VERSION = '2025-11-25';
+const DEFAULT_TIMEOUT_MS    = 30_000;
+// Keep in sync with demo_mcp_gateway and demo_mcp_server package.json#mcpVersion.
+const MCP_PROTOCOL_VERSION  = '2025-11-25';
 
 /**
  * Call an MCP tool via the gateway HTTP endpoint.
@@ -51,7 +60,7 @@ async function callToolViaGateway(gatewayUrl, bearerToken, tool, params = {}, op
 
     const body = {
         jsonrpc: '2.0',
-        id:      opts.correlationId || Date.now(),
+        id:      opts.correlationId || crypto.randomUUID(),
         method:  'tools/call',
         params:  { name: tool, arguments: params },
     };
@@ -69,7 +78,11 @@ async function callToolViaGateway(gatewayUrl, bearerToken, tool, params = {}, op
         headers['X-TraT-Context'] = opts.tratContextHeader;
     }
 
-    const timeoutMs = parseInt(process.env.MCP_GATEWAY_TIMEOUT_MS || '', 10) || DEFAULT_TIMEOUT_MS;
+    const rawTimeout = parseInt(
+        configStore.getEffective('mcp_gateway_timeout_ms') || process.env.MCP_GATEWAY_TIMEOUT_MS || '',
+        10
+    );
+    const timeoutMs = Number.isFinite(rawTimeout) && rawTimeout > 0 ? rawTimeout : DEFAULT_TIMEOUT_MS;
 
     let response;
     try {
@@ -78,8 +91,7 @@ async function callToolViaGateway(gatewayUrl, bearerToken, tool, params = {}, op
             timeout: timeoutMs,
             // Handle error status codes ourselves so we can emit structured errors
             validateStatus: () => true,
-            // Allow self-signed certs if a deployment puts the gateway behind HTTPS
-            httpsAgent: _devHttpsAgent,
+            httpsAgent: _httpsAgent,
         });
     } catch (axErr) {
         console.error(
@@ -99,9 +111,14 @@ async function callToolViaGateway(gatewayUrl, bearerToken, tool, params = {}, op
     }
 
     if (status === 403) {
-        // Attach the gateway's response body so the BFF can surface the policy reason to the UI.
+        // Log only structured error fields — not the full body which may echo
+        // parts of the Authorization header in some gateway implementations.
         const body403 = response.data || {};
-        console.error('[mcpGatewayClient] 403 full response body:', JSON.stringify(body403));
+        console.warn(
+            '[mcpGatewayClient] 403 policy denied: error=%s message=%s',
+            body403.error || 'forbidden',
+            body403.message || '(no message)'
+        );
         throw Object.assign(
             new Error(body403.message || 'Gateway policy denied the tool call'),
             {
@@ -110,6 +127,16 @@ async function callToolViaGateway(gatewayUrl, bearerToken, tool, params = {}, op
                 gatewayErrorCode: body403.error || 'forbidden',
                 gatewayMessage: body403.message || '',
             },
+        );
+    }
+
+    // Redirects from a misconfigured gateway (e.g. 302 → login page) are not
+    // transparent here — surface them as explicit errors rather than falling
+    // through to JSON parsing an HTML body.
+    if (status >= 300 && status < 400) {
+        throw Object.assign(
+            new Error(`Gateway returned unexpected redirect (HTTP ${status})`),
+            { code: 'gateway_redirect_error', httpStatus: status },
         );
     }
 
@@ -159,12 +186,20 @@ async function callToolViaGateway(gatewayUrl, bearerToken, tool, params = {}, op
 
 /**
  * Resolve the configured gateway base URL.
- * SoT: configStore key 'mcp_gateway_http_url' (persisted to SQLite).
- * Fallback chain: configStore → MCP_GATEWAY_HTTP_URL env → DEFAULT_GATEWAY_URL.
+ * SoT: configStore key 'mcp_gateway_http_url' (persisted to SQLite/LMDB).
+ * Fallback: MCP_GATEWAY_HTTP_URL env var.
+ * Throws if neither is set — an unconfigured gateway must fail explicitly,
+ * not silently use a stale default that produces a confusing connection error.
  */
 function getMcpGatewayHttpUrl() {
-    const stored = configStore.getEffective('mcp_gateway_http_url');
-    return (stored || DEFAULT_GATEWAY_URL).replace(/\/$/, '');
+    const url = configStore.getEffective('mcp_gateway_http_url');
+    if (!url) {
+        throw new Error(
+            'MCP gateway URL not configured. ' +
+            'Set mcp_gateway_http_url via /config or set MCP_GATEWAY_HTTP_URL in .env.'
+        );
+    }
+    return url.replace(/\/$/, '');
 }
 
 module.exports = { callToolViaGateway, getMcpGatewayHttpUrl };

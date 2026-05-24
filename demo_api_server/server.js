@@ -1501,15 +1501,47 @@ app.use((err, req, res, _next) => {
     });
 });
 
+// WR-21: In production, transient background rejections (startup validators,
+// audit loggers, etc.) must not crash the server. Log and continue.
+// In development/test keep the hard exit so bugs surface loudly.
 process.on('unhandledRejection', (reason) => {
     console.error('[unhandledRejection]', reason);
-    process.exit(1);
+    if (process.env.NODE_ENV !== 'production') {
+        process.exit(1);
+    }
 });
 
 process.on('uncaughtException', (err) => {
     console.error('[uncaughtException]', err);
     process.exit(1);
 });
+
+/**
+ * Background startup tasks — run AFTER the vault is loaded into configStore
+ * and the server is listening. All tasks are fire-and-forget; failures are
+ * logged as warnings and never block requests (WR-22/WR-25).
+ */
+async function runBackgroundStartupTasks() {
+    // ── Redirect-URI guard ────────────────────────────────────────────────────
+    // Silently checks (and if missing, patches) the OAuth apps' redirect_uri
+    // allowlists in PingOne using the management worker token.
+    try {
+        const { ensureAllRedirectUris } = require('./services/pingoneAppConfigService');
+        await ensureAllRedirectUris();
+    } catch (err) {
+        console.warn('[redirect-uri-guard] Skipped —', err.message);
+    }
+
+    // ── Optional PingOne config validator ────────────────────────────────────
+    // Validates resource servers (audience) and scopes against docs/PINGONE_CONFIG.md.
+    // Opt-in: set PINGONE_VALIDATE_ON_STARTUP=true in .env or via /config admin UI.
+    try {
+        const { runStartupValidation } = require('./services/pingoneStartupValidator');
+        await runStartupValidation();
+    } catch (err) {
+        console.warn('[pingone-startup] Validation error (non-fatal):', err.message);
+    }
+}
 
 // Only start the server if this file is run directly (not imported for testing)
 if (require.main === module) {
@@ -1604,40 +1636,19 @@ if (require.main === module) {
             console.error('[langchain-proxy] failed to attach chat-WS proxy:', err.message);
         }
 
+        // WR-22/WR-25: Run background startup tasks INSIDE the IIFE's listen
+        // callback so they execute only after the vault has loaded into configStore
+        // and the server is actually ready. Previously these were bare setImmediate
+        // calls at module scope which could fire before loadVaultIntoConfigStore
+        // completed, causing false "credentials not configured" warnings.
+        setImmediate(() => runBackgroundStartupTasks());
+
         process.on('SIGTERM', () => {
             oauthMonitor.stop();
             server.close(() => process.exit(0));
         });
     })();
 }
-
-
-// ── Startup redirect-URI guard ──────────────────────────────────────────────
-// Silently checks (and if missing, patches) the OAuth apps' redirect_uri
-// allowlists in PingOne using the management worker token.
-// Non-blocking: runs after server is listening; never prevents startup.
-setImmediate(async () => {
-  try {
-    const { ensureAllRedirectUris } = require('./services/pingoneAppConfigService');
-    await ensureAllRedirectUris();
-  } catch (err) {
-    // Management credentials not configured, or PingOne unreachable — not fatal.
-    console.warn('[redirect-uri-guard] Skipped —', err.message);
-  }
-});
-
-// ── Optional PingOne config validator ──────────────────────────────────────
-// Validates resource servers (audience) and scopes against docs/PINGONE_CONFIG.md.
-// Opt-in: set PINGONE_VALIDATE_ON_STARTUP=true in .env or via /config admin UI.
-// Non-blocking: warns on mismatch; never prevents startup or delays requests.
-setImmediate(async () => {
-  try {
-    const { runStartupValidation } = require('./services/pingoneStartupValidator');
-    await runStartupValidation();
-  } catch (err) {
-    console.warn('[pingone-startup] Validation error (non-fatal):', err.message);
-  }
-});
 
 // Export app as the default (for supertest / existing requires) and attach
 // named flags so other modules can do: require('./server').isReplit etc.

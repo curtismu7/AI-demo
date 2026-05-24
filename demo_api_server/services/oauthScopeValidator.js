@@ -35,22 +35,43 @@ function buildAllowedScopesByAudience() {
 }
 
 /**
+ * Validate and narrow scopes for a target audience.
+ *
+ * @param {string|string[]} scopes  OAuth scopes (array or space-separated string)
+ * @param {string}          audience  Target resource audience
  * @returns {{ valid: true, scopes: string[], narrowed: boolean }}
- * @throws {Error} for empty scopes or no matching scopes for audience
+ * @throws {Error} SCOPE_ERROR when no scopes provided
+ * @throws {Error} SCOPE_MISMATCH when none of the provided scopes are valid for the audience
+ *
+ * Note on unknown audience: when the audience is not in the configured mapping
+ * (e.g. pre-bootstrap or a third-party resource), validation passes with all
+ * original scopes and a warning is logged. This is intentional open-fail
+ * behavior for audiences this service does not own.
  */
 function validateScopeAudience(scopes, audience) {
-  if (!scopes || scopes.length === 0) {
+  // WR-20: coerce a space-separated string to an array so callers don't need to split
+  if (typeof scopes === 'string') {
+    scopes = scopes.split(/\s+/).filter(Boolean);
+  }
+  if (!Array.isArray(scopes) || scopes.length === 0) {
     throw new Error(`SCOPE_ERROR: No scopes provided for audience ${audience}`);
   }
 
   const ALLOWED_SCOPES_BY_AUDIENCE = buildAllowedScopesByAudience();
   const allowedForAudience = ALLOWED_SCOPES_BY_AUDIENCE[audience];
   if (!allowedForAudience) {
+    // WR-09: log a warning so operators notice unconfigured audiences rather
+    // than silently bypassing RFC 8707 scope enforcement.
+    console.warn(
+      '[scope-validator] Unknown audience "%s" — not in configured mapping. ' +
+      'Scopes not validated. Set the relevant PINGONE_RESOURCE_*_URI env var to enforce.',
+      audience
+    );
     return {
       valid: true,
       scopes,
       narrowed: false,
-      note: `Unknown audience (not in ALLOWED_SCOPES_BY_AUDIENCE mapping): ${audience}`,
+      note: `Unknown audience — scopes not validated: ${audience}`,
     };
   }
 

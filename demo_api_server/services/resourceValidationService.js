@@ -6,40 +6,19 @@ const { getManagementToken } = require('./pingOneClientService');
  * Reference table: expected PingOne resource servers for this demo.
  * Source of truth: docs/PINGONE_CONFIG.md (Resource Servers section).
  *
+ * Only name + audience are listed here — this service validates existence and
+ * correct audience configuration. Scope validation is owned by scopeAuditService
+ * (which derives expected scopes from scope-topology.json). Having both here
+ * would create two sources of truth that can drift apart.
+ *
  * audience values MUST match the resource server's "audience" field in PingOne exactly.
  * These are plain strings, NOT URLs (e.g. "enduser.ping.demo", not "https://...").
  */
 const RESOURCE_REFERENCE_TABLE = [
-  {
-    name: 'Demo API',
-    audience: 'enduser.ping.demo',
-    expectedScopes: [
-      'read', 'write', 'transfer', 'mortgage:read',
-      'accounts:read', 'transactions:read', 'ai_agent',
-      'ai:agent:read', 'users:read', 'users:manage',
-      'admin:read', 'admin:write', 'admin:delete',
-    ],
-  },
-  {
-    name: 'Demo Agent Gateway',
-    audience: 'agentgateway.ping.demo',
-    expectedScopes: ['agent:invoke', 'banking:agent:invoke'],
-  },
-  {
-    name: 'Demo MCP Gateway',
-    audience: 'mcpgateway.ping.demo',
-    expectedScopes: ['read', 'write', 'transfer', 'mortgage:read', 'mcp:invoke'],
-  },
-  {
-    name: 'Demo MCP Server',
-    audience: 'mcpserver.ping.demo',
-    expectedScopes: [
-      'read', 'write', 'mortgage:read', 'mcp:invoke',
-      'banking:read', 'banking:write', 'banking:mcp:invoke', 'banking:mortgage:read',
-      'ai:agent:read', 'banking:ai:agent:read',
-      'users:read', 'users:manage', 'admin:read', 'admin:write', 'admin:delete',
-    ],
-  },
+  { name: 'Demo API',           audience: 'enduser.ping.demo'    },
+  { name: 'Demo Agent Gateway', audience: 'agentgateway.ping.demo' },
+  { name: 'Demo MCP Gateway',   audience: 'mcpgateway.ping.demo' },
+  { name: 'Demo MCP Server',    audience: 'mcpserver.ping.demo'  },
 ];
 
 /**
@@ -85,7 +64,10 @@ async function validateResources() {
         };
       }
 
-      const audienceMatches = found.audience === expected.audience;
+      // CR-03: trim both sides — a trailing space in the PingOne console
+      // renders invisibly but would cause a false CONFIG_ERROR.
+      const audienceMatches =
+        String(found.audience || '').trim() === expected.audience.trim();
 
       return {
         resourceId: found.id,

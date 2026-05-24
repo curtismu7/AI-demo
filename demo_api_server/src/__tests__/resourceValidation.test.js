@@ -134,7 +134,9 @@ describe('Resource Validation Service', () => {
       RESOURCE_REFERENCE_TABLE.forEach((resource) => {
         expect(resource).toHaveProperty('name');
         expect(resource).toHaveProperty('audience');
-        expect(resource).toHaveProperty('expectedScopes');
+        // expectedScopes is intentionally absent — scope validation is owned
+        // by scopeAuditService (derived from scope-topology.json). Having it
+        // here too created two sources of truth that could drift (CR-02).
       });
     });
 
