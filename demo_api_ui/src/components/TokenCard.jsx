@@ -139,7 +139,7 @@ export default function TokenCard({
       .then((res) => {
         if (!cancelled) {
           if (res.data?.success) {
-            setFetchedDecoded(res.data);
+            setFetchedDecoded(res.data.decoded);
           } else {
             setFetchError(res.data?.message || 'Decode failed');
           }

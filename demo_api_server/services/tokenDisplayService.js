@@ -160,16 +160,13 @@ function classifyTokenType(payload) {
  * @param {{ includeFullToken?: boolean, includeClaims?: boolean }} [options]
  * @returns {{
  *   success: boolean,
- *   header: { alg: string, kid?: string, typ?: string },
- *   payload: {
- *     sub?: string, iss?: string, aud?: string|string[],
- *     iat?: number, exp?: number, scope?: string,
- *     env?: string, org?: string, client_id?: string,
- *     act?: object, may_act?: object,
- *     [key: string]: any
- *   },
- *   tokenType: string,
- *   summary: { subject?: string, issuer?: string, audience?: string, expiresAt?: string }
+ *   summary: { subject?: string, issuer?: string, audience?: string, expiresAt?: string },
+ *   decoded: {
+ *     header: { alg: string, kid?: string, typ?: string },
+ *     payload: { [key: string]: any },
+ *     signature: string
+ *   } | null,
+ *   fullToken?: string
  * }}
  */
 function formatTokenForDisplay(token, options = {}) {
