@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import './TokenCard.css';
-import { deriveTokenCategory } from './TokenColorSystem';
+import { deriveTokenCategory, TokenColorDot } from './TokenColorSystem';
 import { CLAIM_GLOSSARY } from '../constants/claimGlossary';
 import bffAxios from '../services/bffAxios';
 
@@ -19,13 +19,6 @@ function formatTs(ts) {
 
 function isExpired(exp) {
   return exp && exp * 1000 < Date.now();
-}
-
-function typeDot(tokenType) {
-  if (tokenType === 'subject') return '🔴';
-  if (tokenType === 'actor') return '🔵';
-  if (tokenType === 'mcp') return '🟢';
-  return '🔍';
 }
 
 function HeaderSection({ header }) {
@@ -119,7 +112,7 @@ function SkeletonBody() {
 export default function TokenCard({
   token,
   decoded: decodedProp,
-  title = 'Token — Decoded Claims',
+  title = 'Token',
   tokenType: tokenTypeProp,
   showHeader = true,
   showIdentity = true,
@@ -135,12 +128,12 @@ export default function TokenCard({
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState(null);
 
-  // Fetch BFF decode when token prop provided
   useEffect(() => {
     if (!token || decodedProp || invalidProps) return;
     let cancelled = false;
     setLoading(true);
     setFetchError(null);
+    setFetchedDecoded(null);
     bffAxios
       .post('/api/token-display/decode', { token })
       .then((res) => {
@@ -161,7 +154,6 @@ export default function TokenCard({
     return () => { cancelled = true; };
   }, [token, decodedProp, invalidProps]);
 
-  // Warn about invalid prop combination in dev (after hooks)
   if (invalidProps) {
     if (process.env.NODE_ENV !== 'production') {
       // eslint-disable-next-line no-console
@@ -178,13 +170,11 @@ export default function TokenCard({
     tokenTypeProp ||
     deriveTokenCategory(title, undefined, data?.tokenType);
 
-  const dot = typeDot(resolvedTokenType);
   const exp = payload.exp;
   const expired = isExpired(exp);
 
   return (
     <div className={`token-card${className ? ` ${className}` : ''}`}>
-      {/* Blue header bar */}
       <div
         className="token-card__header"
         role="button"
@@ -194,13 +184,12 @@ export default function TokenCard({
         aria-expanded={expanded}
       >
         <div className="token-card__header-left">
-          <span aria-hidden="true">{dot}</span>
+          <TokenColorDot type={resolvedTokenType} size={10} />
           <span className="token-card__title">{title} — Decoded Claims</span>
         </div>
         <span className="token-card__toggle">{expanded ? '▲ hide' : '▼ show'}</span>
       </div>
 
-      {/* Timing sub-bar — shown when expanded and timing data present */}
       {expanded && (payload.iat || payload.exp) && (
         <div className="token-card__timing">
           {payload.iat && <span><strong>Issued:</strong> {formatTs(payload.iat)}</span>}
@@ -212,10 +201,9 @@ export default function TokenCard({
         </div>
       )}
 
-      {/* Body */}
       {expanded && loading && <SkeletonBody />}
       {expanded && fetchError && (
-        <div className="token-card__error">⚠ Could not decode token: {fetchError}</div>
+        <div className="token-card__error">⚠️ Could not decode token: {fetchError}</div>
       )}
       {expanded && !loading && !fetchError && data && (
         <div className="token-card__body">
