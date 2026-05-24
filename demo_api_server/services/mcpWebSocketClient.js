@@ -138,7 +138,21 @@ function mcpRpc(agentToken, followMethod, followParams, userSub, correlationId) 
 
     acquireMcpWsSlot()
       .then(() => {
-        const ws = new WebSocket(getMcpServerUrl());
+        const mcpUrl = getMcpServerUrl();
+        // For wss:// in dev with a self-signed cert, skip TLS verification.
+        // Controlled by GATEWAY_HEALTH_PROBE_INSECURE (reuses the same dev flag
+        // already used for the gateway health probe — never set in production).
+        // For wss:// in dev with a self-signed cert, skip TLS verification.
+        // Controlled by GATEWAY_HEALTH_PROBE_INSECURE (reuses the same dev flag
+        // used for the health probe). The ws library takes (url, protocols, options)
+        // so pass [] as protocols and the tls options as the third argument.
+        const wsTlsOpts =
+          mcpUrl.startsWith('wss://') &&
+          configStore.getEffective('gateway_health_probe_insecure') === 'true' &&
+          process.env.NODE_ENV !== 'production'
+            ? { rejectUnauthorized: false }
+            : {};
+        const ws = new WebSocket(mcpUrl, [], wsTlsOpts);
         /** @type {'awaiting_init' | 'awaiting_follow'} */
         let phase = 'awaiting_init';
 

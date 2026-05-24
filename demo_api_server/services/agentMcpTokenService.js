@@ -1669,7 +1669,7 @@ async function _resolveFinalMcpAudience(gatewayAud, mcpServerAud) {
       // Dev escape hatch: only when explicitly opted in via
       // GATEWAY_HEALTH_PROBE_INSECURE=true AND NODE_ENV != 'production'.
       // Production hard-ignores the flag.
-      const insecureFlag = process.env.GATEWAY_HEALTH_PROBE_INSECURE === 'true';
+      const insecureFlag = configStore.getEffective('gateway_health_probe_insecure') === 'true';
       const isProd = process.env.NODE_ENV === 'production';
       const allowInsecure = insecureFlag && !isProd;
       if (allowInsecure && !_warnedInsecureProbe) {

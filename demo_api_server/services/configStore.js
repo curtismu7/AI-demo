@@ -14,9 +14,7 @@
  *   await configStore.ensureInitialized() → call once before handling requests
  */
 
-'use strict';
-
-const crypto = require('crypto');
+const crypto = require('node:crypto');
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -178,6 +176,17 @@ ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic 
   ff_trat_mode:                    { public: true, default: 'false' }, // Enrich RFC 8693 exchange with Transaction Token (TraT) claims — draft-oauth-transaction-tokens-for-agents-00
   ff_agent_restrictions:           { public: true, default: 'false' }, // P1AZ resource server gate + AgentRestrictions attribute
   ff_admin_token_exchange:         { public: true, default: 'false' }, // Use token exchange for admin sessions (RFC 8693 with admin app as subject)
+  // MCP Gateway passthrough mode — when true the gateway forwards MCP requests
+  // directly to the MCP server without performing a downstream token exchange.
+  // Consumed by demo_mcp_gateway/src/config.ts via process.env (gateway service);
+  // registered here so the shared .env value is tracked in the config registry.
+  mcp_gw_passthrough_to_mcp_server: { public: true, default: 'false' },
+
+  // Dev-only TLS bypass for the gateway health probe and MCP WebSocket client.
+  // When true AND NODE_ENV != 'production', skips TLS verification on wss:// and
+  // the gateway /health probe. Production code hard-ignores this flag regardless
+  // of the stored value. Set via GATEWAY_HEALTH_PROBE_INSECURE in .env.
+  gateway_health_probe_insecure:   { public: true, default: 'false' },
 
   // Token endpoint auth method overrides (configurable at runtime from Demo Data page)
   // Fallback: env vars AI_AGENT_TOKEN_ENDPOINT_AUTH_METHOD / MCP_EXCHANGER_TOKEN_ENDPOINT_AUTH_METHOD
@@ -588,7 +597,7 @@ class ConfigStore {
     if (data.demo_accounts) {
       try {
         JSON.parse(data.demo_accounts);
-      } catch (e) {
+      } catch {
         throw new Error('DEMO_ACCOUNTS must be valid JSON string');
       }
     }
@@ -795,7 +804,9 @@ class ConfigStore {
       mcp_gw_client_id:                 ['MCP_GW_CLIENT_ID'],
       mcp_gw_client_secret:             ['MCP_GW_CLIENT_SECRET'],
       mcp_gw_resource_uri:              ['MCP_GW_RESOURCE_URI', 'PINGONE_RESOURCE_MCP_GATEWAY_URI'],
-      mcp_gw_token_endpoint_auth_method: ['MCP_GW_TOKEN_ENDPOINT_AUTH_METHOD'],
+      mcp_gw_token_endpoint_auth_method:      ['MCP_GW_TOKEN_ENDPOINT_AUTH_METHOD'],
+      mcp_gw_passthrough_to_mcp_server:       ['MCP_GW_PASSTHROUGH_TO_MCP_SERVER'],
+      gateway_health_probe_insecure:           ['GATEWAY_HEALTH_PROBE_INSECURE'],
       // RFC 8707: single-resource scope for the actor client-credentials token
       // used in the BFF's single subject+actor RFC 8693 exchange. MUST stay in
       // sync with pingoneProvisionService.js grants — the AI Agent / MCP
@@ -1394,7 +1405,7 @@ function getErrorDetails(errorCode) {
  * @param {object} context - Additional context (optional)
  * @returns {string} Error code from ERROR_CODES
  */
-function mapErrorToCode(errorMessage, context = {}) {
+function mapErrorToCode(errorMessage, _context = {}) {
   const msg = String(errorMessage).toLowerCase();
   
   // Configuration errors
