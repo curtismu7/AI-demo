@@ -786,11 +786,11 @@ ensure_service_env() {
     return
   fi
 
-  # No service-specific .env.development → link to API server's .env.
+  # No service-specific .env.development → copy from API server's .env.
+  # Using cp (not ln -s) so each service has its own independent file;
+  # no symlink brittleness and no cross-service sync risk.
   if [[ -f "$api_env" ]]; then
-    # Drop any existing link/copy so we get the current source of truth.
-    rm -f "${svc_env}"
-    ln -s "$api_env" "${svc_env}"
+    cp "$api_env" "${svc_env}"
   fi
 }
 

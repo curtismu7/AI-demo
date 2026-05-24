@@ -167,7 +167,9 @@ Browser → (cookie) → BFF (agentMcpTokenService.js)
 ### Key service files
 | File | Role |
 |------|------|
-| `demo_api_server/services/configStore.js` | Singleton runtime config — `getEffective(key)` resolves env → KV/SQLite. Never read env vars directly in route handlers. |
+| `demo_api_server/services/configStore.js` | Singleton runtime config — `getEffective(key)` resolves LMDB → env → FIELD_DEFS default. Never read env vars directly in route handlers. |
+| `docs/ENV_VARS.md` | **Authoritative reference** for every env var: purpose, canonical name, legacy aliases, naming conventions, startup validation. |
+| `docs/PINGONE_CONFIG.md` | **Authoritative record** of PingOne entity IDs, resource server audiences, token policies, and `may_act` rules. |
 | `demo_api_server/middleware/auth.js` | JWT/session token validation; sets `req.user`. |
 | `demo_api_server/services/agentMcpTokenService.js` | Resolves MCP access token via RFC 8693 exchange; attaches `tokenEvents` for UI Token Chain. |
 | `demo_api_server/services/mcpWebSocketClient.js` | BFF ↔ MCP WebSocket connection. |

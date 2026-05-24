@@ -5,6 +5,10 @@
 > Environment: `d02d2305-f445-406d-82ee-7cdbf6eeabfd` · Region: `com`
 > Auth base: `https://auth.pingone.com/d02d2305-f445-406d-82ee-7cdbf6eeabfd`
 > API base: `https://api.pingone.com/v1/environments/d02d2305-f445-406d-82ee-7cdbf6eeabfd`
+>
+> **Related docs:**
+> - [`docs/ENV_VARS.md`](ENV_VARS.md) — authoritative reference for every environment variable, naming conventions, legacy aliases, and startup validation
+> - [`demo_api_server/.env.example`](../demo_api_server/.env.example) — documentation mirror of the generated `.env`; same variable names as bootstrap output
 
 ---
 
