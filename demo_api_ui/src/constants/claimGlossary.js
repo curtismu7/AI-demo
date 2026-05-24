@@ -5,7 +5,7 @@
  * Used by TokenCard and other token display components.
  * Keys are claim names; values are tooltip strings with RFC references.
  */
-const CLAIM_GLOSSARY = {
+export const CLAIM_GLOSSARY = {
   sub: 'Subject (RFC 8693 §2.1) — unique identifier of the principal this token was issued for (user, client, or service)',
   iss: 'Issuer — the PingOne authorization server that issued this token (URL)',
   aud: 'Audience (RFC 8693 §2.3) — the intended recipient(s). The resource server MUST verify this matches its own identifier',
@@ -27,5 +27,3 @@ const CLAIM_GLOSSARY = {
   sid: 'Session ID — PingOne session identifier',
   auth_time: 'Authentication Time — Unix epoch time when the user last authenticated',
 };
-
-export default CLAIM_GLOSSARY;
