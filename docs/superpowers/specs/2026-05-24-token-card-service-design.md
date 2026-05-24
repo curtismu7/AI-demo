@@ -14,7 +14,7 @@ The codebase has at least 8 components that each display JWT token information i
 
 ## Goal
 
-Create a **canonical `TokenCard` React component** backed by the **existing BFF decode service**, so that any place in the app that needs to show a decoded token can use one thing. Existing components are not migrated in this phase — they are documented as migration targets for a follow-up.
+Create a **canonical `TokenCard` React component** backed by the **existing BFF decode service**, so that any place in the app that needs to show a decoded token can use one thing. All existing token display components are migrated to use `TokenCard` in this same phase, and unused ones are deleted.
 
 ---
 
@@ -122,7 +122,7 @@ One of `token` or `decoded` is required. Passing both is an error (PropTypes war
 
 **File:** `demo_api_ui/src/constants/claimGlossary.js`
 
-Extract the `CLAIM_GLOSSARY` object that currently lives duplicated in `DecodedTokenPanel.jsx`, `OAuthTokenDisplayPage.jsx`, `UnifiedTokenFlowInspector.jsx`, and `TokenDiffPanel.js` into one shared constant. `TokenCard` imports from here. Existing components are not updated in this phase (migration happens later).
+Extract the `CLAIM_GLOSSARY` object that currently lives duplicated in `DecodedTokenPanel.jsx`, `OAuthTokenDisplayPage.jsx`, `UnifiedTokenFlowInspector.jsx`, and `TokenDiffPanel.js` into one shared constant. All migrated components import from here — the duplicated inline copies are removed as part of migration.
 
 ---
 
@@ -148,22 +148,51 @@ Key classes:
 
 ---
 
-## Migration Map (out of scope for this phase)
+## Migration Plan
 
-These components are candidates to be replaced by or delegate to `TokenCard` in a follow-up:
+All three tiers are in scope for this phase.
 
-| Component | Migration note |
+### Tier 1 — Direct swaps (highest visibility, easiest)
+
+#### `DecodedTokenPanel.jsx` → `TokenCard`
+- **Used in:** `PingOneTestPage.jsx` — 5 instances (Worker Token, Auth Token, Agent Token, exchange token, MCP token)
+- **Token data:** pre-decoded `{ header, payload }` passed directly as props
+- **Migration:** replace each `<DecodedTokenPanel decoded={...} label={...} />` with `<TokenCard decoded={...} title={...} defaultExpanded />`. Delete `DecodedTokenPanel.jsx` after.
+
+#### `OAuthTokenDisplayPage.jsx` → multiple `TokenCard` instances
+- **Used in:** `UserDashboard.js` and `Dashboard.js` — primary UI, full-page token detail visible to end users
+- **Token data:** pre-decoded from `/api/auth/oauth/user/status` + `/api/tokens/session-preview`
+- **Migration:** replace `OAuthTokenDisplayPage`'s internal per-section rendering with `TokenCard` instances (one per token shown). The page component itself is retained as an orchestrator; only its rendering internals change. Delete `OAuthTokenDisplayPage.jsx` if it becomes a thin wrapper with no remaining logic.
+
+### Tier 2 — Surgical edits inside specialist components
+
+#### `TokenChainDisplay.js` — `TokenInspectorPanel` (lines 1650–1777)
+- **Context:** floating draggable panel that shows a single decoded token when user clicks "inspect" on a chain event
+- **Token data:** pre-decoded chain event object with `{ claims, jwtFullDecode: { header, claims } }`
+- **Migration:** replace the internal claim-rendering JSX inside `TokenInspectorPanel` with `<TokenCard decoded={...} title={...} defaultExpanded />`. The chain visualisation, `EventRow`, diff view, and educational boxes are not touched.
+
+#### `UnifiedTokenFlowInspector.jsx` — right-panel claim rendering
+- **Context:** the right side of the combined Agent Request Flow + OAuth Token Inspector panel
+- **Token data:** pre-decoded claims from component state/props
+- **Migration:** replace the right-panel's inline claim grid with `<TokenCard decoded={...} title={...} defaultExpanded />`. The left-side flow trace is not touched.
+
+### Tier 3 — Delete unused components
+
+- **`TokenDisplay.jsx`** — not imported anywhere. Takes raw JWT string + calls BFF. `TokenCard` covers this exactly. Delete.
+- **`TokenInspector.tsx`** — not imported anywhere. Actor-focused labels are handled by `tokenType` prop on `TokenCard`. Delete.
+
+### Not touched
+
+| Component | Reason |
 |---|---|
-| `DecodedTokenPanel.jsx` | Direct swap — already accepts pre-decoded `{header, payload}` |
-| `TokenDisplay.jsx` | Uses BFF decode fetch — pass result as `decoded` prop |
-| `TokenInspector.tsx` | Actor-focused extensions can be added as optional `TokenCard` section |
-| `OAuthTokenDisplayPage.jsx` | Multiple `TokenCard` instances per page section |
-
-`TokenChainDisplay.js`, `TokenDiffPanel.js`, and `TokenStateIndicator.js` are specialist components with unique layouts — not migration targets.
+| `TokenChainDisplay.js` chain viz | Specialist — status flow, diff, RFC educational boxes, drag/resize |
+| `TokenDiffPanel.js` | Unique diff table layout — not a token card |
+| `TokenStateIndicator.js` | Compact inline chip — different purpose |
+| `TokenColorSystem.js` | Shared utility — `TokenCard` imports from it |
 
 ---
 
-## Files Created / Modified
+## Files Created / Modified / Deleted
 
 | File | Action |
 |---|---|
@@ -171,8 +200,16 @@ These components are candidates to be replaced by or delegate to `TokenCard` in 
 | `demo_api_ui/src/components/TokenCard.css` | **Create** |
 | `demo_api_ui/src/constants/claimGlossary.js` | **Create** (extracted from existing components) |
 | `demo_api_server/services/tokenDisplayService.js` | **Modify** — add JSDoc response shape contract |
+| `demo_api_ui/src/components/PingOneTestPage.jsx` | **Modify** — swap 5× `DecodedTokenPanel` → `TokenCard` |
+| `demo_api_ui/src/components/UserDashboard.js` | **Modify** — swap `OAuthTokenDisplayPage` internals → `TokenCard` |
+| `demo_api_ui/src/components/Dashboard.js` | **Modify** — swap `OAuthTokenDisplayPage` internals → `TokenCard` |
+| `demo_api_ui/src/components/TokenChainDisplay.js` | **Modify** — replace `TokenInspectorPanel` claim rendering → `TokenCard` |
+| `demo_api_ui/src/components/UnifiedTokenFlowInspector.jsx` | **Modify** — replace right-panel claim rendering → `TokenCard` |
+| `demo_api_ui/src/components/DecodedTokenPanel.jsx` | **Delete** — fully replaced by `TokenCard` |
+| `demo_api_ui/src/components/TokenDisplay.jsx` | **Delete** — unused, superseded by `TokenCard` |
+| `demo_api_ui/src/components/TokenInspector.tsx` | **Delete** — unused, superseded by `TokenCard` |
 
-No routes, no new BFF endpoints, no test files modified in this phase.
+No routes, no new BFF endpoints, no new test files in this phase.
 
 ---
 
@@ -184,5 +221,10 @@ No routes, no new BFF endpoints, no test files modified in this phase.
 4. Collapsed state shows only header bar + timing sub-bar.
 5. Expired token shows Expires value in red.
 6. Loading state renders without layout shift.
-7. `npm run build` in `demo_api_ui/` exits 0.
-8. No existing tests broken.
+7. `PingOneTestPage` shows all 5 token panels via `TokenCard` — visually identical to before.
+8. `OAuthTokenDisplayPage` sections in `UserDashboard` and `Dashboard` render via `TokenCard`.
+9. `TokenChainDisplay` floating inspector panel renders via `TokenCard`.
+10. `UnifiedTokenFlowInspector` right panel renders via `TokenCard`.
+11. `DecodedTokenPanel.jsx`, `TokenDisplay.jsx`, `TokenInspector.tsx` are deleted with no remaining imports.
+12. `npm run build` in `demo_api_ui/` exits 0.
+13. No existing tests broken.
