@@ -71,17 +71,15 @@ const STANDARDIZATION_RULES = {
     ]
   },
 
-  // Resource URI naming rules
+  // Resource URI naming rules — plain audience strings (not URLs)
   resourceUris: {
-    pattern: /^https:\/\/banking-[a-z-]+\.banking-demo\.com$/,
-    description: 'Resource URIs must use banking-demo.com domain with banking- prefix',
+    pattern: /^[a-z][a-z0-9-]*\.ping\.demo$/,
+    description: 'Resource audiences must use plain ping.demo string format (no https://)',
     examples: [
-      'https://banking-mcp-server.banking-demo.com',
-      'https://banking-resource-server.banking-demo.com',
-      'https://banking-agent-gateway.banking-demo.com',
-      'https://banking-mcp-gateway.banking-demo.com',
-      'https://banking-api.banking-demo.com',
-      'https://banking-ai-agent.banking-demo.com'
+      'mcpserver.ping.demo',
+      'agentgateway.ping.demo',
+      'mcpgateway.ping.demo',
+      'enduser.ping.demo'
     ]
   },
 
@@ -540,18 +538,18 @@ class StandardizationValidator {
 
   suggestResourceUri(currentUri) {
     if (currentUri.includes('mcp-server') || currentUri.includes('ai-agent')) {
-      return 'https://banking-mcp-server.banking-demo.com';
+      return 'mcpserver.ping.demo';
     } else if (currentUri.includes('resource-server')) {
-      return 'https://banking-resource-server.banking-demo.com';
+      return 'mcpserver.ping.demo';
     } else if (currentUri.includes('agent-gateway')) {
-      return 'https://banking-agent-gateway.banking-demo.com';
+      return 'agentgateway.ping.demo';
     } else if (currentUri.includes('mcp-gateway')) {
-      return 'https://banking-mcp-gateway.banking-demo.com';
+      return 'mcpgateway.ping.demo';
     } else if (currentUri.includes('api')) {
-      return 'https://banking-api.banking-demo.com';
+      return 'enduser.ping.demo';
     }
     
-    return 'https://banking-resource.banking-demo.com';
+    return 'enduser.ping.demo';
   }
 
   suggestScope(currentScope) {

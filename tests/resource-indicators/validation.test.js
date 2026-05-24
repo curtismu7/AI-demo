@@ -11,8 +11,8 @@ describe('Resource Indicator Validation', () => {
   describe('Resource Format Validation', () => {
     test('should validate correct resource URI formats', () => {
       const validResources = [
-        'https://banking-api.ping.demo/',
-        'https://mcp-server.pingdemo.com/',
+        'enduser.ping.demo/',
+        'mcpserver.ping.demo/',
         'https://admin-api.ping.demo/',
         'https://config-api.ping.demo/',
         'https://auth.pingone.com/env123/',
@@ -58,8 +58,8 @@ describe('Resource Indicator Validation', () => {
 
     test('should require trailing slash', () => {
       const resourcesWithoutSlash = [
-        'https://banking-api.ping.demo',
-        'https://mcp-server.pingdemo.com',
+        'enduser.ping.demo',
+        'mcpserver.ping.demo',
         'https://example.com'
       ];
 
@@ -72,8 +72,8 @@ describe('Resource Indicator Validation', () => {
   describe('Resource Selection Validation', () => {
     const testClient = 'banking-demo-client';
     const validResources = [
-      'https://banking-api.ping.demo/',
-      'https://mcp-server.pingdemo.com/'
+      'enduser.ping.demo/',
+      'mcpserver.ping.demo/'
     ];
 
     test('should validate correct resource selection', () => {
@@ -89,8 +89,8 @@ describe('Resource Indicator Validation', () => {
 
     test('should reject too many resources', () => {
       const tooManyResources = [
-        'https://banking-api.ping.demo/',
-        'https://mcp-server.pingdemo.com/',
+        'enduser.ping.demo/',
+        'mcpserver.ping.demo/',
         'https://admin-api.ping.demo/',
         'https://config-api.ping.demo/'
       ];
@@ -106,7 +106,7 @@ describe('Resource Indicator Validation', () => {
 
     test('should reject invalid resource formats', () => {
       const invalidResources = [
-        'https://banking-api.ping.demo/',
+        'enduser.ping.demo/',
         'invalid-resource-uri',
         'http://insecure.com/'
       ];
@@ -137,7 +137,7 @@ describe('Resource Indicator Validation', () => {
 
     test('should provide warnings for unknown resources', () => {
       const mixedResources = [
-        'https://banking-api.ping.demo/',
+        'enduser.ping.demo/',
         'https://unknown-api.ping.demo/'
       ];
 
@@ -153,7 +153,7 @@ describe('Resource Indicator Validation', () => {
   describe('Scope-Resource Compatibility', () => {
     test('should validate compatible banking scopes', () => {
       const scopes = ['banking:read', 'banking:write', 'transactions:read'];
-      const resources = ['https://banking-api.ping.demo/'];
+      const resources = ['enduser.ping.demo/'];
 
       const compatibility = resourceIndicatorService.validateScopeResourceCompatibility(
         scopes,
@@ -167,7 +167,7 @@ describe('Resource Indicator Validation', () => {
 
     test('should validate compatible AI scopes', () => {
       const scopes = ['ai:act', 'ai:read', 'agent:manage'];
-      const resources = ['https://mcp-server.pingdemo.com/'];
+      const resources = ['mcpserver.ping.demo/'];
 
       const compatibility = resourceIndicatorService.validateScopeResourceCompatibility(
         scopes,
@@ -181,7 +181,7 @@ describe('Resource Indicator Validation', () => {
 
     test('should filter incompatible scopes', () => {
       const scopes = ['banking:read', 'admin:write', 'ai:act'];
-      const resources = ['https://banking-api.ping.demo/'];
+      const resources = ['enduser.ping.demo/'];
 
       const compatibility = resourceIndicatorService.validateScopeResourceCompatibility(
         scopes,
@@ -196,8 +196,8 @@ describe('Resource Indicator Validation', () => {
     test('should handle multiple resources with different scopes', () => {
       const scopes = ['banking:read', 'ai:act', 'admin:read'];
       const resources = [
-        'https://banking-api.ping.demo/',
-        'https://mcp-server.pingdemo.com/'
+        'enduser.ping.demo/',
+        'mcpserver.ping.demo/'
       ];
 
       const compatibility = resourceIndicatorService.validateScopeResourceCompatibility(
@@ -211,7 +211,7 @@ describe('Resource Indicator Validation', () => {
 
     test('should handle empty scopes', () => {
       const scopes = [];
-      const resources = ['https://banking-api.ping.demo/'];
+      const resources = ['enduser.ping.demo/'];
 
       const compatibility = resourceIndicatorService.validateScopeResourceCompatibility(
         scopes,
@@ -247,8 +247,8 @@ describe('Resource Indicator Validation', () => {
     };
 
     const testResources = [
-      'https://banking-api.ping.demo/',
-      'https://mcp-server.pingdemo.com/'
+      'enduser.ping.demo/',
+      'mcpserver.ping.demo/'
     ];
 
     test('should create resource binding with hash', () => {
@@ -262,15 +262,15 @@ describe('Resource Indicator Validation', () => {
 
     test('should sort resources for consistent binding', () => {
       const unsortedResources = [
-        'https://mcp-server.pingdemo.com/',
-        'https://banking-api.ping.demo/'
+        'mcpserver.ping.demo/',
+        'enduser.ping.demo/'
       ];
 
       const boundToken = resourceIndicatorService.createResourceBinding(testToken, unsortedResources);
 
       expect(boundToken.resource).toEqual([
-        'https://banking-api.ping.demo/',
-        'https://mcp-server.pingdemo.com/'
+        'enduser.ping.demo/',
+        'mcpserver.ping.demo/'
       ]);
     });
 
@@ -335,13 +335,13 @@ describe('Resource Indicator Validation', () => {
   describe('Cross-Resource Prevention', () => {
     test('should prevent cross-resource token usage', () => {
       const token = {
-        resource: ['https://banking-api.ping.demo/'],
+        resource: ['enduser.ping.demo/'],
         client_id: 'test-client'
       };
 
       const isValid = resourceIndicatorService.validateCrossResourceUsage(
         token,
-        'https://mcp-server.pingdemo.com/'
+        'mcpserver.ping.demo/'
       );
 
       expect(isValid).toBe(false);
@@ -349,13 +349,13 @@ describe('Resource Indicator Validation', () => {
 
     test('should allow same-resource token usage', () => {
       const token = {
-        resource: ['https://banking-api.ping.demo/'],
+        resource: ['enduser.ping.demo/'],
         client_id: 'test-client'
       };
 
       const isValid = resourceIndicatorService.validateCrossResourceUsage(
         token,
-        'https://banking-api.ping.demo/'
+        'enduser.ping.demo/'
       );
 
       expect(isValid).toBe(true);
@@ -377,13 +377,13 @@ describe('Resource Indicator Validation', () => {
 
     test('should handle string aud field', () => {
       const token = {
-        aud: 'https://banking-api.ping.demo/',
+        aud: 'enduser.ping.demo/',
         client_id: 'test-client'
       };
 
       const isValid = resourceIndicatorService.validateCrossResourceUsage(
         token,
-        'https://banking-api.ping.demo/'
+        'enduser.ping.demo/'
       );
 
       expect(isValid).toBe(true);
@@ -396,7 +396,7 @@ describe('Resource Indicator Validation', () => {
 
       const isValid = resourceIndicatorService.validateCrossResourceUsage(
         token,
-        'https://banking-api.ping.demo/'
+        'enduser.ping.demo/'
       );
 
       expect(isValid).toBe(false);
@@ -478,7 +478,7 @@ describe('Resource Indicator Validation', () => {
         'admin:read',
         'ai:act'
       ];
-      const resources = ['https://banking-api.ping.demo/'];
+      const resources = ['enduser.ping.demo/'];
 
       const filteredScopes = resourceIndicatorService.filterScopesByResources(scopes, resources);
 
@@ -493,8 +493,8 @@ describe('Resource Indicator Validation', () => {
         'config:read'
       ];
       const resources = [
-        'https://banking-api.ping.demo/',
-        'https://mcp-server.pingdemo.com/'
+        'enduser.ping.demo/',
+        'mcpserver.ping.demo/'
       ];
 
       const filteredScopes = resourceIndicatorService.filterScopesByResources(scopes, resources);

@@ -16,8 +16,8 @@ describe('OAuth Flow with Resource Indicators', () => {
   beforeAll(async () => {
     testClient = 'banking-demo-client';
     testResources = [
-      'https://banking-api.ping.demo/',
-      'https://mcp-server.pingdemo.com/'
+      'enduser.ping.demo/',
+      'mcpserver.ping.demo/'
     ];
   });
 
@@ -114,8 +114,8 @@ describe('OAuth Flow with Resource Indicators', () => {
   describe('Resource Validation', () => {
     test('should validate resource URI format', () => {
       const validResources = [
-        'https://banking-api.ping.demo/',
-        'https://mcp-server.pingdemo.com/',
+        'enduser.ping.demo/',
+        'mcpserver.ping.demo/',
         'https://admin-api.ping.demo/'
       ];
 
@@ -153,8 +153,8 @@ describe('OAuth Flow with Resource Indicators', () => {
 
     test('should reject too many resources', () => {
       const tooManyResources = [
-        'https://banking-api.ping.demo/',
-        'https://mcp-server.pingdemo.com/',
+        'enduser.ping.demo/',
+        'mcpserver.ping.demo/',
         'https://admin-api.ping.demo/',
         'https://config-api.ping.demo/'
       ];
@@ -172,7 +172,7 @@ describe('OAuth Flow with Resource Indicators', () => {
   describe('Scope-Resource Compatibility', () => {
     test('should validate compatible scopes and resources', () => {
       const scopes = ['banking:read', 'banking:write'];
-      const resources = ['https://banking-api.ping.demo/'];
+      const resources = ['enduser.ping.demo/'];
 
       const compatibility = resourceIndicatorService.validateScopeResourceCompatibility(
         scopes,
@@ -186,7 +186,7 @@ describe('OAuth Flow with Resource Indicators', () => {
 
     test('should filter incompatible scopes', () => {
       const scopes = ['banking:read', 'admin:write']; // admin scope for banking resource
-      const resources = ['https://banking-api.ping.demo/'];
+      const resources = ['enduser.ping.demo/'];
 
       const compatibility = resourceIndicatorService.validateScopeResourceCompatibility(
         scopes,
@@ -239,13 +239,13 @@ describe('OAuth Flow with Resource Indicators', () => {
   describe('Cross-Resource Prevention', () => {
     test('should prevent cross-resource token usage', () => {
       const token = {
-        resource: ['https://banking-api.ping.demo/'],
+        resource: ['enduser.ping.demo/'],
         client_id: testClient
       };
 
       const isValid = resourceIndicatorService.validateCrossResourceUsage(
         token,
-        'https://mcp-server.pingdemo.com/'
+        'mcpserver.ping.demo/'
       );
 
       expect(isValid).toBe(false);
@@ -253,13 +253,13 @@ describe('OAuth Flow with Resource Indicators', () => {
 
     test('should allow same-resource token usage', () => {
       const token = {
-        resource: ['https://banking-api.ping.demo/'],
+        resource: ['enduser.ping.demo/'],
         client_id: testClient
       };
 
       const isValid = resourceIndicatorService.validateCrossResourceUsage(
         token,
-        'https://banking-api.ping.demo/'
+        'enduser.ping.demo/'
       );
 
       expect(isValid).toBe(true);

@@ -402,8 +402,14 @@ wait_for_health() {
   [[ $interactive -eq 1 ]] && printf "    polling health for %s" "$label" >&2
   while [[ $i -lt $remaining ]]; do
     local http_code
+    # Try HTTPS first (BFF uses TLS); fall back to plain HTTP for services
+    # that don't use TLS (MCP server, gateway health, etc.).
     http_code=$(curl -s -o /dev/null -w "%{http_code}" \
-      --max-time 2 --insecure "http://localhost:${port}${path}" 2>/dev/null || echo "000")
+      --max-time 2 --insecure "https://localhost:${port}${path}" 2>/dev/null || echo "000")
+    if [[ "$http_code" != "200" ]]; then
+      http_code=$(curl -s -o /dev/null -w "%{http_code}" \
+        --max-time 2 "http://localhost:${port}${path}" 2>/dev/null || echo "000")
+    fi
     if [[ "$http_code" == "200" ]]; then
       [[ $interactive -eq 1 ]] && printf " — healthy after %ds\n" "$i" >&2
       echo "up"; return 0

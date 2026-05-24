@@ -71,14 +71,23 @@ async function callToolViaGateway(gatewayUrl, bearerToken, tool, params = {}, op
 
     const timeoutMs = parseInt(process.env.MCP_GATEWAY_TIMEOUT_MS || '', 10) || DEFAULT_TIMEOUT_MS;
 
-    const response = await axios.post(url, body, {
-        headers,
-        timeout: timeoutMs,
-        // Handle error status codes ourselves so we can emit structured errors
-        validateStatus: () => true,
-        // Allow self-signed certs if a deployment puts the gateway behind HTTPS
-        httpsAgent: _devHttpsAgent,
-    });
+    let response;
+    try {
+        response = await axios.post(url, body, {
+            headers,
+            timeout: timeoutMs,
+            // Handle error status codes ourselves so we can emit structured errors
+            validateStatus: () => true,
+            // Allow self-signed certs if a deployment puts the gateway behind HTTPS
+            httpsAgent: _devHttpsAgent,
+        });
+    } catch (axErr) {
+        console.error(
+            '[mcpGatewayClient] axios error: code=%s message=%s url=%s',
+            axErr.code, axErr.message, axErr.config?.url
+        );
+        throw axErr;
+    }
 
     const status = response.status;
 

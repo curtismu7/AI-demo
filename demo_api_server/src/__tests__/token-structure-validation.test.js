@@ -11,7 +11,7 @@ const { validateTokenStructure } = require('../../services/tokenStructureValidat
 function makeValidToken(overrides = {}) {
   return {
     sub: 'user-123',
-    aud: 'https://mcp-server.pingdemo.com',
+    aud: 'mcpserver.ping.demo',
     act: 'agent-456',
     exp: Math.floor(Date.now() / 1000) + 3600, // 1 hour from now
     scope: 'read write',
@@ -24,7 +24,7 @@ describe('validateTokenStructure', () => {
     it('passes for a fully valid token with all claims', () => {
       const token = makeValidToken();
       const result = validateTokenStructure(token, {
-        expectedAudience: 'https://mcp-server.pingdemo.com',
+        expectedAudience: 'mcpserver.ping.demo',
         expectedScopes: ['read'],
         isDelegationFlow: true,
       });
@@ -35,7 +35,7 @@ describe('validateTokenStructure', () => {
     it('passes for a single-exchange token without act claim', () => {
       const token = makeValidToken({ act: undefined });
       const result = validateTokenStructure(token, {
-        expectedAudience: 'https://mcp-server.pingdemo.com',
+        expectedAudience: 'mcpserver.ping.demo',
         isDelegationFlow: false,
       });
       expect(result.valid).toBe(true);
@@ -71,7 +71,7 @@ describe('validateTokenStructure', () => {
     it('fails when aud does not match expected audience', () => {
       const token = makeValidToken({ aud: 'https://wrong-server.com' });
       const result = validateTokenStructure(token, {
-        expectedAudience: 'https://mcp-server.pingdemo.com',
+        expectedAudience: 'mcpserver.ping.demo',
       });
       expect(result.valid).toBe(false);
       expect(result.errors.some(e => e.includes('aud claim mismatch'))).toBe(true);
@@ -80,15 +80,15 @@ describe('validateTokenStructure', () => {
     it('passes when aud matches expected audience', () => {
       const token = makeValidToken();
       const result = validateTokenStructure(token, {
-        expectedAudience: 'https://mcp-server.pingdemo.com',
+        expectedAudience: 'mcpserver.ping.demo',
       });
       expect(result.errors.filter(e => e.includes('aud'))).toHaveLength(0);
     });
 
     it('passes when aud is an array containing expected audience', () => {
-      const token = makeValidToken({ aud: ['https://mcp-server.pingdemo.com', 'https://other.com'] });
+      const token = makeValidToken({ aud: ['mcpserver.ping.demo', 'https://other.com'] });
       const result = validateTokenStructure(token, {
-        expectedAudience: 'https://mcp-server.pingdemo.com',
+        expectedAudience: 'mcpserver.ping.demo',
       });
       expect(result.errors.filter(e => e.includes('aud'))).toHaveLength(0);
     });
