@@ -77,14 +77,21 @@ app.post('/api/agent/reason', express.json({ limit: '256kb' }), makeReasonHandle
 // ---------------------------------------------------------------------------
 
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', service: 'banking-agent-service', ts: new Date().toISOString() });
+  res.json({
+    status: 'ok',
+    service: 'banking-agent-service',
+    uptime: process.uptime(),
+    checks: {
+      env: 'ok',
+    },
+  });
 });
 
 // ---------------------------------------------------------------------------
 // Start
 // ---------------------------------------------------------------------------
 
-app.listen(config.port, config.host, () => {
+const server = app.listen(config.port, config.host, () => {
   console.log(`[Agent] banking-agent-service running on ${config!.host}:${config!.port}`);
   if (config!.host === '0.0.0.0') {
     console.warn(
@@ -95,8 +102,20 @@ app.listen(config.port, config.host, () => {
   console.log(`[Agent] LLM provider: ${config!.llmProvider} / model: ${config!.llmModel}`);
   console.log(`[Agent] Mode: reasoning-only (BFF holds token custody)`);
   console.log(`[Agent] PKI creds: ${config!.usePkiCreds ? 'enabled' : 'disabled (client_secret)'}`);
+  console.log(`[demo-agent-service] Ready on :${config!.port}`);
 });
 
-process.on('SIGINT', () => process.exit(0));
-process.on('SIGTERM', () => process.exit(0));
+const shutdown = (signal: string): void => {
+  console.log(`[demo-agent-service] ${signal} received — shutting down`);
+  server.close(() => {
+    console.log('[demo-agent-service] HTTP server closed');
+    process.exit(0);
+  });
+  setTimeout(() => {
+    console.error('[demo-agent-service] Drain timeout — forcing exit');
+    process.exit(1);
+  }, 5000);
+};
+process.on('SIGINT',  () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
 })();
