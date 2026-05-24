@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# run-demo.sh — Primary startup script for the AI Demo.
+# run.sh — Primary startup script for the AI Demo.
 # Runs on api.ping.demo (HTTPS).
 #
 # Port layout:
@@ -13,15 +13,15 @@
 #   mkcert -install   # install local CA (once per machine)
 #
 # Usage:
-#   ./run-demo.sh              # start all services (optional: tail prompt at end if TTY)
-#   ./run-demo.sh stop         # stop all services (process trees + listeners)
-#   ./run-demo.sh restart      # stop then start
-#   ./run-demo.sh status       # live service health check
-#   ./run-demo.sh tail         # pick a log by number or 'all' (all logs at once)
-#   ./run-demo.sh tail 2       # tail UI log directly (no prompt)
-#   ./run-demo.sh tail all     # tail -f all log files together (interleaved)
-#   ./run-demo.sh test         # run full test suite
-#   ./run-demo.sh help         # show this help message
+#   ./run.sh              # start all services (optional: tail prompt at end if TTY)
+#   ./run.sh stop         # stop all services (process trees + listeners)
+#   ./run.sh restart      # stop then start
+#   ./run.sh status       # live service health check
+#   ./run.sh tail         # pick a log by number or 'all' (all logs at once)
+#   ./run.sh tail 2       # tail UI log directly (no prompt)
+#   ./run.sh tail all     # tail -f all log files together (interleaved)
+#   ./run.sh test         # run full test suite
+#   ./run.sh help         # show this help message
 
 set -euo pipefail
 
@@ -172,7 +172,7 @@ ensure_node_runtime() {
   echo ""
   echo "  No nvm yet? Install: https://github.com/nvm-sh/nvm#installing-and-updating"
   echo ""
-  echo "  Then re-run from the banking-demo repo:  ./run-demo.sh"
+  echo "  Then re-run from the banking-demo repo:  ./run.sh"
   exit 1
 }
 
@@ -290,7 +290,7 @@ tail_demo_logs() {
       fi
     done
     if [[ ${#existing[@]} -eq 0 ]]; then
-      echo "WARNING:  No log files found yet. Start services with ./run-demo.sh first."
+      echo "WARNING:  No log files found yet. Start services with ./run.sh first."
       exit 1
     fi
     echo "[LOG] Tailing ${#existing[@]} log file(s) together (interleaved). Ctrl+C stops."
@@ -486,7 +486,7 @@ print_status_table() {
 
 # ── Subcommand: stop ─────────────────────────────────────────────────────────
 cmd_stop() {
-  echo "[STOP] Stopping Demo services (run-demo.sh)..."
+  echo "[STOP] Stopping Demo services (run.sh)..."
   set +e
   for pid_file in "$PID_API" "$PID_MCP" "$PID_GW" "$PID_HITL" "$PID_AGENT_SVC" "$PID_INVEST" "$PID_MORTGAGE" "$PID_AGENT" "$PID_UI"; do
     if [[ -f "$pid_file" ]]; then
@@ -565,10 +565,10 @@ cmd_test() {
 cmd_help() {
   echo ""
   echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-  echo -e "${CYAN}${BOLD}   [BANK]  AI DEMO — run-demo.sh                      ${RESET}"
+  echo -e "${CYAN}${BOLD}   [BANK]  AI DEMO — run.sh                      ${RESET}"
   echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
   echo ""
-  echo -e "${WHITE}${BOLD}  Usage:${RESET} ./run-demo.sh <command>"
+  echo -e "${WHITE}${BOLD}  Usage:${RESET} ./run.sh <command>"
   echo ""
   echo -e "${WHITE}${BOLD}  Commands:${RESET}"
   echo "    (default)  Start all services (HTTPS on api.ping.demo)"
@@ -715,7 +715,7 @@ for i in "${!SVC_LIST[@]}"; do
     echo "[PKG] Installing dependencies for $svc..."
     if ! (cd "$BASEDIR/$svc" && npm install ${SVC_INSTALL_FLAGS[$i]}); then
       err "npm install failed for $svc — aborting startup."
-      err "  Fix the error above (often a network or registry issue), then re-run ./run-demo.sh"
+      err "  Fix the error above (often a network or registry issue), then re-run ./run.sh"
       exit 1
     fi
   fi
@@ -724,7 +724,7 @@ for i in "${!SVC_LIST[@]}"; do
     echo "[BUILD] Compiling TypeScript for $svc..."
     if ! (cd "$BASEDIR/$svc" && npm run build); then
       err "Build failed for $svc — aborting startup."
-      err "  Fix the TypeScript errors above, then re-run ./run-demo.sh"
+      err "  Fix the TypeScript errors above, then re-run ./run.sh"
       exit 1
     fi
   fi
@@ -765,7 +765,7 @@ if [[ -f "$VAULT_FILE" ]]; then
   if [[ -z "${VAULT_PASSWORD:-}" ]]; then
     echo "[ERROR] secrets.vault present at ${VAULT_FILE} but VAULT_PASSWORD is not set."
     echo "        The BFF, MCP Gateway, and Agent Service will refuse to start."
-    echo "        Fix: export VAULT_PASSWORD=... before ./run-demo.sh"
+    echo "        Fix: export VAULT_PASSWORD=... before ./run.sh"
     echo "        (or remove/rename ${VAULT_FILE} to fall back to .env / process.env)."
     exit 1
   fi
@@ -1001,9 +1001,9 @@ echo -e "${MAGENTA}${BOLD}  │${RESET}     Ask: balance, accounts, transactions
 echo -e "${MAGENTA}${BOLD}  └─────────────────────────────────────────────────────────────┘${RESET}"
 echo ""
 echo -e "${WHITE}${BOLD}  ┌─ MANAGE ────────────────────────────────────────────────────┐${RESET}"
-echo -e "${WHITE}${BOLD}  │${RESET}  ${BOLD}./run-demo.sh status${RESET}   — live service health check"
-echo -e "${WHITE}${BOLD}  │${RESET}  ${BOLD}./run-demo.sh tail${RESET}     — pick log (or ${DIM}./run-demo.sh tail all${RESET})"
-echo -e "${WHITE}${BOLD}  │${RESET}  ${BOLD}./run-demo.sh stop${RESET}     — stop all services"
+echo -e "${WHITE}${BOLD}  │${RESET}  ${BOLD}./run.sh status${RESET}   — live service health check"
+echo -e "${WHITE}${BOLD}  │${RESET}  ${BOLD}./run.sh tail${RESET}     — pick log (or ${DIM}./run.sh tail all${RESET})"
+echo -e "${WHITE}${BOLD}  │${RESET}  ${BOLD}./run.sh stop${RESET}     — stop all services"
 echo -e "${WHITE}${BOLD}  │${RESET}  ${DIM}tail -f ${LOG_API}${RESET}"
 echo -e "${WHITE}${BOLD}  │${RESET}  ${DIM}tail -f ${LOG_UI}${RESET}"
 echo -e "${WHITE}${BOLD}  │${RESET}  ${DIM}tail -f ${LOG_MCP}${RESET}"
@@ -1012,4 +1012,10 @@ echo ""
 echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 echo ""
 
-tail_demo_logs
+# Only offer the interactive log-picker when stdout is a real terminal.
+# In non-interactive contexts (CI, piped, Claude tool) stdin has no TTY so
+# `read` returns immediately with an empty string, which hits the "Invalid
+# choice" branch and exits 1 — misleading for a successful startup.
+if [[ -t 1 ]]; then
+  tail_demo_logs
+fi
