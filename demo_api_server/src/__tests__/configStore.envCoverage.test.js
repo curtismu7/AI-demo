@@ -44,6 +44,12 @@ const IGNORED_VARS = new Set([
   // into .env by pingoneProvisionService.js for operator reference. No feature
   // code calls getEffective() for it — it is never consumed via configStore.
   'MCP_GW_PASSTHROUGH_TO_MCP_SERVER',
+  // GATEWAY_HEALTH_PROBE_INSECURE is intentionally read via process.env directly
+  // in agentMcpTokenService.js and mcpWebSocketClient.js — it is a dev-only TLS
+  // bypass flag that must NOT be settable at runtime via the config UI (doing so
+  // would allow disabling TLS verification in production). Deliberately bypasses
+  // configStore for this security reason.
+  'GATEWAY_HEALTH_PROBE_INSECURE',
 ]);
 
 // Alias-prefix normalizations: maps a .env var prefix to the configStore key

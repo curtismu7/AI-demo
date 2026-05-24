@@ -177,6 +177,7 @@ ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic 
   step_up_enabled:                 { public: true, default: 'true'  }, // Step-up MFA gate; mirrored into runtimeSettings.stepUpEnabled (runtimeKey)
   ff_trat_mode:                    { public: true, default: 'false' }, // Enrich RFC 8693 exchange with Transaction Token (TraT) claims — draft-oauth-transaction-tokens-for-agents-00
   ff_agent_restrictions:           { public: true, default: 'false' }, // P1AZ resource server gate + AgentRestrictions attribute
+  ff_admin_token_exchange:         { public: true, default: 'false' }, // Use token exchange for admin sessions (RFC 8693 with admin app as subject)
 
   // Token endpoint auth method overrides (configurable at runtime from Demo Data page)
   // Fallback: env vars AI_AGENT_TOKEN_ENDPOINT_AUTH_METHOD / MCP_EXCHANGER_TOKEN_ENDPOINT_AUTH_METHOD
@@ -188,8 +189,8 @@ ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic 
   // Gateway. (PINGONE_RESOURCE_AGENT_GATEWAY_URI = the AI Agent actor-CC
   // audience.) The gateway re-exchanges downstream.
   PINGONE_AI_AGENT_CLIENT_ID:             { public: true,  default: '' }, // Demo AI Agent App client ID — the RFC 8693 actor
-  PINGONE_RESOURCE_AGENT_GATEWAY_URI:     { public: true,  default: 'https://banking-agent-gateway.banking-demo.com' }, // AI Agent actor client-credentials audience
-  PINGONE_RESOURCE_MCP_GATEWAY_URI:       { public: true,  default: 'https://banking-mcp-gateway.banking-demo.com' },   // Single-exchange output audience (MCP Gateway)
+  PINGONE_RESOURCE_AGENT_GATEWAY_URI:     { public: true,  default: 'agentgateway.ping.demo' }, // AI Agent actor client-credentials audience — matches Demo Agent Gateway resource aud in PingOne
+  PINGONE_RESOURCE_MCP_GATEWAY_URI:       { public: true,  default: 'mcpgateway.ping.demo' },   // Single-exchange output audience (MCP Gateway) — matches Demo MCP Gateway resource aud in PingOne
 
   // RFC 8693 Token Exchange — MCP server resource URI
   // When set, the Backend-for-Frontend (BFF) exchanges user tokens for delegated tokens scoped to this
@@ -200,7 +201,9 @@ ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic 
   // The BFF chat-WS proxy requests a token-exchange to this audience before
   // delivering the token to langchain in session_init. langchain validates
   // `aud` against this value (T-5: per-hop audience, no cascade).
-  PINGONE_RESOURCE_LANGCHAIN_AGENT_URI:   { public: true,  default: 'https://banking-langchain-agent.banking-demo.com' },
+  // No default: this resource server is not provisioned by bootstrap; must be
+  // set explicitly via PINGONE_RESOURCE_LANGCHAIN_AGENT_URI in .env if used.
+  PINGONE_RESOURCE_LANGCHAIN_AGENT_URI:   { public: true,  default: '' },
 
   // Demo Data — persistent demo accounts (JSON string, ignored for local SQLite)
   demo_accounts:              { public: false, default: '' },
