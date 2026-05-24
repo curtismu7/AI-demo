@@ -1626,6 +1626,19 @@ setImmediate(async () => {
   }
 });
 
+// ── Optional PingOne config validator ──────────────────────────────────────
+// Validates resource servers (audience) and scopes against docs/PINGONE_CONFIG.md.
+// Opt-in: set PINGONE_VALIDATE_ON_STARTUP=true in .env or via /config admin UI.
+// Non-blocking: warns on mismatch; never prevents startup or delays requests.
+setImmediate(async () => {
+  try {
+    const { runStartupValidation } = require('./services/pingoneStartupValidator');
+    await runStartupValidation();
+  } catch (err) {
+    console.warn('[pingone-startup] Validation error (non-fatal):', err.message);
+  }
+});
+
 // Export app as the default (for supertest / existing requires) and attach
 // named flags so other modules can do: require('./server').isReplit etc.
 module.exports = app;

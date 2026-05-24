@@ -1,5 +1,9 @@
 /**
  * Tests for Resource Validation Service
+ *
+ * Reference: docs/PINGONE_CONFIG.md — Resource Servers section.
+ * The four expected resources are Demo API, Demo Agent Gateway, Demo MCP Gateway,
+ * Demo MCP Server with plain-string audience values (not URLs).
  */
 
 const axios = require('axios');
@@ -8,150 +12,87 @@ const configStore = require('../../services/configStore');
 
 jest.mock('axios');
 jest.mock('../../services/configStore');
+// getManagementToken is imported from pingOneClientService; mock it directly
+jest.mock('../../services/pingOneClientService', () => ({
+  getManagementToken: jest.fn(),
+}));
 
 describe('Resource Validation Service', () => {
   const mockEnvId = '12345678-1234-1234-1234-123456789012';
-  const mockToken = 'mock-bearer-token';
 
   beforeEach(() => {
     jest.clearAllMocks();
     configStore.getEffective.mockImplementation((key) => {
-      if (key === 'pingone_environment_id') return mockEnvId;
-      if (key === 'pingone_region') return 'com';
-      if (key === 'pingone_client_id') return 'worker-client-id';
-      if (key === 'pingone_client_secret') return 'worker-secret';
+      const k = key.toLowerCase();
+      if (k === 'pingone_environment_id') return mockEnvId;
+      if (k === 'pingone_region') return 'com';
       return null;
     });
+    // Reset default: token succeeds
+    const { getManagementToken } = require('../../services/pingOneClientService');
+    getManagementToken.mockResolvedValue('mock-bearer-token');
   });
 
   describe('validateResources', () => {
-    it('should validate resources correctly', async () => {
-      // Mock getting the management token
-      axios.post.mockResolvedValueOnce({
-        data: { access_token: mockToken }
-      });
-
-      // Mock listing resources from PingOne
-      const mockResources = [
-        {
-          id: 'res-1',
-          name: 'Super Banking AI Agent',
-          audience: 'https://ai-agent.pingdemo.com',
-          authenticationMethods: [{ type: 'CLIENT_CREDENTIALS' }]
-        },
-        {
-          id: 'res-2',
-          name: 'Super Banking MCP Server',
-          audience: 'https://mcp-server.pingdemo.com',
-          authenticationMethods: [{ type: 'CLIENT_CREDENTIALS' }]
-        },
-        {
-          id: 'res-3',
-          name: 'Super Banking Banking API',
-          audience: 'https://banking-api.ping.demo',
-          authenticationMethods: [{ type: 'CLIENT_CREDENTIALS' }]
-        },
-        {
-          id: 'res-4',
-          name: 'Super Banking Agent Gateway',
-          audience: 'https://agent-gateway.pingdemo.com',
-          authenticationMethods: [{ type: 'CLIENT_CREDENTIALS' }]
-        },
-        {
-          id: 'res-5',
-          name: 'PingOne API',
-          audience: 'https://api.pingone.com',
-          authenticationMethods: [{ type: 'CLIENT_CREDENTIALS' }]
-        }
-      ];
+    it('should return CORRECT for all resources when audiences match', async () => {
+      const mockResources = RESOURCE_REFERENCE_TABLE.map((ref, idx) => ({
+        id: `res-${idx}`,
+        name: ref.name,
+        audience: ref.audience,
+      }));
 
       axios.get.mockResolvedValueOnce({ data: { resources: mockResources } });
 
       const result = await validateResources();
 
       expect(result.status).toBe('success');
-      expect(result.resourceValidation).toHaveLength(5);
-      expect(result.resourceValidation[0].status).toBe('CORRECT');
-      expect(result.resourceValidation[0].name).toBe('Super Banking AI Agent');
+      const correct = result.resourceValidation.filter((r) => r.status === 'CORRECT');
+      expect(correct).toHaveLength(RESOURCE_REFERENCE_TABLE.length);
     });
 
-    it('should detect MISSING resources', async () => {
-      axios.post.mockResolvedValueOnce({
-        data: { access_token: mockToken }
-      });
-
-      // Only return 3 resources instead of 5
-      const mockResources = [
-        {
-          id: 'res-1',
-          name: 'Super Banking AI Agent',
-          audience: 'https://ai-agent.pingdemo.com',
-          authenticationMethods: [{ type: 'CLIENT_CREDENTIALS' }]
-        },
-        {
-          id: 'res-2',
-          name: 'Super Banking MCP Server',
-          audience: 'https://mcp-server.pingdemo.com',
-          authenticationMethods: [{ type: 'CLIENT_CREDENTIALS' }]
-        }
-      ];
+    it('should detect MISSING resources when not returned by PingOne', async () => {
+      // Return only the first resource
+      const mockResources = [{
+        id: 'res-0',
+        name: RESOURCE_REFERENCE_TABLE[0].name,
+        audience: RESOURCE_REFERENCE_TABLE[0].audience,
+      }];
 
       axios.get.mockResolvedValueOnce({ data: { resources: mockResources } });
 
       const result = await validateResources();
 
       expect(result.status).toBe('success');
-      expect(result.resourceValidation).toHaveLength(5);
-      
-      const missingResources = result.resourceValidation.filter(r => r.status === 'MISSING');
-      expect(missingResources.length).toBeGreaterThan(0);
-      const missingNames = missingResources.map(r => r.name);
-      expect(missingNames).toContain('Super Banking Banking API');
+      const missing = result.resourceValidation.filter((r) => r.status === 'MISSING');
+      expect(missing.length).toBe(RESOURCE_REFERENCE_TABLE.length - 1);
     });
 
-    it('should detect CONFIG_ERROR when audience URI does not match', async () => {
-      axios.post.mockResolvedValueOnce({
-        data: { access_token: mockToken }
-      });
-
-      // Return resources with wrong audience
-      const mockResources = [
-        {
-          id: 'res-1',
-          name: 'Super Banking AI Agent',
-          audience: 'https://wrong-audience.pingdemo.com',  // Wrong audience
-          authenticationMethods: [{ type: 'CLIENT_CREDENTIALS' }]
-        }
-      ];
+    it('should detect CONFIG_ERROR when audience does not match', async () => {
+      const mockResources = RESOURCE_REFERENCE_TABLE.map((ref, idx) => ({
+        id: `res-${idx}`,
+        name: ref.name,
+        // First resource has wrong audience; rest are correct
+        audience: idx === 0 ? 'wrong-audience.example.com' : ref.audience,
+      }));
 
       axios.get.mockResolvedValueOnce({ data: { resources: mockResources } });
 
       const result = await validateResources();
 
       expect(result.status).toBe('success');
-      const configErrors = result.resourceValidation.filter(r => r.status === 'CONFIG_ERROR');
-      expect(configErrors.length).toBeGreaterThan(0);
+      const errors = result.resourceValidation.filter((r) => r.status === 'CONFIG_ERROR');
+      expect(errors).toHaveLength(1);
+      expect(errors[0].name).toBe(RESOURCE_REFERENCE_TABLE[0].name);
     });
 
-    it('should detect UNEXPECTED resources', async () => {
-      axios.post.mockResolvedValueOnce({
-        data: { access_token: mockToken }
-      });
-
+    it('should flag UNEXPECTED resources not in the reference table', async () => {
       const mockResources = [
         ...RESOURCE_REFERENCE_TABLE.map((ref, idx) => ({
           id: `res-${idx}`,
           name: ref.name,
           audience: ref.audience,
-          authenticationMethods: [{ type: 'CLIENT_CREDENTIALS' }]
         })),
-        // Add an unexpected resource
-        {
-          id: 'res-extra',
-          name: 'Unexpected Resource',
-          audience: 'https://unexpected.com',
-          authenticationMethods: [{ type: 'CLIENT_CREDENTIALS' }]
-        }
+        { id: 'res-extra', name: 'Unexpected Resource', audience: 'unexpected.example.com' },
       ];
 
       axios.get.mockResolvedValueOnce({ data: { resources: mockResources } });
@@ -159,16 +100,12 @@ describe('Resource Validation Service', () => {
       const result = await validateResources();
 
       expect(result.status).toBe('success');
-      const unexpected = result.resourceValidation.filter(r => r.status === 'UNEXPECTED');
-      expect(unexpected.length).toBe(1);
+      const unexpected = result.resourceValidation.filter((r) => r.status === 'UNEXPECTED');
+      expect(unexpected).toHaveLength(1);
       expect(unexpected[0].name).toBe('Unexpected Resource');
     });
 
-    it('should handle API errors gracefully', async () => {
-      axios.post.mockResolvedValueOnce({
-        data: { access_token: mockToken }
-      });
-
+    it('should handle PingOne API errors gracefully', async () => {
       axios.get.mockRejectedValueOnce(new Error('PingOne API error'));
 
       const result = await validateResources();
@@ -177,8 +114,9 @@ describe('Resource Validation Service', () => {
       expect(result.error).toBeDefined();
     });
 
-    it('should handle token fetch errors', async () => {
-      axios.post.mockRejectedValueOnce(new Error('Failed to get token'));
+    it('should handle getManagementToken errors gracefully', async () => {
+      const { getManagementToken } = require('../../services/pingOneClientService');
+      getManagementToken.mockRejectedValueOnce(new Error('Token fetch failed'));
 
       const result = await validateResources();
 
@@ -188,8 +126,8 @@ describe('Resource Validation Service', () => {
   });
 
   describe('RESOURCE_REFERENCE_TABLE', () => {
-    it('should have all 5 expected resources', () => {
-      expect(RESOURCE_REFERENCE_TABLE).toHaveLength(5);
+    it('should have exactly 4 expected resources', () => {
+      expect(RESOURCE_REFERENCE_TABLE).toHaveLength(4);
     });
 
     it('should have required fields for each resource', () => {
@@ -197,17 +135,27 @@ describe('Resource Validation Service', () => {
         expect(resource).toHaveProperty('name');
         expect(resource).toHaveProperty('audience');
         expect(resource).toHaveProperty('expectedScopes');
-        expect(resource).toHaveProperty('authMethod');
       });
     });
 
-    it('should have correct resource names', () => {
-      const names = RESOURCE_REFERENCE_TABLE.map(r => r.name);
-      expect(names).toContain('Super Banking AI Agent');
-      expect(names).toContain('Super Banking MCP Server');
-      expect(names).toContain('Super Banking Banking API');
-      expect(names).toContain('Super Banking Agent Gateway');
-      expect(names).toContain('PingOne API');
+    it('should use correct PingOne resource names from docs/PINGONE_CONFIG.md', () => {
+      const names = RESOURCE_REFERENCE_TABLE.map((r) => r.name);
+      expect(names).toContain('Demo API');
+      expect(names).toContain('Demo Agent Gateway');
+      expect(names).toContain('Demo MCP Gateway');
+      expect(names).toContain('Demo MCP Server');
+    });
+
+    it('should use plain-string audience values (not URLs)', () => {
+      const audiences = RESOURCE_REFERENCE_TABLE.map((r) => r.audience);
+      expect(audiences).toContain('enduser.ping.demo');
+      expect(audiences).toContain('agentgateway.ping.demo');
+      expect(audiences).toContain('mcpgateway.ping.demo');
+      expect(audiences).toContain('mcpserver.ping.demo');
+      // Must not be URLs
+      audiences.forEach((a) => {
+        expect(a).not.toMatch(/^https?:\/\//);
+      });
     });
   });
 });

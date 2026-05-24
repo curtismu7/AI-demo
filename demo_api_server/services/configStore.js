@@ -188,6 +188,13 @@ ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic 
   // of the stored value. Set via GATEWAY_HEALTH_PROBE_INSECURE in .env.
   gateway_health_probe_insecure:   { public: true, default: 'false' },
 
+  // Optional PingOne configuration check at server startup.
+  // When true, validates resource servers (audience) and scopes against the
+  // reference values in docs/PINGONE_CONFIG.md. Requires management worker
+  // credentials (PINGONE_WORKER_CLIENT_ID / PINGONE_WORKER_CLIENT_SECRET).
+  // Non-blocking — warnings only; never prevents startup.
+  pingone_validate_on_startup:     { public: true, default: 'false' },
+
   // Token endpoint auth method overrides (configurable at runtime from Demo Data page)
   // Fallback: env vars AI_AGENT_TOKEN_ENDPOINT_AUTH_METHOD / MCP_EXCHANGER_TOKEN_ENDPOINT_AUTH_METHOD
   ai_agent_token_endpoint_auth_method:      { public: true, default: '' },
@@ -807,6 +814,7 @@ class ConfigStore {
       mcp_gw_token_endpoint_auth_method:      ['MCP_GW_TOKEN_ENDPOINT_AUTH_METHOD'],
       mcp_gw_passthrough_to_mcp_server:       ['MCP_GW_PASSTHROUGH_TO_MCP_SERVER'],
       gateway_health_probe_insecure:           ['GATEWAY_HEALTH_PROBE_INSECURE'],
+      pingone_validate_on_startup:             ['PINGONE_VALIDATE_ON_STARTUP'],
       // RFC 8707: single-resource scope for the actor client-credentials token
       // used in the BFF's single subject+actor RFC 8693 exchange. MUST stay in
       // sync with pingoneProvisionService.js grants — the AI Agent / MCP
