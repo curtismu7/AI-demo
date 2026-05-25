@@ -4782,13 +4782,28 @@ export default function BankingAgent({
       });
     } catch (err) {
       // Debug: log all error details for troubleshooting
-      console.log(`[BankingAgent] ${actionId} error:`, {
+      const _errDetail = {
         code: err?.code,
         statusCode: err?.statusCode,
         message: err?.message,
         needsAuth: err?.need_auth,
         fullErr: err,
-      });
+      };
+      console.log(`[BankingAgent] ${actionId} error:`, _errDetail);
+      // Store for ErrorBoundary "Error Details" panel (dev only)
+      if (process.env.NODE_ENV === 'development') {
+        try {
+          window.__lastAgentError = {
+            action: actionId,
+            timestamp: new Date().toISOString(),
+            code: err?.code,
+            statusCode: err?.statusCode,
+            message: err?.message,
+            needsAuth: err?.need_auth,
+            tokenEvents: err?.tokenEvents?.length ?? 0,
+          };
+        } catch (_) { /* ignore */ }
+      }
 
       markToolProgressOutcome(
         false,

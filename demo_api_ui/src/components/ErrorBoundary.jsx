@@ -72,6 +72,13 @@ export class ErrorBoundary extends React.Component {
             {process.env.NODE_ENV === 'development' && this.state.errorInfo && (
               <details className="error-details">
                 <summary>Error Details (Development Only)</summary>
+                {window.__lastAgentError && (
+                  <div className="error-details-agent">
+                    <strong>Last agent error:</strong>
+                    <pre>{JSON.stringify(window.__lastAgentError, null, 2)}</pre>
+                  </div>
+                )}
+                <pre>{this.state.error?.stack || this.state.error?.message}</pre>
                 <pre>{this.state.errorInfo.componentStack}</pre>
               </details>
             )}

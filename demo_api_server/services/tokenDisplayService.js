@@ -153,10 +153,25 @@ function classifyTokenType(payload) {
 }
 
 /**
- * Format token for API response
- * @param {string} token - JWT token string
- * @param {object} options - Display options
- * @returns {object} Formatted token data
+ * Decode and format a JWT string for display.
+ * Returns the JWT decoded into header, payload (with human-readable claim descriptions
+ * via formatClaims), summary, and optionally the full token string.
+ *
+ * NOTE: `decoded.payload` values are wrapped objects `{ value, description }`, not raw values.
+ * For raw JWT parts without description wrapping, use the /api/token-display/raw-decode endpoint.
+ *
+ * @param {string} token - Raw JWT string (not verified, display only)
+ * @param {{ includeFullToken?: boolean, includeClaims?: boolean }} [options]
+ * @returns {{
+ *   success: boolean,
+ *   summary: { subject?: string, issuer?: string, audience?: string, expiresAt?: string },
+ *   decoded: {
+ *     header: { alg: string, kid?: string, typ?: string },
+ *     payload: { [claim: string]: { value: any, description: string } },
+ *     signature: string
+ *   } | null,
+ *   fullToken: string
+ * } | { success: false, error: string }}
  */
 function formatTokenForDisplay(token, options = {}) {
   const { includeFullToken = false, includeClaims = true } = options;
