@@ -42,6 +42,7 @@ import OAuthTokenDisplayPage from "./OAuthTokenDisplayPage";
 import { useTheme } from "../context/ThemeContext";
 import RetailDashboard from "./RetailDashboard";
 import ThemePicker from "./ThemePicker";
+import AuthorizeRulesPanel from './AuthorizeRulesPanel';
 
 /** Format a number as USD currency — $1,234.56 */
 const fmt = (n) =>
@@ -158,6 +159,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   // pop-out). Floating mode is unaffected. Mirrors the cookie-
   // credentialed read BankingAgent.js uses for ff_heuristic_enabled.
   const [showBankingInMiddle, setShowBankingInMiddle] = useState(false);
+  const [showAuthorizeRulesPanel, setShowAuthorizeRulesPanel] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -169,6 +171,10 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           (f) => f.id === "ff_show_banking_in_middle_agent",
         );
         if (flag != null) setShowBankingInMiddle(Boolean(flag.value));
+        const authorizeFlag = data?.flags?.find(
+          (f) => f.id === "ff_authorize_rules_panel",
+        );
+        if (authorizeFlag != null) setShowAuthorizeRulesPanel(Boolean(authorizeFlag.value));
       })
       .catch(() => {
         /* fail to the clean default (column hidden) */
@@ -2729,6 +2735,11 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
               )}
             </main>
 
+            {showAuthorizeRulesPanel && (
+              <div style={{ padding: '0 16px 16px' }}>
+                <AuthorizeRulesPanel />
+              </div>
+            )}
             {/* Float mode: no reserve column — the FAB is a fixed overlay from App.js. */}
           </div>
         </div>
