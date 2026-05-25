@@ -186,49 +186,50 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null, su
         if (!params.amount) missing.push('amount (e.g. "$100")');
         return { reply: `I can help you transfer funds. Please provide: ${missing.join(', ')}.\n\nExample: "Transfer $100 from checking to savings"`, success: true, toolsCalled: [], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
       }
-      // Full params — execute via data store
+      // Resolve account type names → IDs via local store (read-only lookup, no write)
       const accounts = await dataStore.getAccountsByUserId(userId);
       const fromAcct = accounts?.find(a => a.accountType?.toLowerCase() === params.fromId?.toLowerCase() || a.id === params.fromId);
       const toAcct = accounts?.find(a => a.accountType?.toLowerCase() === params.toId?.toLowerCase() || a.id === params.toId);
       if (!fromAcct || !toAcct) {
         return { reply: `❌ Could not find the specified accounts. Your accounts: ${(accounts || []).map(a => a.accountType).join(', ')}`, success: false, toolsCalled: ['transfer'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
       }
-      // Resolve account types to account IDs for frontend consumption (prevents "account not found" API errors)
-      params.fromId = fromAcct.id;
-      params.toId = toAcct.id;
       const amount = parseFloat(params.amount);
-      if (isNaN(amount) || amount <= 0) {
+      if (Number.isNaN(amount) || amount <= 0) {
         return { reply: '❌ Please specify a valid positive amount.', success: false, toolsCalled: ['transfer'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
       }
-      if (Number(fromAcct.balance) < amount) {
-        return { reply: `Insufficient funds in ${fromAcct.accountType}. Balance: $${Number(fromAcct.balance).toFixed(2)}`, success: false, toolsCalled: ['transfer'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
-      }
+      // Route through the full token-exchange → gateway → MCP pipeline (same as read actions
+      // and the LLM path). This ensures PingAuthorize evaluates every write, the Token Chain
+      // panel shows the exchange, and HITL/step-up gates fire correctly.
+      const tokenEvents = [];
+      const sessionId = req?.sessionID || '';
       try {
-        const txRes = await _callTransactionsApi({
-          fromAccountId: fromAcct.id,
-          toAccountId: toAcct.id,
-          amount,
-          type: 'transfer',
-          // WR-07(b): sanitize account labels before they land in the
-          // transaction description (flows to audit log + Token Chain text).
-          description: params.description || `Transfer from ${sanitizeAccountLabel(fromAcct.accountType)} to ${sanitizeAccountLabel(toAcct.accountType)}`,
-        }, userToken);
-        if (txRes.status === 428) {
-          const body = txRes.data;
-          return { reply: body.error_description || 'This transfer requires your approval. Please confirm in the consent dialog.', success: false, toolsCalled: ['create_transfer'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [], error: 'hitl_required', hitl: body.hitl || { type: 'consent' }, hitl_threshold_usd: body.hitl_threshold_usd || body.amount || amount, fromAccountId: fromAcct.id, toAccountId: toAcct.id, transactionAmount: amount, transactionType: 'transfer' };
+        const rawResult = await executeBffTool({
+          name: 'create_transfer',
+          args: {
+            from_account_id: fromAcct.id,
+            to_account_id: toAcct.id,
+            amount,
+            // WR-07(b): sanitize account labels before they reach the audit log.
+            description: params.description || `Transfer from ${sanitizeAccountLabel(fromAcct.accountType)} to ${sanitizeAccountLabel(toAcct.accountType)}`,
+          },
+          userId, userToken, req, tokenEvents, sessionId,
+        });
+        let result;
+        try { result = typeof rawResult === 'string' ? JSON.parse(rawResult) : rawResult; }
+        catch (_) { result = null; }
+        if (result?.error === 'hitl_required') {
+          return { reply: result.message || 'This transfer requires your approval. Please confirm in the consent dialog.', success: false, toolsCalled: ['create_transfer'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents, error: 'hitl_required', hitl: result.hitl || { type: 'consent' }, hitl_threshold_usd: result.hitl_threshold_usd || amount, fromAccountId: fromAcct.id, toAccountId: toAcct.id, transactionAmount: amount, transactionType: 'transfer' };
         }
-        if (txRes.status === 403) {
-          const body = txRes.data;
-          return { reply: `Transfer denied: ${body.error_description || body.error || 'Policy denied this transaction.'}`, success: false, toolsCalled: ['create_transfer'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
+        if (result?.error === 'step_up_required') {
+          return { reply: result.message || 'Step-up authentication required for this transfer.', success: false, toolsCalled: ['create_transfer'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents };
         }
-        if (txRes.status >= 400) {
-          const body = txRes.data;
-          return { reply: `Transfer failed: ${body.error_description || body.error || 'Unknown error'}`, success: false, toolsCalled: ['create_transfer'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
+        if (result?.error) {
+          return { reply: `Transfer failed: ${result.message || result.error}`, success: false, toolsCalled: ['create_transfer'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents };
         }
-        return { reply: `Transferred **$${amount.toFixed(2)}** from ${fromAcct.accountType} to ${toAcct.accountType}.`, success: true, toolsCalled: ['create_transfer'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
+        return { reply: `Transferred **$${amount.toFixed(2)}** from ${fromAcct.accountType} to ${toAcct.accountType}.`, success: true, toolsCalled: ['create_transfer'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents };
       } catch (err) {
         // WR-07(a): non-Error throws have no .message — surface the real value.
-        return { reply: `Transfer failed: ${(err && err.message) ? err.message : String(err)}`, success: false, toolsCalled: ['create_transfer'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
+        return { reply: `Transfer failed: ${(err && err.message) ? err.message : String(err)}`, success: false, toolsCalled: ['create_transfer'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents };
       }
     }
 
@@ -244,35 +245,35 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null, su
       if (!toAcct) {
         return { reply: `❌ Could not find account "${params.toId}". Your accounts: ${(accounts || []).map(a => a.accountType).join(', ')}`, success: false, toolsCalled: ['deposit'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
       }
-      // Resolve account type to account ID for frontend consumption (prevents "account not found" API error)
-      params.toId = toAcct.id;
       const amount = parseFloat(params.amount);
-      if (isNaN(amount) || amount <= 0) {
+      if (Number.isNaN(amount) || amount <= 0) {
         return { reply: '❌ Please specify a valid positive amount.', success: false, toolsCalled: ['deposit'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
       }
+      // Route through token-exchange → gateway → MCP (same path as reads and LLM).
+      const tokenEvents = [];
+      const sessionId = req?.sessionID || '';
       try {
-        const txRes = await _callTransactionsApi({
-          toAccountId: toAcct.id,
-          amount,
-          type: 'deposit',
-          description: params.description || 'Agent deposit',
-        }, userToken);
-        if (txRes.status === 428) {
-          const body = txRes.data;
-          return { reply: body.error_description || 'This deposit requires your approval. Please confirm in the consent dialog.', success: false, toolsCalled: ['create_deposit'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [], error: 'hitl_required', hitl: body.hitl || { type: 'consent' }, hitl_threshold_usd: body.hitl_threshold_usd || body.amount || amount, toAccountId: toAcct.id, transactionAmount: amount, transactionType: 'deposit' };
+        const rawResult = await executeBffTool({
+          name: 'create_deposit',
+          args: { to_account_id: toAcct.id, amount, description: params.description || 'Agent deposit' },
+          userId, userToken, req, tokenEvents, sessionId,
+        });
+        let result;
+        try { result = typeof rawResult === 'string' ? JSON.parse(rawResult) : rawResult; }
+        catch (_) { result = null; }
+        if (result?.error === 'hitl_required') {
+          return { reply: result.message || 'This deposit requires your approval. Please confirm in the consent dialog.', success: false, toolsCalled: ['create_deposit'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents, error: 'hitl_required', hitl: result.hitl || { type: 'consent' }, hitl_threshold_usd: result.hitl_threshold_usd || amount, toAccountId: toAcct.id, transactionAmount: amount, transactionType: 'deposit' };
         }
-        if (txRes.status === 403) {
-          const body = txRes.data;
-          return { reply: `Deposit denied: ${body.error_description || body.error || 'Policy denied this transaction.'}`, success: false, toolsCalled: ['create_deposit'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
+        if (result?.error === 'step_up_required') {
+          return { reply: result.message || 'Step-up authentication required for this deposit.', success: false, toolsCalled: ['create_deposit'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents };
         }
-        if (txRes.status >= 400) {
-          const body = txRes.data;
-          return { reply: `Deposit failed: ${body.error_description || body.error || 'Unknown error'}`, success: false, toolsCalled: ['create_deposit'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
+        if (result?.error) {
+          return { reply: `Deposit failed: ${result.message || result.error}`, success: false, toolsCalled: ['create_deposit'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents };
         }
-        return { reply: `Deposited **$${amount.toFixed(2)}** into ${toAcct.accountType}.`, success: true, toolsCalled: ['create_deposit'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
+        return { reply: `Deposited **$${amount.toFixed(2)}** into ${toAcct.accountType}.`, success: true, toolsCalled: ['create_deposit'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents };
       } catch (err) {
         // WR-07(a): non-Error throws have no .message — surface the real value.
-        return { reply: `Deposit failed: ${(err && err.message) ? err.message : String(err)}`, success: false, toolsCalled: ['create_deposit'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
+        return { reply: `Deposit failed: ${(err && err.message) ? err.message : String(err)}`, success: false, toolsCalled: ['create_deposit'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents };
       }
     }
 
@@ -288,38 +289,35 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null, su
       if (!fromAcct) {
         return { reply: `Could not find account "${params.fromId}". Your accounts: ${(accounts || []).map(a => a.accountType).join(', ')}`, success: false, toolsCalled: ['withdraw'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
       }
-      // Resolve account type to account ID for frontend consumption (prevents "From account not found" API error)
-      params.fromId = fromAcct.id;
       const amount = parseFloat(params.amount);
-      if (isNaN(amount) || amount <= 0) {
+      if (Number.isNaN(amount) || amount <= 0) {
         return { reply: 'Please specify a valid positive amount.', success: false, toolsCalled: ['withdraw'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
       }
-      if (Number(fromAcct.balance) < amount) {
-        return { reply: `Insufficient funds in ${fromAcct.accountType}. Balance: $${Number(fromAcct.balance).toFixed(2)}`, success: false, toolsCalled: ['withdraw'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
-      }
+      // Route through token-exchange → gateway → MCP (same path as reads and LLM).
+      const tokenEvents = [];
+      const sessionId = req?.sessionID || '';
       try {
-        const txRes = await _callTransactionsApi({
-          fromAccountId: fromAcct.id,
-          amount,
-          type: 'withdrawal',
-          description: params.description || 'Agent withdrawal',
-        }, userToken);
-        if (txRes.status === 428) {
-          const body = txRes.data;
-          return { reply: body.error_description || 'This withdrawal requires your approval. Please confirm in the consent dialog.', success: false, toolsCalled: ['create_withdrawal'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [], error: 'hitl_required', hitl: body.hitl || { type: 'consent' }, hitl_threshold_usd: body.hitl_threshold_usd || body.amount || amount, fromAccountId: fromAcct.id, transactionAmount: amount, transactionType: 'withdrawal' };
+        const rawResult = await executeBffTool({
+          name: 'create_withdrawal',
+          args: { from_account_id: fromAcct.id, amount, description: params.description || 'Agent withdrawal' },
+          userId, userToken, req, tokenEvents, sessionId,
+        });
+        let result;
+        try { result = typeof rawResult === 'string' ? JSON.parse(rawResult) : rawResult; }
+        catch (_) { result = null; }
+        if (result?.error === 'hitl_required') {
+          return { reply: result.message || 'This withdrawal requires your approval. Please confirm in the consent dialog.', success: false, toolsCalled: ['create_withdrawal'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents, error: 'hitl_required', hitl: result.hitl || { type: 'consent' }, hitl_threshold_usd: result.hitl_threshold_usd || amount, fromAccountId: fromAcct.id, transactionAmount: amount, transactionType: 'withdrawal' };
         }
-        if (txRes.status === 403) {
-          const body = txRes.data;
-          return { reply: `Withdrawal denied: ${body.error_description || body.error || 'Policy denied this transaction.'}`, success: false, toolsCalled: ['create_withdrawal'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
+        if (result?.error === 'step_up_required') {
+          return { reply: result.message || 'Step-up authentication required for this withdrawal.', success: false, toolsCalled: ['create_withdrawal'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents };
         }
-        if (txRes.status >= 400) {
-          const body = txRes.data;
-          return { reply: `Withdrawal failed: ${body.error_description || body.error || 'Unknown error'}`, success: false, toolsCalled: ['create_withdrawal'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
+        if (result?.error) {
+          return { reply: `Withdrawal failed: ${result.message || result.error}`, success: false, toolsCalled: ['create_withdrawal'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents };
         }
-        return { reply: `Withdrew **$${amount.toFixed(2)}** from ${fromAcct.accountType}.`, success: true, toolsCalled: ['create_withdrawal'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
+        return { reply: `Withdrew **$${amount.toFixed(2)}** from ${fromAcct.accountType}.`, success: true, toolsCalled: ['create_withdrawal'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents };
       } catch (err) {
         // WR-07(a): non-Error throws have no .message — surface the real value.
-        return { reply: `Withdrawal failed: ${(err && err.message) ? err.message : String(err)}`, success: false, toolsCalled: ['create_withdrawal'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents: [] };
+        return { reply: `Withdrawal failed: ${(err && err.message) ? err.message : String(err)}`, success: false, toolsCalled: ['create_withdrawal'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents };
       }
     }
 

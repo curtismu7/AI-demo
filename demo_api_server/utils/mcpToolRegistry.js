@@ -9,6 +9,7 @@ const { explainTopic } = require('../services/educationTopics.js');
 const { mcpCallTool } = require('../services/mcpWebSocketClient');
 const { decodeJwtClaims, buildTokenEvent } = require('../services/agentMcpTokenService');
 const { recordToolCall: recordMcpToolCall } = require('../services/mcpToolAuditStore');
+const mcpGatewayClient = require('../services/mcpGatewayClient');
 
 
 const braveSearchService = require('../services/braveSearchService');
@@ -46,11 +47,26 @@ async function callMcpToolInternal(toolName, params, agentToken, userId, tokenEv
       console.log('[MCP_TOOL] Added agent_token_used event');
     }
 
-    // Call MCP server directly via WebSocket with agent token
+    // Route through HTTP gateway when MCP_GATEWAY_HTTP_URL is configured — the gateway
+    // accepts the bearer token in the Authorization header (HTTP), whereas the WebSocket
+    // path requires it in the WS protocol handshake which the current client doesn't send.
+    // Fall back to WebSocket only when no gateway URL is set.
+    const gatewayHttpUrl = mcpGatewayClient.getMcpGatewayHttpUrl();
     const correlationId = `agent-${Date.now()}`;
-    console.log('[MCP_TOOL] Calling mcpCallTool with correlationId:', correlationId);
-    const result = await mcpCallTool(toolName, params, agentToken, userSub, correlationId);
-    console.log('[MCP_TOOL] mcpCallTool completed successfully');
+    let result;
+    if (gatewayHttpUrl) {
+      console.log('[MCP_TOOL] Routing via HTTP gateway:', gatewayHttpUrl);
+      const { result: gatewayResult } = await mcpGatewayClient.callToolViaGateway(
+        gatewayHttpUrl, agentToken, toolName, params, { correlationId }
+      );
+      // callToolViaGateway returns { result, gwAuditTrail }; result is the JSON-RPC result object
+      // (shape: { content: [{ type: 'text', text: '...' }] }) — same shape as mcpCallTool
+      result = gatewayResult;
+    } else {
+      console.log('[MCP_TOOL] Calling mcpCallTool (WS) with correlationId:', correlationId);
+      result = await mcpCallTool(toolName, params, agentToken, userSub, correlationId);
+    }
+    console.log('[MCP_TOOL] tool call completed successfully');
     console.log('[MCP_TOOL] result type:', typeof result);
     console.log('[MCP_TOOL] result keys:', result ? Object.keys(result) : 'none');
 

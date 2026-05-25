@@ -64,38 +64,38 @@ The compliance panel now displays a **floating modal** that is **draggable**, **
 ## Test Checklist
 
 ### Compliance Panel Display
-- [ ] White background (not light blue)
-- [ ] Shows 12 steps in list
-- [ ] Icons: ✅ (done), ❌ (error), ⚙ (active), ○ (pending)
-- [ ] "Intent-Bound Delegation" section header appears before "olb-resource-token" step
+- ☑️ White background (not light blue)
+- ☑️ Shows 12 steps in list
+- ☑️ Icons: ✅ (done), ❌ (error), ⚙ (active), ○ (pending)
+- ☑️ "Intent-Bound Delegation" section header appears before "olb-resource-token" step
 
 ### Skip-Step Footer
-- [ ] Shows only when non-applicable steps exist
-- [ ] Displays count: "N steps not triggered"
-- [ ] Explains: "gateway denial and HITL steps only fire on..."
-- [ ] Disappears when checking "Sensitive Account Details" action
+- ☑️ Shows only when non-applicable steps exist
+- ☑️ Displays count: "N steps not triggered"
+- ☑️ Explains: "gateway denial and HITL steps only fire on..."
+- ☑️ Disappears when checking "Sensitive Account Details" action
 
 ### FloatingPanel Modal Features
-- [ ] Opens when "Side panel" checkbox is checked
-- [ ] "Last Response" section shows above checklist
-- [ ] Clear button resets steps
-- [ ] **Dragging**: Click title bar, drag across screen
-- [ ] **Resizing**: Grab corner/edge handles, drag to resize
-- [ ] **Min/Max sizes**: Can't shrink below 260×300px
-- [ ] **Pop-out**: ↗ button opens new window
-- [ ] **Collapse**: ▲ button collapses/expands panel
-- [ ] Modal positioned left (252px) to avoid side nav
+- ☑️ Opens when "Side panel" checkbox is checked
+- ☑️ "Last Response" section shows above checklist
+- ☑️ Clear button resets steps
+- ☑️ **Dragging**: Click title bar, drag across screen
+- ☑️ **Resizing**: Grab corner/edge handles, drag to resize
+- ☑️ **Min/Max sizes**: Can't shrink below 260×300px
+- ☑️ **Pop-out**: ↗ button opens new window
+- ☑️ **Collapse**: ▲ button collapses/expands panel
+- ☑️ Modal positioned left (252px) to avoid side nav
 
 ### All Agent Modes
-- [ ] Floating mode: Draggable panel appears on right
-- [ ] Embedded/middle mode: Modal appears in content area
-- [ ] Bottom dock mode: Modal works when docked at bottom
+- ☑️ Floating mode: Draggable panel appears on right
+- ☑️ Embedded/middle mode: Modal appears in content area
+- ☑️ Bottom dock mode: Modal works when docked at bottom
 
 ### Error Scenarios
-- [ ] No JavaScript errors in console
-- [ ] Modal persists during message flow
-- [ ] Dragging works smoothly (no lag)
-- [ ] Resizing is fluid
+- ☑️ No JavaScript errors in console
+- ☑️ Modal persists during message flow
+- ☑️ Dragging works smoothly (no lag)
+- ☑️ Resizing is fluid
 
 ---
 

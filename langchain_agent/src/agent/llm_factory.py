@@ -43,6 +43,7 @@ def get_llm(
     streaming: bool = True,
     ollama_base_url: str = "http://localhost:11434",
     lmstudio_base_url: str = "http://localhost:1234/v1",
+    anthropic_base_url: str = "",
     # Helix-specific kwargs (passed through from LangChainConfig)
     helix_base_url: str = "",
     helix_api_key: str = "",
@@ -92,6 +93,29 @@ def get_llm(
             temperature=temperature,
             max_tokens=max_tokens,
         )
+
+    if resolved == "anthropic":
+        # Real Anthropic cloud — or LM Studio proxy when ANTHROPIC_BASE_URL is set to localhost.
+        # anthropic_base_url="" → SDK default (api.anthropic.com); non-empty → override.
+        resolved_model = model or "claude-sonnet-4-5"
+        resolved_api_key = api_key or "lm-studio"
+        base = (anthropic_base_url or "").rstrip("/")
+        if base.endswith("/v1"):
+            base = base[:-3]
+        logger.info(
+            "Initializing LLM: provider=anthropic model=%s base=%s",
+            resolved_model, base or "api.anthropic.com",
+        )
+        from langchain_anthropic import ChatAnthropic
+        kwargs_anthro = dict(
+            model=resolved_model,
+            anthropic_api_key=resolved_api_key,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+        if base:
+            kwargs_anthro["anthropic_api_url"] = base
+        return ChatAnthropic(**kwargs_anthro)
 
     if resolved == "lmstudio":
         resolved_model = model or "local-model"

@@ -2404,7 +2404,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] 276-01-PLAN.md — Add langgraph, replace AgentExecutor with create_react_agent, replace callback streaming with astream_events loop, delete WebSocketStreamCallbackHandler
+- [x] 276-01-PLAN.md — Add langgraph, replace AgentExecutor with create_react_agent, replace callback streaming with astream_events loop, delete WebSocketStreamCallbackHandler
 
 ### Phase 281: handle-mcp-notifications-cancelled
 

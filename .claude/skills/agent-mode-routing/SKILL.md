@@ -1,19 +1,29 @@
 ---
 name: agent-mode-routing
-description: Use when adding, editing, or debugging agent mode selection, LLM provider routing, Helix/heuristic fallback, the five-mode picker UI, or any code in bankingAgentLangGraphService, agentModeResolver, llmProviderResolver, or the agentMode.* / agentHelixUnconfigured tests. Also use when the agent appears to do nothing, returns "Advanced reasoning is temporarily unavailable", or ignores the selected mode.
+description: Use when adding, editing, or debugging agent mode selection, LLM provider routing, Helix/heuristic fallback, the five-mode picker UI, or any code in bankingAgentLangGraphService, agentModeResolver, llmProviderResolver, or the agentMode.* / agentHelixUnconfigured tests. Also use when the agent appears to do nothing, returns "Advanced reasoning is temporarily unavailable", or ignores the selected mode. NOTE — this skill covers the BFF/Node.js agent only (demo_api_server). For the Python LangGraph agent (langchain_agent/, ports 8888–8890) use the langchain-agent skill instead.
 ---
 
 # Agent Mode Routing — Architecture & Rules
 
-## The Five Modes
+> **Two separate agents exist in this repo:**
+> - **BFF/Node.js agent** (`demo_api_server/services/bankingAgentLangGraphService.js`) — this skill covers it. Runs inline in the BFF process.
+> - **Python LangGraph agent** (`langchain_agent/`, ports 8888/8889/8890) — use the `langchain-agent` skill for that. Separate uvicorn process with its own LLM factory and MCP connections.
+>
+> Do not confuse the two. A bug in "the LangGraph agent" might be in either one.
 
-| ID | Label | Provider | Heuristic routing | LLM fallback |
-|----|-------|----------|-------------------|--------------|
-| `heuristics` | Heuristics only | none | ✅ | none — catalog message on no-match |
-| `helix_google` | Helix (Google/Gemini) | helix | ❌ | Helix always |
-| `heuristics_helix` | Heuristics + Helix | helix | ✅ | Helix on no-match |
-| `chatgpt` | Just ChatGPT | openai | ❌ | OpenAI Responses API (BFF or platform wiring) |
-| `claude` | Just Claude | anthropic | ❌ | Anthropic Messages API (BFF or platform wiring) |
+## The Five Modes (BFF Agent)
+
+| ID | Label | Provider | Heuristic routing | LLM fallback | Shown in UI? |
+|----|-------|----------|-------------------|--------------|--------------|
+| `heuristics` | Heuristics only | none | ✅ | none — catalog message on no-match | ✅ |
+| `helix_google` | Helix (Google/Gemini) | helix | ❌ | Helix always | ✅ |
+| `heuristics_helix` | Heuristics + Helix | helix | ✅ | Helix on no-match | ✅ |
+| `chatgpt` | Just ChatGPT | openai | ❌ | OpenAI Responses API (BFF or platform wiring) | ❌ hidden |
+| `claude` | Just Claude | anthropic | ❌ | Anthropic Messages API (BFF or platform wiring) | ✅ |
+
+**UI visibility:** `AgentModeSelector.jsx` filters to `CORE_MODE_IDS = ['heuristics', 'helix_google', 'heuristics_helix', 'claude']`. The `chatgpt` mode exists in `agentModeResolver.js` and is selectable via API but is hidden from the UI. Do not add it back to the UI selector without an explicit decision.
+
+**`anthropic-lmstudio` provider:** exists in `langchainConfig.js` for LM Studio's Anthropic-compatible endpoint (local dev). It is not a UI-selectable mode; it is a provider value that can be set via `POST /api/langchain/config`. The BFF's `llmProviderResolver.js` passes it through to `:3006`.
 
 **Single SSOT:** [`demo_api_server/services/agentModeResolver.js`](../../demo_api_server/services/agentModeResolver.js) — never inline a provider default anywhere else.
 

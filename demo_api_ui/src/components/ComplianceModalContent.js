@@ -48,6 +48,12 @@ export default function ComplianceModalContent({
             <ol className="compliance-modal__list">
               {complianceStripState.complianceSteps.flatMap((step) => {
                 const isActive = step.id === complianceStripState.complianceStep;
+                const applicableSteps = complianceStripState.complianceActionId
+                  ? CHIP_APPLICABLE_STEPS?.[complianceStripState.complianceActionId] || []
+                  : [];
+                const isApplicable = applicableSteps.includes(step.id);
+                const isSkipped =
+                  step.status === 'pending' && !isApplicable && !!complianceStripState?.complianceActionId;
                 const icon =
                   step.status === 'done'
                     ? '✅'
@@ -55,11 +61,9 @@ export default function ComplianceModalContent({
                       ? '❌'
                       : isActive
                         ? '⚙'
-                        : '○';
-                const applicableSteps = complianceStripState.complianceActionId
-                  ? CHIP_APPLICABLE_STEPS?.[complianceStripState.complianceActionId] || []
-                  : [];
-                const isApplicable = applicableSteps.includes(step.id);
+                        : isSkipped
+                          ? '☑️'
+                          : '○';
                 const items = [];
 
                 if (step.id === 'olb-resource-token') {

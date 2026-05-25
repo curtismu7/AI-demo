@@ -176,6 +176,11 @@ router.post('/config', async (req, res) => {
     updates.provider = key_type;
   }
 
+  // Anthropic base URL override (for LM Studio proxy or custom endpoint)
+  if (req.body?.anthropic_base_url !== undefined) {
+    updates.anthropic_base_url = req.body.anthropic_base_url || '';
+  }
+
   setLangchainConfig(req, updates);
 
   let am = null;
