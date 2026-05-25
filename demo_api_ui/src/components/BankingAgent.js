@@ -6595,20 +6595,6 @@ export default function BankingAgent({
                   />
                   RFC info
                 </label>
-                {/* LLM-only mode toggle — when checked, skips heuristic fast-path */}
-                <label
-                  className={`ba-rfc-toggle-label ba-llm-mode-label${!heuristicEnabled ? " ba-llm-mode-label--active" : ""}`}
-                  title="LLM only: when on, all queries go through the LLM. When off, fast heuristic matching runs first with LLM as fallback."
-                >
-                  <input
-                    type="checkbox"
-                    checked={!heuristicEnabled}
-                    disabled={llmFlagSaving}
-                    onChange={(e) => toggleHeuristicMode(!e.target.checked)}
-                    className="ba-rfc-toggle-cb ba-llm-mode-cb"
-                  />
-                  LLM only
-                </label>
                 {/* Five-mode agent provider selector — shared SSOT with /config */}
                 <AgentModeSelector compact />
                 {/* Compliance 12-step toggle */}
