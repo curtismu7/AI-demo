@@ -358,7 +358,30 @@ export default function WebMcpPanel() {
               <p>{error.message}</p>
               <details>
                 <summary>Technical details</summary>
-                <pre>{error.details}</pre>
+                <p className="webmcp-error__status">{error.statusLine}</p>
+                {error.summary && (
+                  <table className="webmcp-error__summary">
+                    <tbody>
+                      {Object.entries(error.summary)
+                        .filter(([, v]) => v != null)
+                        .map(([k, v]) => (
+                          <tr key={k}>
+                            <th>{k}</th>
+                            <td>{typeof v === 'object' ? JSON.stringify(v) : String(v)}</td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                )}
+                {error.parsedBody && error.summary && (
+                  <details className="webmcp-error__full">
+                    <summary>Full response</summary>
+                    <pre>{JSON.stringify(error.parsedBody, null, 2)}</pre>
+                  </details>
+                )}
+                {error.rawBody && (
+                  <pre>{error.rawBody}</pre>
+                )}
               </details>
             </div>
           )}
