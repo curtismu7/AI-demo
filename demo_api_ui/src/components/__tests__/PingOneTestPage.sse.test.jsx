@@ -78,7 +78,7 @@ jest.mock("../../utils/appToast", () => ({
 
 // Child components that make their own API calls — stub to null
 jest.mock("../ApiCallDisplay", () => () => null);
-jest.mock("../DecodedTokenPanel", () => () => null);
+jest.mock("../TokenCard", () => () => null);
 jest.mock("../ScopeNarrowingVisualization", () => () => null);
 jest.mock("../TokenColorSystem", () => ({ TokenColorLegend: () => null }));
 jest.mock("../PingOneApiPanel", () => () => null);
