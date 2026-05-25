@@ -11,6 +11,7 @@ import { useEducationUI } from "../context/EducationUIContext";
 import { EDU } from "./education/educationIds";
 import PageNav from "./PageNav";
 import "../styles/appShellPages.css";
+import "../styles/rule-panel.css";
 import "./WebMcpPanel.css";
 
 const TRANSFER_TOOL = "create_transfer";
@@ -204,7 +205,7 @@ export default function WebMcpPanel() {
           </button>
         </div>
 
-        <div className="webmcp-panel">
+        <div className="rp-container" style={{ margin: '16px 0' }}>
           {loading && !selectedTool && (
             <div className="webmcp-loading">Loading tools…</div>
           )}
@@ -219,11 +220,11 @@ export default function WebMcpPanel() {
             </div>
           )}
 
-          <div className="webmcp-body">
-            <div className="webmcp-tool-list">
-              <h4>Available Tools ({tools.length})</h4>
+          <div className="rp-body">
+            <div className="rp-list">
+              <div className="rp-list-group-header">Available Tools ({tools.length})</div>
               {tools.length > 0 && (
-                <p className="webmcp-tool-hint">Select a tool to inspect and call it</p>
+                <div className="rp-list-hint">Select a tool to inspect and call it</div>
               )}
               {tools.map((tool) => {
                 const isHitl = HITL_TOOLS.has(tool.name);
@@ -232,11 +233,11 @@ export default function WebMcpPanel() {
                   <button
                     key={tool.name}
                     type="button"
-                    className={`webmcp-tool-item${selectedTool?.name === tool.name ? " active" : ""}`}
+                    className={`rp-list-item${selectedTool?.name === tool.name ? " rp-list-item--active" : ""}`}
                     onClick={() => selectTool(tool)}
                   >
-                    <span className="webmcp-tool-name">{tool.name}</span>
-                    <span className="webmcp-tool-desc">{tool.description}</span>
+                    <div className="rp-list-item__name">{tool.name}</div>
+                    <div className="rp-list-item__sub">{tool.description}</div>
                     {isHitl && (
                       <span className="webmcp-tool-badge webmcp-tool-badge--hitl">
                         Requires consent
@@ -262,11 +263,11 @@ export default function WebMcpPanel() {
             )}
 
             {selectedTool && (
-              <div className="webmcp-tool-detail">
-                <h4>{selectedTool.name}</h4>
-                <p className="webmcp-tool-detail-desc">
+              <div className="rp-detail">
+                <div className="rp-detail__title">{selectedTool.name}</div>
+                <div className="rp-detail__desc">
                   {selectedTool.description}
-                </p>
+                </div>
 
                 {HITL_TOOLS.has(selectedTool.name) && (
                   <GateNotice kind="hitl" title="Human-in-the-Loop (HITL) required">
@@ -285,40 +286,42 @@ export default function WebMcpPanel() {
                 )}
 
                 {Object.keys(schemaProps).length > 0 && (
-                  <div className="webmcp-params">
-                    <h5>Parameters</h5>
+                  <div className="rp-test-form">
+                    <div className="rp-test-form__heading">Parameters</div>
                     {Object.entries(schemaProps).map(([key, schema]) => (
-                      <label key={key} className="webmcp-param-label">
-                        <span>
+                      <div key={key} style={{ marginBottom: '10px' }}>
+                        <label className="rp-test-form__label" htmlFor={`param-${key}`}>
                           {key}
                           {requiredFields.includes(key) && (
                             <span className="webmcp-required">*</span>
                           )}
                           {schema.description && (
-                            <span className="webmcp-param-hint">
+                            <span style={{ color: '#999', fontStyle: 'italic' }}>
                               {" "}— {schema.description}
                             </span>
                           )}
-                        </span>
+                        </label>
                         <input
+                          id={`param-${key}`}
                           type="text"
-                          className="webmcp-param-input"
+                          className="rp-test-form__input"
                           value={params[key] || ""}
                           onChange={(e) =>
                             handleParamChange(key, e.target.value)
                           }
                           placeholder={schema.type || ""}
                         />
-                      </label>
+                      </div>
                     ))}
                   </div>
                 )}
 
                 <button
                   type="button"
-                  className={`webmcp-call-btn${loading ? " webmcp-call-btn--loading" : ""}`}
+                  className="rp-btn-primary"
                   onClick={callSelectedTool}
                   disabled={loading}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}
                 >
                   {loading && <span className="webmcp-btn-spinner" aria-hidden="true" />}
                   {loading ? "Calling…" : "Call Tool"}
