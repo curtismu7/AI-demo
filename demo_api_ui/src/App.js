@@ -113,6 +113,7 @@ import { EducationUIProvider } from "./context/EducationUIContext";
 import { ExchangeModeProvider } from "./context/ExchangeModeContext";
 import { SpinnerProvider } from "./context/SpinnerContext";
 import { TokenChainProvider } from "./context/TokenChainContext";
+import { McpFieldProvider } from './context/McpFieldContext';
 import LangChainPage from "./pages/LangChainPage";
 import { monitorApiHealth } from "./services/bankingRestartNotificationService";
 import { getCachedJson } from "./services/cachedStatusService";
@@ -1508,13 +1509,15 @@ export default function App() {
   return (
     <SpinnerProvider>
       <AgentUiModeProvider>
-        <ExchangeModeProvider>
-          <Router
-            future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-          >
-            <AppWithAuth />
-          </Router>
-        </ExchangeModeProvider>
+        <McpFieldProvider>
+          <ExchangeModeProvider>
+            <Router
+              future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+            >
+              <AppWithAuth />
+            </Router>
+          </ExchangeModeProvider>
+        </McpFieldProvider>
       </AgentUiModeProvider>
     </SpinnerProvider>
   );
