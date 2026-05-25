@@ -61,6 +61,7 @@ A developer or architect who runs through the live demo in 5 minutes understands
 | 214 | fix-fido-registration-and-check-authentication-look-at-curl- | Fix FIDO2 registration and authentication; compare backend and UI to PingOne docs and curl commands; show request/response for FIDO2 on test page | In Progress | 2026-04-23 |
 | 223 | fido2-registration-authentication | FIDO2 registration and authentication parity with PingOne docs; test page visibility | Planned | 2026-04-23 |
 | 279 | skip-token-validation-production-guard | Add startup RuntimeError guard in langchain_agent/src/config/settings.py refusing to start if SKIP_TOKEN_SIGNATURE_VALIDATION=true outside development; verify session→user binding | GUARD-01, GUARD-02, GUARD-03 | 1 plan |
+| 281 | handle-mcp-notifications-cancelled | Handle notifications/cancelled from MCP server to prevent _pending dict leak; CancelledError guard in MCPTool._arun | CANCEL-01, CANCEL-02, CANCEL-03 | 1 plan |
 
 ---
 
@@ -2375,3 +2376,16 @@ Plans:
 Plans:
 - [ ] 274-01-PLAN.md — Install langchain-mcp-adapters, replace MCPToolProvider with MultiServerMCPClient in langchain_mcp_agent.py, reduce mcp_tool_provider.py to stub
 - [ ] 274-02-PLAN.md — Delete obsolete tests, update surviving tests to mock MultiServerMCPClient, verify full suite passes
+
+### Phase 281: handle-mcp-notifications-cancelled
+
+**Goal:** Implement `notifications/cancelled` handler in `langchain_agent/src/mcp/connection.py` so that when the MCP server cancels a long-running tool call, the corresponding entry in `_pending` is resolved with `asyncio.CancelledError` rather than leaked. Also add an explicit `asyncio.CancelledError` guard in `MCPTool._arun` so cancellation propagates correctly rather than being swallowed by the bare `except Exception` block. Note: disconnect cleanup (`_fail_all_pending` on close) is already implemented; only the `notifications/cancelled` message path is missing.
+
+**Requirements:** CANCEL-01, CANCEL-02, CANCEL-03
+
+**Depends on:** none (Phase 274 has not shipped; langchain-mcp-adapters absent from requirements.txt)
+
+**Plans:** 1 plan
+
+Plans:
+- [ ] 281-01-PLAN.md — Add notifications/cancelled handler in _read_loop; CancelledError guard in _arun; three new tests in test_mcp_connection_demux.py
