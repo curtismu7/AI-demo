@@ -76,6 +76,7 @@ class LangChainMCPAgent(TracingMixin):
             max_tokens=lc.max_tokens,
             streaming=bool(getattr(lc, "stream_llm_tokens", True)),
             ollama_base_url=getattr(lc, "ollama_base_url", "http://localhost:11434"),
+            lmstudio_base_url=getattr(lc, "lmstudio_base_url", "http://localhost:1234/v1"),
             helix_base_url=getattr(lc, "helix_base_url", ""),
             helix_api_key=getattr(lc, "helix_api_key", ""),
             helix_environment_id=getattr(lc, "helix_environment_id", ""),
