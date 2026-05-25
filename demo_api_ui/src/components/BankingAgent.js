@@ -1745,6 +1745,15 @@ export default function BankingAgent({
   if (!nlSendGuardRef.current) nlSendGuardRef.current = makeReentrancyGuard();
   const sendAbortRef = useRef(null);
   const [messages, setMessages] = useState([]);
+  const [sessionTokens, setSessionTokens] = useState({ input: 0, output: 0 });
+  const [lifetimeTokens, setLifetimeTokens] = useState(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem('ba_tokens_lifetime') || 'null');
+      return stored && typeof stored.input === 'number' ? stored : { input: 0, output: 0 };
+    } catch (_) {
+      return { input: 0, output: 0 };
+    }
+  });
   const [loading, setLoading] = useState(false);
   /** null = loading; which OAuth flows have client IDs + environment */
   const [oauthConfig, setOauthConfig] = useState(null);
@@ -6167,6 +6176,21 @@ export default function BankingAgent({
                 tokenChain.setTokenEvents("agent", response.tokenEvents);
               }
             }
+            if (response.inputTokens || response.outputTokens) {
+              const inc = {
+                input: response.inputTokens ?? 0,
+                output: response.outputTokens ?? 0,
+              };
+              setSessionTokens((prev) => ({
+                input: prev.input + inc.input,
+                output: prev.output + inc.output,
+              }));
+              setLifetimeTokens((prev) => {
+                const next = { input: prev.input + inc.input, output: prev.output + inc.output };
+                try { localStorage.setItem('ba_tokens_lifetime', JSON.stringify(next)); } catch (_) {}
+                return next;
+              });
+            }
           }
         }
       } catch (e) {
@@ -8803,6 +8827,12 @@ export default function BankingAgent({
                   </span>
                 </div>
               </div>
+            </div>
+            {/* Token Teller — session + lifetime token counter */}
+            <div className="ba-token-footer">
+              <span>⬆ {sessionTokens.input.toLocaleString()} in</span>
+              <span>⬇ {sessionTokens.output.toLocaleString()} out</span>
+              <span>∑ {(lifetimeTokens.input + lifetimeTokens.output).toLocaleString()}</span>
             </div>
           </div>
           {/* Resize handles — all 8 directions, float mode only */}
