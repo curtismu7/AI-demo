@@ -1968,6 +1968,8 @@ export default function BankingAgent({
 
   /** Whether the heuristic fast-path is enabled (ff_heuristic_enabled). false = LLM-only mode. */
   const [heuristicEnabled, setHeuristicEnabled] = useState(true);
+  /** Whether the floating results panel is enabled (ff_agent_results_panel). false = panel hidden; results inline only. */
+  const [agentResultsPanelEnabled, setAgentResultsPanelEnabled] = useState(false);
   const [llmFlagSaving, setLlmFlagSaving] = useState(false);
 
   /** Render a single action button with optional emoji-only styling. */
@@ -2751,12 +2753,14 @@ export default function BankingAgent({
     fetchNlStatus()
       .then(setNlMeta)
       .catch(() => setNlMeta({ geminiConfigured: false }));
-    // Load ff_heuristic_enabled flag to sync the LLM-only toggle
+    // Load feature flags to sync UI-controlled toggles
     fetch("/api/admin/feature-flags", { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        const flag = data?.flags?.find((f) => f.id === "ff_heuristic_enabled");
-        if (flag != null) setHeuristicEnabled(Boolean(flag.value));
+        const heuristicFlag = data?.flags?.find((f) => f.id === "ff_heuristic_enabled");
+        if (heuristicFlag != null) setHeuristicEnabled(Boolean(heuristicFlag.value));
+        const panelFlag = data?.flags?.find((f) => f.id === "ff_agent_results_panel");
+        if (panelFlag != null) setAgentResultsPanelEnabled(Boolean(panelFlag.value));
       })
       .catch(() => {});
   }, [isOpen, isLoggedIn, marketingGuestChatEnabled]);
@@ -6499,7 +6503,7 @@ export default function BankingAgent({
       )}
 
       {/* Results panel — sits to the left of the agent (portal-renders over page; works in all modes) */}
-      {effectiveIsOpen && resultPanel && (
+      {effectiveIsOpen && resultPanel && agentResultsPanelEnabled && (
         <ResultsPanel
           panel={resultPanel}
           onClose={() => setResultPanel(null)}
