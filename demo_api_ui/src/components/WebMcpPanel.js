@@ -13,6 +13,16 @@ import PageNav from "./PageNav";
 import "../styles/appShellPages.css";
 import "../styles/rule-panel.css";
 import "./WebMcpPanel.css";
+import {
+  ACCOUNT_ID_KEYS,
+  USER_ID_KEYS,
+  ADMIN_ACCOUNT_ID_KEYS,
+  DESCRIPTION_SUGGESTIONS,
+  QUERY_SUGGESTIONS,
+} from '../constants/mcpFieldKeys';
+import McpParamSelect from './McpParamSelect';
+import McpParamToggle from './McpParamToggle';
+import McpParamSuggest from './McpParamSuggest';
 
 const TRANSFER_TOOL = "create_transfer";
 // Tools that always require HITL browser consent (can't execute inline)
@@ -65,6 +75,55 @@ function interpretResult(result) {
   return null;
 }
 
+/**
+ * Best-effort extraction of structured lists from tool results.
+ * Returns an object with extracted options, or null if not applicable.
+ */
+function extractResultData(toolName, result) {
+  try {
+    // Tool handlers return result as JSON string in result.text or result.result.text
+    const raw = result?.text ?? result?.result?.text ?? null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+
+    if (toolName === 'get_my_accounts') {
+      const accounts = Array.isArray(parsed) ? parsed : parsed?.accounts;
+      if (!Array.isArray(accounts)) return null;
+      return {
+        accountOptions: accounts.map((a) => ({
+          value: a.id,
+          label: `${a.accountType ? a.accountType.charAt(0).toUpperCase() + a.accountType.slice(1) : 'Account'} — $${Number(a.balance || 0).toLocaleString()}`,
+        })),
+      };
+    }
+
+    if (toolName === 'lookup_customer') {
+      const users = Array.isArray(parsed) ? parsed : parsed?.users;
+      if (!Array.isArray(users)) return null;
+      return {
+        userOptions: users.map((u) => ({
+          value: u.id,
+          label: `${u.firstName || ''} ${u.lastName || ''} (${u.email || u.username || u.id})`.trim(),
+        })),
+      };
+    }
+
+    if (toolName === 'get_customer_accounts') {
+      const accounts = Array.isArray(parsed) ? parsed : parsed?.accounts;
+      if (!Array.isArray(accounts)) return null;
+      return {
+        adminAccountOptions: accounts.map((a) => ({
+          value: a.id,
+          label: `${a.name || a.accountType || 'Account'} — $${Number(a.balance || 0).toLocaleString()}`,
+        })),
+      };
+    }
+  } catch {
+    // silent — plain JSON display is unaffected
+  }
+  return null;
+}
+
 function GateNotice({ kind, title, children }) {
   return (
     <div className={`webmcp-gate-notice webmcp-gate-notice--${kind}`}>
@@ -85,10 +144,36 @@ export default function WebMcpPanel() {
   const [result, setResult] = useState(null);
   const [streamEvents, setStreamEvents] = useState([]);
   const [error, setError] = useState(null);
+  const [accountOptions, setAccountOptions] = useState([]); // [{value, label}]
+  const [userOptions, setUserOptions]       = useState([]); // [{value, label}]
+  const [adminAccountOptions, setAdminAccountOptions] = useState([]); // [{value, label}]
+  const accountsFetched = useRef(false);
   const streamLogRef = useRef(null);
   const disconnectRef = useRef(null);
   const { setWebMcpLastResult } = useAgentUiMode();
   const { open } = useEducationUI();
+
+  // Fetch user accounts once and cache in state for dropdowns
+  const ensureAccountOptions = useCallback(async () => {
+    if (accountsFetched.current) return;
+    accountsFetched.current = true;
+    try {
+      const res = await fetch(`${process.env.REACT_APP_API_BASE || ''}/api/accounts/my`, {
+        credentials: 'include',
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const accounts = data.accounts || data || [];
+      setAccountOptions(
+        accounts.map((a) => ({
+          value: a.id,
+          label: `${a.accountType ? a.accountType.charAt(0).toUpperCase() + a.accountType.slice(1) : 'Account'} — $${Number(a.balance || 0).toLocaleString()}`,
+        }))
+      );
+    } catch {
+      // best-effort — falls back to plain text input
+    }
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -125,7 +210,11 @@ export default function WebMcpPanel() {
     setResult(null);
     setStreamEvents([]);
     setError(null);
-  }, []);
+    // Pre-fetch accounts if this tool has account_id params
+    const toolProps = tool?.inputSchema?.properties || {};
+    const hasAccountParam = Object.keys(toolProps).some((k) => ACCOUNT_ID_KEYS.has(k));
+    if (hasAccountParam) ensureAccountOptions();
+  }, [ensureAccountOptions]);
 
   const handleParamChange = useCallback((key, value) => {
     setParams((prev) => ({ ...prev, [key]: value }));
@@ -152,6 +241,14 @@ export default function WebMcpPanel() {
       const res = await callMcpTool(selectedTool.name, params, flowTraceId);
       setResult(res);
       if (setWebMcpLastResult) setWebMcpLastResult(res);
+      // Extract structured data from result and update dropdown options
+      const extracted = extractResultData(selectedTool.name, res);
+      if (extracted?.accountOptions) {
+        setAccountOptions(extracted.accountOptions);
+        accountsFetched.current = true;
+      }
+      if (extracted?.userOptions)         setUserOptions(extracted.userOptions);
+      if (extracted?.adminAccountOptions) setAdminAccountOptions(extracted.adminAccountOptions);
     } catch (err) {
       setError({
         message: "Tool call failed — check connection or permissions.",
@@ -164,6 +261,37 @@ export default function WebMcpPanel() {
 
   const schemaProps = selectedTool?.inputSchema?.properties || {};
   const requiredFields = selectedTool?.inputSchema?.required || [];
+
+  // Build account options for to_account_id, excluding the currently-selected from_account_id
+  const toAccountOptions = accountOptions.filter(
+    (opt) => !params['from_account_id'] || opt.value !== params['from_account_id']
+  );
+
+  // Determine description suggestions based on the selected tool name
+  const descSuggestions = DESCRIPTION_SUGGESTIONS[selectedTool?.name] || [];
+
+  // Determine per-key dropdown options
+  const getDropdownOptions = (key) => {
+    if (key === 'account_id') return accountOptions;
+    if (key === 'from_account_id') return accountOptions;
+    if (key === 'to_account_id') return toAccountOptions;
+    if (key === 'userId') return userOptions;
+    if (key === 'accountId') return adminAccountOptions;
+    if (key === 'account_type') return [
+      { value: 'checking',    label: 'Checking' },
+      { value: 'savings',     label: 'Savings' },
+      { value: 'loan',        label: 'Loan' },
+      { value: 'credit',      label: 'Credit' },
+      { value: 'investment',  label: 'Investment' },
+    ];
+    if (key === 'limit') return [
+      { value: '5',  label: '5' },
+      { value: '10', label: '10' },
+      { value: '20', label: '20' },
+      { value: '50', label: '50' },
+    ];
+    return null;
+  };
 
   // Unwrap result — the BFF wraps the actual tool result in a `result` key
   const toolResult = result?.result ?? result;
@@ -288,31 +416,97 @@ export default function WebMcpPanel() {
                 {Object.keys(schemaProps).length > 0 && (
                   <div className="rp-test-form">
                     <div className="rp-test-form__heading">Parameters</div>
-                    {Object.entries(schemaProps).map(([key, schema]) => (
-                      <div key={key} style={{ marginBottom: '10px' }}>
-                        <label className="rp-test-form__label" htmlFor={`param-${key}`}>
-                          {key}
-                          {requiredFields.includes(key) && (
-                            <span className="webmcp-required">*</span>
-                          )}
-                          {schema.description && (
-                            <span style={{ color: '#999', fontStyle: 'italic' }}>
-                              {" "}— {schema.description}
-                            </span>
-                          )}
-                        </label>
-                        <input
-                          id={`param-${key}`}
-                          type="text"
-                          className="rp-test-form__input"
-                          value={params[key] || ""}
-                          onChange={(e) =>
-                            handleParamChange(key, e.target.value)
-                          }
-                          placeholder={schema.type || ""}
-                        />
-                      </div>
-                    ))}
+                    {Object.entries(schemaProps).map(([key, schema]) => {
+                      const isRequired = requiredFields.includes(key);
+                      const hint = schema.description || '';
+                      const dropdownOptions = getDropdownOptions(key);
+                      const isToggle = key === 'freeze' || key === 'confirm' || schema.type === 'boolean';
+                      const isSuggest = key === 'description' && descSuggestions.length > 0;
+                      const isSuggestQuery = key === 'query';
+
+                      if (isToggle) {
+                        return (
+                          <McpParamToggle
+                            key={key}
+                            paramKey={key}
+                            label={key}
+                            value={params[key] || ''}
+                            onChange={(v) => handleParamChange(key, v)}
+                            hint={hint}
+                          />
+                        );
+                      }
+
+                      if (dropdownOptions) {
+                        return (
+                          <McpParamSelect
+                            key={key}
+                            paramKey={key}
+                            label={key}
+                            options={dropdownOptions}
+                            value={params[key] || ''}
+                            onChange={(v) => handleParamChange(key, v)}
+                            required={isRequired}
+                            hint={hint}
+                          />
+                        );
+                      }
+
+                      if (isSuggest) {
+                        return (
+                          <McpParamSuggest
+                            key={key}
+                            paramKey={key}
+                            label={key}
+                            suggestions={descSuggestions}
+                            value={params[key] || ''}
+                            onChange={(v) => handleParamChange(key, v)}
+                            placeholder={schema.type || ''}
+                            hint={hint}
+                          />
+                        );
+                      }
+
+                      if (isSuggestQuery) {
+                        return (
+                          <McpParamSuggest
+                            key={key}
+                            paramKey={key}
+                            label={key}
+                            suggestions={QUERY_SUGGESTIONS}
+                            value={params[key] || ''}
+                            onChange={(v) => handleParamChange(key, v)}
+                            placeholder={schema.type || ''}
+                            hint={hint}
+                          />
+                        );
+                      }
+
+                      // Default: plain text input with label + hint
+                      return (
+                        <div key={key} className="webmcp-params">
+                          <label className="webmcp-param-label" htmlFor={`param-${key}`}>
+                            {key}
+                            {isRequired && (
+                              <span style={{
+                                marginLeft: 6, fontSize: 10, fontWeight: 700, padding: '1px 7px',
+                                borderRadius: 9, border: '1px solid #fbbf24', background: '#fef3c7',
+                                color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.04em',
+                              }}>required</span>
+                            )}
+                          </label>
+                          {hint && <span className="webmcp-param-hint">{hint}</span>}
+                          <input
+                            id={`param-${key}`}
+                            type="text"
+                            className="webmcp-param-input"
+                            value={params[key] || ''}
+                            onChange={(e) => handleParamChange(key, e.target.value)}
+                            placeholder={schema.type || ''}
+                          />
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
 
