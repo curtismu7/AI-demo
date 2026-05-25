@@ -8827,12 +8827,12 @@ export default function BankingAgent({
                   </span>
                 </div>
               </div>
-            </div>
-            {/* Token Teller — session + lifetime token counter */}
-            <div className="ba-token-footer">
-              <span>⬆ {sessionTokens.input.toLocaleString()} in</span>
-              <span>⬇ {sessionTokens.output.toLocaleString()} out</span>
-              <span>∑ {(lifetimeTokens.input + lifetimeTokens.output).toLocaleString()}</span>
+              {/* Token Teller — session + lifetime token counter */}
+              <div className="ba-token-footer">
+                <span>⬆ {sessionTokens.input.toLocaleString()} in</span>
+                <span>⬇ {sessionTokens.output.toLocaleString()} out</span>
+                <span>∑ {(lifetimeTokens.input + lifetimeTokens.output).toLocaleString()}</span>
+              </div>
             </div>
           </div>
           {/* Resize handles — all 8 directions, float mode only */}
