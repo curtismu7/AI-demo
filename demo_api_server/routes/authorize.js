@@ -114,15 +114,13 @@ router.get('/simulated-recent-decisions', authenticateToken, async (req, res) =>
  */
 router.get('/rules', async (_req, res) => {
   try {
-    const consentTypesSet = getConsentTypes();
-    const stepUpTypesSet = getStepUpTypes();
     return res.json({
       simulated: {
         confirmAmount: getConfirmAmountUsd(),
         denyAmount: getDenyAmountUsd(),
         stepUpAmount: getStepUpAmountUsd(),
-        consentTypes: Array.from(consentTypesSet).join(','),
-        stepUpTypes: Array.from(stepUpTypesSet).join(','),
+        consentTypes: Array.from(getConsentTypes()).join(','),
+        stepUpTypes: Array.from(getStepUpTypes()).join(','),
         mcpDenyTools: (configStore.get('SIMULATED_MCP_DENY_TOOLS') || '').split(',').filter(Boolean),
         mcpHitlTools: (configStore.get('SIMULATED_MCP_HITL_TOOLS') || '').split(',').filter(Boolean),
       },
