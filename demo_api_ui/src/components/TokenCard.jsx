@@ -106,7 +106,7 @@ function SkeletonBody() {
  * TokenCard — canonical JWT token display component.
  *
  * Pass either `token` (raw JWT string) or `decoded` (pre-decoded BFF response object).
- * When `token` is passed the component POSTs to /api/token-display/decode on mount.
+ * When `token` is passed the component POSTs to /api/token-display/raw-decode on mount.
  * When `decoded` is passed no BFF call is made.
  */
 export default function TokenCard({
@@ -135,11 +135,11 @@ export default function TokenCard({
     setFetchError(null);
     setFetchedDecoded(null);
     bffAxios
-      .post('/api/token-display/decode', { token })
+      .post('/api/token-display/raw-decode', { token })
       .then((res) => {
         if (!cancelled) {
           if (res.data?.success) {
-            setFetchedDecoded(res.data.decoded);
+            setFetchedDecoded({ header: res.data.header, payload: res.data.payload, tokenType: res.data.tokenType });
           } else {
             setFetchError(res.data?.message || 'Decode failed');
           }
@@ -180,7 +180,7 @@ export default function TokenCard({
         role="button"
         tabIndex={0}
         onClick={() => setExpanded((v) => !v)}
-        onKeyDown={(e) => e.key === 'Enter' && setExpanded((v) => !v)}
+        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setExpanded((v) => !v)}
         aria-expanded={expanded}
       >
         <div className="token-card__header-left">

@@ -59,17 +59,25 @@ setup-config.md
 *.sock
 .DS_Store
 
-# Config database (local SQLite — contains encrypted secrets)
+# Config database (local SQLite/LMDB — contains encrypted secrets)
 banking_api_server/data/persistent/config.db
 banking_api_server/data/persistent/config.db-shm
 banking_api_server/data/persistent/config.db-wal
 banking_api_server/data/persistent/agentIdentityMappings.json
 banking_api_server/data/logs/
+demo_api_server/data/persistent/
+demo_api_server/data/config.db
+demo_api_server/data/config.db-shm
+demo_api_server/data/config.db-wal
 
-# Express session store (local SQLite — live session data, never commit)
+# Express session store (local SQLite/LMDB — live session data, never commit)
 banking_api_server/data/sessions.db
 banking_api_server/data/sessions.db-shm
 banking_api_server/data/sessions.db-wal
+demo_api_server/data/sessions.db
+demo_api_server/data/sessions.db-shm
+demo_api_server/data/sessions.db-wal
+demo_api_server/data/sessions-lmdb/
 
 # Portable encrypted credential vault (Phase 269) — encrypted at rest but
 # NEVER commit. Vault password is required to decrypt and lives only in
@@ -116,9 +124,14 @@ Thumbs.db
 banking_api_server/data/persistent/
 .vercel
 
+# Screenshot artifacts from testing sessions
+*.png
+
 # Test artifacts
 banking_mcp_server/tests/storage/test-banking-sessions-logging/
 banking_mcp_server/tests/storage/**/
+demo_mcp_server/tests/storage/test-banking-sessions-logging/
+demo_mcp_server/tests/storage/**/
 
 # Playwright (UI / e2e)
 playwright-report/
@@ -138,6 +151,9 @@ test-results/
 postman/*.postman_environment.json
 banking_api_server/data/runtimeData.json
 banking_api_server/data/backups/
+demo_api_server/data/runtimeData.json
+demo_api_server/data/backups/
+demo_mcp_server/data/
 
 # Helix agent API key JSON files (one per agent) — contain keyValue secret.
 # The 4 non-secret defaults are committed in configStore.js FIELD_DEFS;
@@ -165,3 +181,21 @@ worker creds*
 # banking_mcp_server local dev-data — runtime-generated session/storage state,
 # not source (mirrors the tests/storage/** exclusion above)
 banking_mcp_server/dev-data/
+
+# Local AI tooling state — session/brainstorm/handoff dirs
+.claire/
+.handoff/
+.history/
+.playwright-mcp/
+.superpowers/
+
+# Generated review/audit output
+REVIEW.md
+
+# Local scratch and working docs
+education_panels_update_catalog.md
+docs/superpowers/specs/valut
+
+# Test result typo files
+demo_api_server/test-restults.txt
+demo_api_server/test-restults.txtclear

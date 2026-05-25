@@ -199,6 +199,12 @@ body > .banking-agent-float-root .banking-agent-panel {
   min-width: 100%;
   order: -1;
 }
+/* Inline: prevent ba-body from wrapping so ba-right-col gets a definite height
+   and banking-agent-messages can scroll instead of expanding to content height.
+   Exception: when the consent-denied banner is present it still needs to wrap. */
+.banking-agent-panel.ba-mode-inline .ba-body {
+  flex-wrap: nowrap;
+}
 .banking-agent-panel.ba-mode-inline .ba-body:has(.ba-consent-denied-banner) {
   flex-wrap: wrap;
 }
@@ -1060,9 +1066,8 @@ body > .banking-agent-float-root .banking-agent-panel {
 /* ─── Messages ───────────────────────────────────────────────────────── */
 .banking-agent-messages {
   flex: 1;
-  /* Allow shrinking in short embedded dock so form + Run stay above overflow: hidden */
+  /* min-height: 0 allows shrinking in short embedded dock; no max-height cap so messages fill available space */
   min-height: 0;
-  max-height: 40vh;
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
@@ -1746,6 +1751,28 @@ body > .banking-agent-float-root .banking-agent-panel {
   display: flex;
   align-items: center;
   gap: 20px;
+}
+/* Start Over + nav + chips: always visible below the input bar */
+.ba-bottom-extra {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  padding: 0 12px 8px;
+  background: var(--ba-surface);
+}
+.ba-start-over-btn {
+  width: 100%;
+  padding: 8px 12px;
+  background-color: var(--ba-bg-secondary);
+  border: 1px solid var(--ba-border);
+  border-radius: 6px;
+  color: var(--ba-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 .ba-cmd-btn {
   flex-shrink: 0;
