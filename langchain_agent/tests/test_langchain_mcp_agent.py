@@ -1,10 +1,21 @@
 """
-Unit tests for LangChain MCP Agent.
+Unit tests for LangChain MCP Agent — updated for LangGraph migration (Phase 275).
+
+Key changes from pre-migration tests:
+- patch target: 'src.agent.langchain_mcp_agent.get_llm' (not ChatOpenAI)
+- patch target: 'src.agent.langchain_mcp_agent.create_react_agent'
+- patch target: 'src.agent.langchain_mcp_agent.MemorySaver'
+- graph.ainvoke returns {"messages": [AIMessage(content="...")]} not {"output": "..."}
+- config["configurable"]["thread_id"] == session_id is the key assertion
+- self._graph (not self._agent_executor) is the compiled graph handle
 """
 import pytest
 import asyncio
 from unittest.mock import Mock, AsyncMock, patch, MagicMock
 from datetime import datetime
+from types import SimpleNamespace
+
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from src.agent.langchain_mcp_agent import LangChainMCPAgent
 from src.agent.mcp_tool_provider import MCPToolProvider
@@ -16,11 +27,15 @@ from src.models.chat import ChatMessage
 from src.config.settings import AppConfig, LangChainConfig
 
 
+# ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
+
 @pytest.fixture
 def mock_config():
     """Mock configuration for testing."""
     langchain_config = LangChainConfig(
-        model_name="gpt-3.5-turbo",
+        model_name="llama3",
         temperature=0.7,
         max_tokens=1000,
         openai_api_key="test-key",
@@ -28,7 +43,6 @@ def mock_config():
         max_iterations=10,
         max_execution_time=60
     )
-    
     config = Mock(spec=AppConfig)
     config.langchain = langchain_config
     return config
@@ -45,6 +59,7 @@ def mock_mcp_client_manager():
         "connection_pool": {"status": "active"}
     })
     manager.shutdown = AsyncMock()
+    manager._session_challenges = {}
     return manager
 
 
@@ -62,14 +77,22 @@ def mock_auth_manager():
     return manager
 
 
+def _make_mock_graph():
+    """Build a mock CompiledStateGraph compatible with graph.ainvoke() interface."""
+    mock_graph = AsyncMock()
+    mock_graph.ainvoke = AsyncMock(return_value={
+        "messages": [AIMessage(content="mock response")]
+    })
+    mock_graph.get_state = Mock(return_value=SimpleNamespace(values={"messages": []}))
+    return mock_graph
+
+
 @pytest.fixture
 def mock_llm():
-    """Mock LangChain LLM."""
-    with patch('src.agent.langchain_mcp_agent.ChatOpenAI') as mock_chat_openai:
-        llm = Mock()
-        llm.model_name = "gpt-3.5-turbo"
-        mock_chat_openai.return_value = llm
-        yield llm
+    """Mock LLM returned by get_llm factory."""
+    llm = Mock()
+    llm.model_name = "llama3"
+    return llm
 
 
 @pytest.fixture
@@ -78,295 +101,447 @@ def mock_tools():
     tool1 = Mock()
     tool1.name = "test_server_tool1"
     tool1.description = "Test tool 1"
-    
+    tool1.args_schema = None
+
     tool2 = Mock()
     tool2.name = "test_server_tool2"
     tool2.description = "Test tool 2"
-    
+    tool2.args_schema = None
+
     return [tool1, tool2]
 
 
 @pytest.fixture
-async def agent(mock_config, mock_mcp_client_manager, mock_auth_manager, mock_llm):
-    """Create LangChain MCP Agent for testing."""
-    with patch('src.agent.langchain_mcp_agent.ChatOpenAI') as mock_chat_openai:
-        mock_chat_openai.return_value = mock_llm
-        
-        agent = LangChainMCPAgent(
+def agent(mock_config, mock_mcp_client_manager, mock_auth_manager, mock_llm):
+    """Create LangChain MCP Agent for testing with get_llm patched."""
+    with patch('src.agent.langchain_mcp_agent.get_llm', return_value=mock_llm):
+        a = LangChainMCPAgent(
             mcp_client_manager=mock_mcp_client_manager,
             auth_manager=mock_auth_manager,
             config=mock_config
         )
-        
-        yield agent
-        
-        # Cleanup
-        await agent.shutdown()
+        return a
 
 
-class TestLangChainMCPAgent:
-    """Test cases for LangChain MCP Agent."""
-    
+# ---------------------------------------------------------------------------
+# Core initialisation
+# ---------------------------------------------------------------------------
+
+class TestLangChainMCPAgentInit:
+    """Tests for agent construction — LangGraph era."""
+
     def test_initialization(self, mock_config, mock_mcp_client_manager, mock_auth_manager, mock_llm):
-        """Test agent initialization."""
-        with patch('src.agent.langchain_mcp_agent.ChatOpenAI') as mock_chat_openai:
-            mock_chat_openai.return_value = mock_llm
-            
-            agent = LangChainMCPAgent(
+        """Agent initialises with _graph=None, no _agent_executor attribute."""
+        with patch('src.agent.langchain_mcp_agent.get_llm', return_value=mock_llm):
+            a = LangChainMCPAgent(
                 mcp_client_manager=mock_mcp_client_manager,
                 auth_manager=mock_auth_manager,
                 config=mock_config
             )
-            
-            assert agent.config == mock_config
-            assert agent.mcp_client_manager == mock_mcp_client_manager
-            assert agent.auth_manager == mock_auth_manager
-            assert agent.llm == mock_llm
-            assert isinstance(agent.mcp_tool_provider, MCPToolProvider)
-            assert isinstance(agent.conversation_memory, ConversationMemory)
-            assert agent._agent_executor is None  # Not initialized yet
-    
+
+        assert a.config == mock_config
+        assert a.mcp_client_manager == mock_mcp_client_manager
+        assert a.auth_manager == mock_auth_manager
+        assert a.llm == mock_llm
+        assert isinstance(a.mcp_tool_provider, MCPToolProvider)
+        assert isinstance(a.conversation_memory, ConversationMemory)
+        # LangGraph era: _graph not _agent_executor
+        assert a._graph is None
+        assert not hasattr(a, '_agent_executor'), \
+            "_agent_executor must not exist — use _graph"
+
+    def test_no_langgraph_executor_attribute(self, agent):
+        """Regression: _agent_executor must not appear after migration."""
+        assert not hasattr(agent, '_agent_executor')
+
+
+# ---------------------------------------------------------------------------
+# initialize_tools — graph construction
+# ---------------------------------------------------------------------------
+
+class TestInitializeTools:
+    """Tests for initialize_tools() LangGraph graph construction."""
+
     @pytest.mark.asyncio
-    async def test_initialize_tools_success(self, agent, mock_tools):
-        """Test successful tool initialization."""
-        # Mock tool provider
+    async def test_initialize_tools_builds_graph(self, agent, mock_tools):
+        """initialize_tools() builds a compiled graph via create_react_agent."""
         agent.mcp_tool_provider.get_langchain_tools = AsyncMock(return_value=mock_tools)
-        
-        # Mock agent creation
-        with patch('src.agent.langchain_mcp_agent.create_openai_functions_agent') as mock_create_agent, \
-             patch('src.agent.langchain_mcp_agent.AgentExecutor') as mock_executor_class:
-            
-            mock_agent = Mock()
-            mock_create_agent.return_value = mock_agent
-            
-            mock_executor = Mock()
-            mock_executor_class.return_value = mock_executor
-            
+        mock_graph = _make_mock_graph()
+
+        with patch('src.agent.langchain_mcp_agent.create_react_agent', return_value=mock_graph) as mock_cra, \
+             patch('src.agent.langchain_mcp_agent.MemorySaver') as mock_ms:
+
             await agent.initialize_tools()
-            
-            assert agent._tools == mock_tools
-            assert agent._agent_executor == mock_executor
-            mock_create_agent.assert_called_once()
-            mock_executor_class.assert_called_once()
-    
+
+            assert agent._graph is mock_graph
+            assert agent._graph is not None
+            mock_cra.assert_called_once()
+            # MemorySaver must be instantiated and passed to create_react_agent
+            mock_ms.assert_called_once()
+
     @pytest.mark.asyncio
-    async def test_initialize_tools_no_tools(self, agent):
-        """Test tool initialization with no available tools."""
-        # Mock tool provider returning empty list
+    async def test_initialize_tools_no_tools_uses_basic_agent(self, agent):
+        """When no MCP tools are available, a BasicChatAgent is assigned to _graph."""
         agent.mcp_tool_provider.get_langchain_tools = AsyncMock(return_value=[])
-        
+
         await agent.initialize_tools()
-        
+
         assert agent._tools == []
-        assert agent._agent_executor is None
-    
+        # BasicChatAgent is assigned — it has ainvoke() compatible interface
+        assert agent._graph is not None
+        assert hasattr(agent._graph, 'ainvoke')
+
     @pytest.mark.asyncio
-    async def test_process_message_success(self, agent, mock_tools):
-        """Test successful message processing."""
-        session_id = "test-session-123"
-        user_message = "Hello, can you help me?"
-        expected_response = "Hello! I'd be happy to help you."
-        
-        # Setup mocks
+    async def test_initialize_tools_stores_tools(self, agent, mock_tools):
+        """initialize_tools() stores tools in self._tools."""
+        agent.mcp_tool_provider.get_langchain_tools = AsyncMock(return_value=mock_tools)
+        mock_graph = _make_mock_graph()
+
+        with patch('src.agent.langchain_mcp_agent.create_react_agent', return_value=mock_graph), \
+             patch('src.agent.langchain_mcp_agent.MemorySaver'):
+            await agent.initialize_tools()
+
+        assert agent._tools == mock_tools
+
+
+# ---------------------------------------------------------------------------
+# process_message_with_tracing — LangGraph invocation assertions
+# ---------------------------------------------------------------------------
+
+class TestProcessMessageWithTracing:
+    """Tests for process_message_with_tracing() using LangGraph graph.ainvoke."""
+
+    @pytest.mark.asyncio
+    async def test_uses_thread_id_as_session_id(self, agent, mock_tools):
+        """graph.ainvoke must be called with config.configurable.thread_id == session_id."""
+        session_id = "test-session-abc"
+        user_message = "What are my accounts?"
+
+        mock_graph = _make_mock_graph()
+        agent._graph = mock_graph
         agent._tools = mock_tools
-        mock_executor = Mock()
-        mock_executor.ainvoke = AsyncMock(return_value={"output": expected_response})
-        agent._agent_executor = mock_executor
-        
-        agent.conversation_memory.get_conversation_history = AsyncMock(return_value=[])
-        agent.conversation_memory.add_message = AsyncMock()
+
         agent.mcp_tool_provider.set_session_context = AsyncMock()
-        
-        # Process message
-        response = await agent.process_message(user_message, session_id)
-        
-        assert response == expected_response
-        agent.mcp_tool_provider.set_session_context.assert_called_once_with(session_id)
-        mock_executor.ainvoke.assert_called_once()
-        assert agent.conversation_memory.add_message.call_count == 2  # User and assistant messages
-    
+        agent.mcp_tool_provider.set_tracer = Mock()
+        agent.mcp_tool_provider.mcp_client_manager._session_challenges = {}
+
+        # Mark user as identified so the agent reaches graph.ainvoke
+        await agent.conversation_memory.set_user_identified(session_id, "user@test.com", "user-1")
+
+        await agent.process_message_with_tracing(user_message, session_id)
+
+        mock_graph.ainvoke.assert_called_once()
+        call_kwargs = mock_graph.ainvoke.call_args
+        config = call_kwargs.kwargs.get("config") or call_kwargs[1].get("config") or call_kwargs[0][1]
+        assert config["configurable"]["thread_id"] == session_id
+
     @pytest.mark.asyncio
-    async def test_process_message_not_initialized(self, agent, mock_tools):
-        """Test message processing when agent is not initialized."""
-        session_id = "test-session-123"
+    async def test_extracts_response_from_last_message(self, agent, mock_tools):
+        """Response must be result['messages'][-1].content, not result.get('output')."""
+        session_id = "test-session-xyz"
+        user_message = "Show my balance"
+
+        mock_graph = _make_mock_graph()
+        mock_graph.ainvoke = AsyncMock(return_value={
+            "messages": [
+                HumanMessage(content=user_message),
+                AIMessage(content="Your balance is $1,234.56"),
+            ]
+        })
+        agent._graph = mock_graph
+        agent._tools = mock_tools
+
+        agent.mcp_tool_provider.set_session_context = AsyncMock()
+        agent.mcp_tool_provider.set_tracer = Mock()
+        agent.mcp_tool_provider.mcp_client_manager._session_challenges = {}
+
+        await agent.conversation_memory.set_user_identified(session_id, "user@test.com", "user-1")
+
+        response = await agent.process_message_with_tracing(user_message, session_id)
+
+        assert response == "Your balance is $1,234.56"
+
+    @pytest.mark.asyncio
+    async def test_system_message_injected_on_first_turn(self, agent, mock_tools):
+        """SystemMessage is injected as first message when graph has no prior history."""
+        session_id = "fresh-session-001"
         user_message = "Hello"
-        
-        # Mock initialization
+
+        mock_graph = _make_mock_graph()
+        # Simulate empty checkpoint (first turn)
+        mock_graph.get_state = Mock(return_value=SimpleNamespace(values={"messages": []}))
+        agent._graph = mock_graph
+        agent._tools = mock_tools
+
+        agent.mcp_tool_provider.set_session_context = AsyncMock()
+        agent.mcp_tool_provider.set_tracer = Mock()
+        agent.mcp_tool_provider.mcp_client_manager._session_challenges = {}
+
+        await agent.conversation_memory.set_user_identified(session_id, "user@test.com", "user-1")
+
+        await agent.process_message_with_tracing(user_message, session_id)
+
+        call_args = mock_graph.ainvoke.call_args
+        messages_arg = call_args[0][0]["messages"]
+        assert isinstance(messages_arg[0], SystemMessage), \
+            "First message must be SystemMessage on first turn"
+        assert isinstance(messages_arg[-1], HumanMessage)
+
+    @pytest.mark.asyncio
+    async def test_system_message_omitted_on_subsequent_turns(self, agent, mock_tools):
+        """SystemMessage is NOT injected when graph already has history (subsequent turns)."""
+        session_id = "existing-session-002"
+        user_message = "What about transfers?"
+
+        mock_graph = _make_mock_graph()
+        # Simulate non-empty checkpoint (subsequent turn)
+        mock_graph.get_state = Mock(return_value=SimpleNamespace(values={
+            "messages": [HumanMessage(content="prior message")]
+        }))
+        agent._graph = mock_graph
+        agent._tools = mock_tools
+
+        agent.mcp_tool_provider.set_session_context = AsyncMock()
+        agent.mcp_tool_provider.set_tracer = Mock()
+        agent.mcp_tool_provider.mcp_client_manager._session_challenges = {}
+
+        await agent.conversation_memory.set_user_identified(session_id, "user@test.com", "user-1")
+
+        await agent.process_message_with_tracing(user_message, session_id)
+
+        call_args = mock_graph.ainvoke.call_args
+        messages_arg = call_args[0][0]["messages"]
+        assert not isinstance(messages_arg[0], SystemMessage), \
+            "SystemMessage must NOT be injected on subsequent turns"
+        assert isinstance(messages_arg[0], HumanMessage)
+
+    @pytest.mark.asyncio
+    async def test_not_initialized_triggers_initialize_tools(self, agent):
+        """When _graph is None, process_message_with_tracing calls initialize_tools."""
+        agent._graph = None
         agent.initialize_tools = AsyncMock()
-        agent._agent_executor = None  # Not initialized
-        
-        response = await agent.process_message(user_message, session_id)
-        
+
+        # initialize_tools won't set _graph (mock), so should get fallback response
+        response = await agent.process_message_with_tracing("hello", "session-x")
+
+        agent.initialize_tools.assert_called_once()
         assert "not properly configured" in response
-        agent.initialize_tools.assert_called_once()
-    
+
+
+# ---------------------------------------------------------------------------
+# process_message — non-tracing path
+# ---------------------------------------------------------------------------
+
+class TestProcessMessage:
+    """Tests for process_message() (non-tracing path)."""
+
     @pytest.mark.asyncio
-    async def test_process_message_authentication_error(self, agent, mock_tools):
-        """Test message processing with authentication error."""
-        session_id = "test-session-123"
-        user_message = "Hello"
-        
-        # Setup mocks
+    async def test_process_message_uses_graph_ainvoke(self, agent, mock_tools):
+        """process_message uses graph.ainvoke with thread_id config."""
+        session_id = "pm-session-001"
+        user_message = "List my accounts"
+
+        mock_graph = _make_mock_graph()
+        agent._graph = mock_graph
         agent._tools = mock_tools
-        mock_executor = Mock()
-        mock_executor.ainvoke = AsyncMock(side_effect=Exception("Authentication failed"))
-        agent._agent_executor = mock_executor
-        
-        agent.conversation_memory.get_conversation_history = AsyncMock(return_value=[])
+
         agent.mcp_tool_provider.set_session_context = AsyncMock()
-        
+        agent.mcp_tool_provider.mcp_client_manager._session_challenges = {}
+
+        await agent.conversation_memory.set_user_identified(session_id, "user@test.com", "user-1")
+
         response = await agent.process_message(user_message, session_id)
-        
-        assert "authentication issue" in response.lower()
-    
+
+        mock_graph.ainvoke.assert_called_once()
+        assert response == "mock response"
+
     @pytest.mark.asyncio
-    async def test_execute_tool_success(self, agent, mock_tools):
-        """Test successful direct tool execution."""
-        session_id = "test-session-123"
-        tool_name = "test_server_tool1"
-        parameters = {"param1": "value1"}
-        expected_result = "Tool executed successfully"
-        
-        # Setup mocks
+    async def test_process_message_not_initialized(self, agent):
+        """When _graph is None, process_message calls initialize_tools."""
+        agent._graph = None
+        agent.initialize_tools = AsyncMock()
+
+        response = await agent.process_message("hello", "session-y")
+
+        agent.initialize_tools.assert_called_once()
+        assert "not properly configured" in response
+
+    @pytest.mark.asyncio
+    async def test_process_message_auth_error(self, agent, mock_tools):
+        """Authentication errors in graph.ainvoke yield the auth-error message."""
+        session_id = "pm-session-err"
+
+        mock_graph = _make_mock_graph()
+        mock_graph.ainvoke = AsyncMock(side_effect=Exception("Authentication failed"))
+        agent._graph = mock_graph
         agent._tools = mock_tools
-        mock_tools[0].arun = AsyncMock(return_value=expected_result)
+
         agent.mcp_tool_provider.set_session_context = AsyncMock()
-        
-        result = await agent.execute_tool(tool_name, parameters, session_id)
-        
-        assert result["result"] == expected_result
-        assert result["tool_name"] == tool_name
-        assert result["parameters"] == parameters
-        agent.mcp_tool_provider.set_session_context.assert_called_once_with(session_id)
-        mock_tools[0].arun.assert_called_once_with(parameters)
-    
+
+        await agent.conversation_memory.set_user_identified(session_id, "user@test.com", "user-1")
+
+        response = await agent.process_message("hello", session_id)
+
+        assert "authentication issue" in response.lower()
+
+
+# ---------------------------------------------------------------------------
+# get_agent_status
+# ---------------------------------------------------------------------------
+
+class TestGetAgentStatus:
+    """Tests for get_agent_status() using _graph."""
+
     @pytest.mark.asyncio
-    async def test_execute_tool_not_found(self, agent, mock_tools):
-        """Test tool execution with non-existent tool."""
-        session_id = "test-session-123"
-        tool_name = "nonexistent_tool"
-        parameters = {}
-        
+    async def test_initialized_true_when_graph_set(self, agent, mock_tools):
+        """initialized is True when self._graph is not None."""
+        agent._graph = _make_mock_graph()
         agent._tools = mock_tools
-        
-        with pytest.raises(ValueError, match="Tool 'nonexistent_tool' not found"):
-            await agent.execute_tool(tool_name, parameters, session_id)
-    
-    @pytest.mark.asyncio
-    async def test_get_available_tools(self, agent, mock_tools):
-        """Test getting available tools information."""
-        agent._tools = mock_tools
-        
-        tools_info = await agent.get_available_tools()
-        
-        assert len(tools_info) == 2
-        assert tools_info[0]["name"] == "test_server_tool1"
-        assert tools_info[0]["description"] == "Test tool 1"
-        assert tools_info[1]["name"] == "test_server_tool2"
-        assert tools_info[1]["description"] == "Test tool 2"
-    
-    @pytest.mark.asyncio
-    async def test_get_available_tools_not_initialized(self, agent, mock_tools):
-        """Test getting available tools when not initialized."""
-        agent.initialize_tools = AsyncMock()
-        agent._tools = []
-        
-        await agent.get_available_tools()
-        
-        agent.initialize_tools.assert_called_once()
-    
-    @pytest.mark.asyncio
-    async def test_refresh_tools(self, agent, mock_tools):
-        """Test refreshing available tools."""
-        agent.initialize_tools = AsyncMock()
-        agent._tools = mock_tools
-        
-        await agent.refresh_tools()
-        
-        agent.initialize_tools.assert_called_once()
-    
-    @pytest.mark.asyncio
-    async def test_get_agent_status(self, agent, mock_tools):
-        """Test getting agent status."""
-        agent._tools = mock_tools
-        agent._agent_executor = Mock()
         agent.conversation_memory.get_active_sessions_count = AsyncMock(return_value=3)
-        
+
         status = await agent.get_agent_status()
-        
+
         assert status["initialized"] is True
         assert status["tools_count"] == 2
         assert status["tools"] == ["test_server_tool1", "test_server_tool2"]
         assert status["memory_sessions"] == 3
         assert "mcp_manager_status" in status
-    
+
+    @pytest.mark.asyncio
+    async def test_initialized_false_when_graph_none(self, agent):
+        """initialized is False when self._graph is None."""
+        agent._graph = None
+        agent._tools = []
+        agent.conversation_memory.get_active_sessions_count = AsyncMock(return_value=0)
+
+        status = await agent.get_agent_status()
+
+        assert status["initialized"] is False
+
+
+# ---------------------------------------------------------------------------
+# Misc public interface — preserved from pre-migration tests
+# ---------------------------------------------------------------------------
+
+class TestPublicInterface:
+    """Tests for public methods that remain unchanged after migration."""
+
+    @pytest.mark.asyncio
+    async def test_execute_tool_success(self, agent, mock_tools):
+        """Direct tool execution via execute_tool() still works."""
+        session_id = "test-session-123"
+        tool_name = "test_server_tool1"
+        parameters = {"param1": "value1"}
+        expected_result = "Tool executed successfully"
+
+        agent._tools = mock_tools
+        mock_tools[0].arun = AsyncMock(return_value=expected_result)
+        agent.mcp_tool_provider.set_session_context = AsyncMock()
+
+        result = await agent.execute_tool(tool_name, parameters, session_id)
+
+        assert result["result"] == expected_result
+        assert result["tool_name"] == tool_name
+        assert result["parameters"] == parameters
+        agent.mcp_tool_provider.set_session_context.assert_called_once_with(session_id)
+        mock_tools[0].arun.assert_called_once_with(parameters)
+
+    @pytest.mark.asyncio
+    async def test_execute_tool_not_found(self, agent, mock_tools):
+        """Raises ValueError for unknown tool name."""
+        agent._tools = mock_tools
+
+        with pytest.raises(ValueError, match="Tool 'nonexistent_tool' not found"):
+            await agent.execute_tool("nonexistent_tool", {}, "session-x")
+
+    @pytest.mark.asyncio
+    async def test_get_available_tools(self, agent, mock_tools):
+        """get_available_tools returns structured list."""
+        agent._tools = mock_tools
+
+        tools_info = await agent.get_available_tools()
+
+        assert len(tools_info) == 2
+        assert tools_info[0]["name"] == "test_server_tool1"
+        assert tools_info[0]["description"] == "Test tool 1"
+
+    @pytest.mark.asyncio
+    async def test_get_available_tools_not_initialized(self, agent):
+        """get_available_tools calls initialize_tools when no tools loaded."""
+        agent.initialize_tools = AsyncMock()
+        agent._tools = []
+
+        await agent.get_available_tools()
+
+        agent.initialize_tools.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_refresh_tools(self, agent, mock_tools):
+        """refresh_tools re-invokes initialize_tools."""
+        agent.initialize_tools = AsyncMock()
+        agent._tools = mock_tools
+
+        await agent.refresh_tools()
+
+        agent.initialize_tools.assert_called_once()
+
     @pytest.mark.asyncio
     async def test_clear_session_memory(self, agent):
-        """Test clearing session memory."""
+        """clear_session_memory delegates to conversation_memory.clear_session."""
         session_id = "test-session-123"
         agent.conversation_memory.clear_session = AsyncMock()
-        
+
         await agent.clear_session_memory(session_id)
-        
+
         agent.conversation_memory.clear_session.assert_called_once_with(session_id)
-    
+
     @pytest.mark.asyncio
     async def test_shutdown(self, agent):
-        """Test agent shutdown."""
+        """shutdown cleans up conversation memory and mcp client manager."""
         agent.conversation_memory.cleanup = AsyncMock()
-        
+
         await agent.shutdown()
-        
+
         agent.conversation_memory.cleanup.assert_called_once()
         agent.mcp_client_manager.shutdown.assert_called_once()
-    
-    def test_create_agent_prompt(self, agent):
-        """Test agent prompt creation."""
-        prompt = agent._create_agent_prompt()
-        
-        assert prompt is not None
-        # Check that the prompt contains expected elements
-        prompt_str = str(prompt)
-        assert "helpful AI assistant" in prompt_str
-        assert "MCP" in prompt_str
-        assert "tools" in prompt_str
-    
-    def test_initialize_llm_success(self, mock_config):
-        """Test successful LLM initialization."""
-        with patch('src.agent.langchain_mcp_agent.ChatOpenAI') as mock_chat_openai:
-            mock_llm = Mock()
-            mock_chat_openai.return_value = mock_llm
-            
-            agent = LangChainMCPAgent(
-                mcp_client_manager=Mock(),
-                auth_manager=Mock(),
-                config=mock_config
-            )
-            
-            assert agent.llm == mock_llm
-            mock_chat_openai.assert_called_once()
-    
-    def test_initialize_llm_fallback(self, mock_config):
-        """Test LLM initialization fallback to OpenAI."""
-        with patch('src.agent.langchain_mcp_agent.ChatOpenAI') as mock_chat_openai, \
-             patch('src.agent.langchain_mcp_agent.OpenAI') as mock_openai:
-            
-            # Make ChatOpenAI fail
-            mock_chat_openai.side_effect = Exception("ChatOpenAI failed")
-            
-            mock_llm = Mock()
-            mock_openai.return_value = mock_llm
-            
-            agent = LangChainMCPAgent(
-                mcp_client_manager=Mock(),
-                auth_manager=Mock(),
-                config=mock_config
-            )
-            
-            assert agent.llm == mock_llm
-            mock_chat_openai.assert_called_once()
-            mock_openai.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# User identification helpers — unchanged by migration
+# ---------------------------------------------------------------------------
+
+class TestUserIdentificationHelpers:
+    """Tests for _looks_like_email, _is_authorization_complete_message, etc."""
+
+    def test_looks_like_email_valid(self, agent):
+        assert agent._looks_like_email("user@example.com") is True
+
+    def test_looks_like_email_invalid(self, agent):
+        assert agent._looks_like_email("hello there") is False
+        assert agent._looks_like_email("notanemail") is False
+
+    def test_is_authorization_complete_session_success(self, agent):
+        assert agent._is_authorization_complete_message("SESSION_SUCCESS:abc123") is True
+
+    def test_is_authorization_complete_phrase(self, agent):
+        assert agent._is_authorization_complete_message("authorization completed") is True
+
+    def test_is_authorization_complete_false(self, agent):
+        assert agent._is_authorization_complete_message("what are my accounts?") is False
+
+    def test_detect_authorization_code_prefixed(self, agent):
+        assert agent._detect_authorization_code("code=abc123") == "abc123"
+
+    def test_detect_authorization_code_none(self, agent):
+        assert agent._detect_authorization_code("show me my balance") is None
+
+    def test_looks_like_registration_confirmation_yes(self, agent):
+        assert agent._looks_like_registration_confirmation("yes") is True
+        assert agent._looks_like_registration_confirmation("register") is True
+
+    def test_looks_like_registration_confirmation_no(self, agent):
+        assert agent._looks_like_registration_confirmation("show me my accounts") is False
 
 
 if __name__ == "__main__":
-    pytest.main([__file__])
+    pytest.main([__file__, "-v"])
