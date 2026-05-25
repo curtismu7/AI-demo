@@ -2379,6 +2379,22 @@ Plans:
 - [ ] 274-01-PLAN.md — Install langchain-mcp-adapters, replace MCPToolProvider with MultiServerMCPClient in langchain_mcp_agent.py, reduce mcp_tool_provider.py to stub
 - [ ] 274-02-PLAN.md — Delete obsolete tests, update surviving tests to mock MultiServerMCPClient, verify full suite passes
 
+### Phase 275: migrate-agentexecutor-to-langgraph
+
+**Goal:** Replace the deprecated AgentExecutor + ConversationBufferMemory pattern in langchain_agent/src/agent/langchain_mcp_agent.py with a compiled LangGraph StateGraph using a MemorySaver checkpointer. Eliminates the per-request AgentExecutor rebuild, the deprecated ConversationBufferMemory, and the hand-rolled _get_agent_executor_for_session(). Unlocks: parallel tool calls via ToolNode, native LangGraph interrupt primitive for OAuth consent flows, and astream_events streaming. Thread ID maps to existing session ID.
+
+**Requirements:** LANGGRAPH-01, LANGGRAPH-02, LANGGRAPH-03
+
+**Depends on:** Phase 274
+
+**Plans:** 3 plans
+
+Plans:
+- [ ] 275-01-PLAN.md — Add langgraph to requirements; replace AgentExecutor with create_react_agent + MemorySaver in langchain_mcp_agent.py
+- [ ] 275-02-PLAN.md — Remove _langchain_memories from ConversationMemory; eliminate get_conversation_history() calls from agent
+- [ ] 275-03-PLAN.md — Update test_langchain_mcp_agent.py and test_conversation_memory.py for LangGraph pattern
+
+
 ### Phase 276: replace-callback-streaming-astream-events
 
 **Goal:** Replace the WebSocketStreamCallbackHandler callback class (attached to AgentExecutor.callbacks) with LangGraph astream_events(version="v2") async generator. Add langgraph to requirements, migrate AgentExecutor to create_react_agent compiled graph, and drive streaming via on_tool_start/on_tool_end/on_chat_model_stream events. Eliminates manual run_id correlation; events propagate through nested sub-graphs automatically.
