@@ -19,6 +19,60 @@ function uuid() {
   });
 }
 
+// Tools that always require HITL browser consent (can't execute inline)
+const HITL_TOOLS = new Set(["create_deposit", "create_withdrawal", "create_transfer"]);
+// Tools that require step-up MFA
+const STEPUP_TOOLS = new Set(["get_sensitive_account_details"]);
+
+/**
+ * Interpret what a tool result means so we can show context alongside the raw JSON.
+ * Returns null for clean success, or an object describing what gate fired.
+ */
+function interpretResult(result) {
+  if (!result) return null;
+
+  // HITL consent required
+  if (result.error === "hitl_required" || result.hitl) {
+    const threshold = result.hitl_threshold_usd;
+    return {
+      kind: "hitl",
+      title: "Human-in-the-Loop (HITL) consent required",
+      detail:
+        threshold != null
+          ? `Transactions above $${threshold} require explicit human approval before the MCP server will execute them. ` +
+            `This is a security control — the agent cannot bypass it. ` +
+            `To approve this action, use the Banking Agent on the dashboard: it will present a consent dialog before executing the tool.`
+          : `Transfers always require explicit human approval regardless of amount. ` +
+            `Use the Banking Agent on the dashboard to complete this action through the consent screen.`,
+    };
+  }
+
+  // Step-up MFA required
+  if (result.error === "step_up_required" || result.step_up_required) {
+    const method = result.step_up_method || "email";
+    return {
+      kind: "stepup",
+      title: "Step-up MFA verification required",
+      detail:
+        `This tool requires elevated authentication (${method} OTP or MFA challenge) before the MCP server will execute it. ` +
+        `Complete a step-up challenge via the Banking Agent on the dashboard — once verified, ` +
+        `your session will be elevated and this tool will execute.`,
+    };
+  }
+
+  // Success
+  if (result.success === true || result.result?.success === true) {
+    return { kind: "success" };
+  }
+
+  // Generic error from the tool (bad params, not found, etc.)
+  if (result.error && result.error !== "hitl_required" && result.error !== "step_up_required") {
+    return { kind: "tool_error", title: "Tool returned an error", detail: result.message || result.error };
+  }
+
+  return null;
+}
+
 export default function WebMcpPanel() {
   const [tools, setTools] = useState([]);
   const [selectedTool, setSelectedTool] = useState(null);
@@ -110,6 +164,10 @@ export default function WebMcpPanel() {
   const schemaProps = selectedTool?.inputSchema?.properties || {};
   const requiredFields = selectedTool?.inputSchema?.required || [];
 
+  // Unwrap result — the BFF wraps the actual tool result in a `result` key
+  const toolResult = result?.result ?? result;
+  const interpretation = interpretResult(toolResult);
+
   return (
     <div className="app-page-shell">
       <div className="app-page-shell__body">
@@ -162,27 +220,46 @@ export default function WebMcpPanel() {
           )}
 
           <div className="webmcp-body">
+            {/* ── Left column: tool list ── */}
             <div className="webmcp-tool-list">
               <h4>Available Tools ({tools.length})</h4>
               {tools.length > 0 && (
                 <p className="webmcp-tool-hint">Select a tool to inspect and call it</p>
               )}
-              {tools.map((tool) => (
-                <button
-                  key={tool.name}
-                  type="button"
-                  className={`webmcp-tool-item${selectedTool?.name === tool.name ? " active" : ""}`}
-                  onClick={() => selectTool(tool)}
-                >
-                  <span className="webmcp-tool-name">{tool.name}</span>
-                  <span className="webmcp-tool-desc">{tool.description}</span>
-                </button>
-              ))}
+              {tools.map((tool) => {
+                const isHitl = HITL_TOOLS.has(tool.name);
+                const isStepUp = STEPUP_TOOLS.has(tool.name);
+                return (
+                  <button
+                    key={tool.name}
+                    type="button"
+                    className={`webmcp-tool-item${selectedTool?.name === tool.name ? " active" : ""}`}
+                    onClick={() => selectTool(tool)}
+                  >
+                    <span className="webmcp-tool-name">{tool.name}</span>
+                    <span className="webmcp-tool-desc">{tool.description}</span>
+                    {isHitl && (
+                      <span className="webmcp-tool-badge webmcp-tool-badge--hitl">
+                        Requires consent
+                      </span>
+                    )}
+                    {isStepUp && (
+                      <span className="webmcp-tool-badge webmcp-tool-badge--stepup">
+                        Requires step-up
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
 
+            {/* ── Right column: placeholder or tool detail ── */}
             {!selectedTool && tools.length > 0 && (
               <div className="webmcp-tool-placeholder">
-                <p>Select a tool from the list to inspect its schema, fill in parameters, and call it live through the MCP pipeline.</p>
+                <p>
+                  Select a tool from the list to inspect its schema, fill in
+                  parameters, and call it live through the MCP pipeline.
+                </p>
               </div>
             )}
 
@@ -193,6 +270,36 @@ export default function WebMcpPanel() {
                   {selectedTool.description}
                 </p>
 
+                {/* Upfront gate notice for tools that will always hit a gate */}
+                {HITL_TOOLS.has(selectedTool.name) && (
+                  <div className="webmcp-gate-notice webmcp-gate-notice--hitl">
+                    <span className="webmcp-gate-notice__icon">⚠️</span>
+                    <div>
+                      <strong>Human-in-the-Loop (HITL) required</strong>
+                      <p>
+                        {selectedTool.name === "create_transfer"
+                          ? "Transfers always require explicit human approval — the MCP server enforces this regardless of amount."
+                          : "Deposits and withdrawals above the configured threshold require human approval."}
+                        {" "}You can still call this tool here to see exactly what the server returns.
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {STEPUP_TOOLS.has(selectedTool.name) && (
+                  <div className="webmcp-gate-notice webmcp-gate-notice--stepup">
+                    <span className="webmcp-gate-notice__icon">⚠️</span>
+                    <div>
+                      <strong>Step-up MFA required</strong>
+                      <p>
+                        This tool requires elevated authentication. Complete a step-up challenge
+                        via the Banking Agent on the dashboard first.
+                        You can still call it here to see the server response.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Parameter form */}
                 {Object.keys(schemaProps).length > 0 && (
                   <div className="webmcp-params">
                     <h5>Parameters</h5>
@@ -205,8 +312,7 @@ export default function WebMcpPanel() {
                           )}
                           {schema.description && (
                             <span className="webmcp-param-hint">
-                              {" "}
-                              — {schema.description}
+                              {" "}— {schema.description}
                             </span>
                           )}
                         </span>
@@ -237,13 +343,16 @@ export default function WebMcpPanel() {
                 {loading && (
                   <div className="webmcp-calling-status">
                     <span className="webmcp-calling-spinner" aria-hidden="true" />
-                    <span>Calling <strong>{selectedTool.name}</strong> — waiting for response…</span>
+                    <span>
+                      Calling <strong>{selectedTool.name}</strong> — waiting for response…
+                    </span>
                   </div>
                 )}
 
+                {/* Stream events */}
                 {streamEvents.length > 0 && (
                   <div className="webmcp-stream-log" ref={streamLogRef}>
-                    <h5>Stream Events</h5>
+                    <h5>Pipeline Events</h5>
                     {streamEvents.map((item) => (
                       <div key={item.key} className="webmcp-stream-event">
                         {JSON.stringify(item.data, null, 2)}
@@ -252,13 +361,35 @@ export default function WebMcpPanel() {
                   </div>
                 )}
 
+                {/* Result area */}
                 {result && (
                   <div className="webmcp-result">
-                    <h5>Result</h5>
+                    {/* Interpretation banner */}
+                    {interpretation && interpretation.kind !== "success" && (
+                      <div className={`webmcp-result-context webmcp-result-context--${interpretation.kind}`}>
+                        <span className="webmcp-result-context__icon">
+                          {interpretation.kind === "hitl" || interpretation.kind === "stepup" ? "⚠️" : "❌"}
+                        </span>
+                        <div>
+                          <strong>{interpretation.title}</strong>
+                          {interpretation.detail && <p>{interpretation.detail}</p>}
+                        </div>
+                      </div>
+                    )}
+                    {interpretation && interpretation.kind === "success" && (
+                      <div className="webmcp-result-context webmcp-result-context--success">
+                        <span className="webmcp-result-context__icon">✅</span>
+                        <strong>Tool executed successfully</strong>
+                      </div>
+                    )}
+
+                    {/* Raw JSON always shown */}
+                    <h5>Server Response</h5>
                     <pre>{JSON.stringify(result, null, 2)}</pre>
                   </div>
                 )}
 
+                {/* HTTP-level error */}
                 {error && (
                   <div className="webmcp-error">
                     <p>{error.message}</p>

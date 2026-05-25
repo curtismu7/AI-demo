@@ -1,45 +1,48 @@
 /* banking_api_ui/src/components/WebMcpPanel.css */
 
+/* Design tokens for this panel: white bg, dark navy text */
 .webmcp-panel {
-  border: 1px solid var(--ba-border, #2a3a5c);
+  border: 1px solid #d0d9e8;
   border-radius: 8px;
   padding: 16px;
   margin: 16px 0;
-  background: var(--ba-bg, #152a52);
-  color: #e0e6f0;
-}
-
-.webmcp-panel-title {
-  margin: 0 0 12px;
-  font-size: 16px;
-  font-weight: 600;
-  color: #fff;
+  background: #ffffff;
+  color: #0f2044;
 }
 
 .webmcp-loading {
-  color: #8899bb;
+  color: #4a6080;
   padding: 12px 0;
+  font-size: 15px;
 }
 
 .webmcp-body {
   display: flex;
   gap: 16px;
-  min-height: 200px;
+  min-height: 300px;
 }
 
-/* Tool list (left column) */
+/* ── Left column: tool list ─────────────────────────────────────────────── */
+
 .webmcp-tool-list {
-  flex: 0 0 240px;
-  max-height: 500px;
+  flex: 0 0 260px;
+  max-height: 600px;
   overflow-y: auto;
 }
 
 .webmcp-tool-list h4 {
-  margin: 0 0 10px;
+  margin: 0 0 4px;
   font-size: 16px;
-  color: #8899bb;
+  color: #4a6080;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+.webmcp-tool-hint {
+  font-size: 13px;
+  color: #7a90ac;
+  margin: 0 0 10px;
+  font-style: italic;
 }
 
 .webmcp-tool-item {
@@ -49,64 +52,79 @@
   width: 100%;
   padding: 10px 12px;
   margin-bottom: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid #d0d9e8;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.04);
-  color: #c5d0e6;
+  background: #f4f7fb;
+  color: #0f2044;
   cursor: pointer;
   text-align: left;
   transition: background 0.15s, border-color 0.15s, transform 0.1s;
 }
 
 .webmcp-tool-item:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(59, 130, 246, 0.4);
+  background: #e8eef8;
+  border-color: #3b82f6;
   transform: translateX(2px);
 }
 
 .webmcp-tool-item.active {
-  background: rgba(59, 130, 246, 0.2);
-  border-color: rgba(59, 130, 246, 0.6);
+  background: #dbeafe;
+  border-color: #3b82f6;
   border-left: 3px solid #3b82f6;
 }
 
 .webmcp-tool-name {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
-  color: #e0e6f0;
+  color: #0f2044;
 }
 
 .webmcp-tool-desc {
-  font-size: 14px;
-  color: #7888a8;
-  margin-top: 4px;
-  line-height: 1.5;
+  font-size: 13px;
+  color: #4a6080;
+  margin-top: 3px;
+  line-height: 1.4;
 }
 
-/* Right-panel placeholder when no tool is selected */
+/* Badge: consent / step-up */
+.webmcp-tool-badge {
+  display: inline-block;
+  margin-top: 5px;
+  padding: 2px 7px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.webmcp-tool-badge--hitl {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+}
+
+.webmcp-tool-badge--stepup {
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #38bdf8;
+}
+
+/* ── Right column ───────────────────────────────────────────────────────── */
+
 .webmcp-tool-placeholder {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 40px 24px;
-  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border: 1px dashed #c0ccd8;
   border-radius: 8px;
-  color: #5a6a8a;
+  color: #7a90ac;
   font-size: 15px;
   text-align: center;
   line-height: 1.6;
 }
 
-/* Click hint shown below tool list header */
-.webmcp-tool-hint {
-  font-size: 13px;
-  color: #5a6a8a;
-  margin: -4px 0 10px;
-  font-style: italic;
-}
-
-/* Tool detail (right column) */
 .webmcp-tool-detail {
   flex: 1;
   min-width: 0;
@@ -115,24 +133,68 @@
 .webmcp-tool-detail h4 {
   margin: 0 0 6px;
   font-size: 20px;
-  color: #fff;
+  color: #0f2044;
 }
 
 .webmcp-tool-detail-desc {
-  margin: 0 0 16px;
+  margin: 0 0 14px;
   font-size: 15px;
-  color: #8899bb;
+  color: #4a6080;
+  line-height: 1.5;
 }
 
-/* Parameter form */
+/* Upfront gate notice (shown before calling) */
+.webmcp-gate-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 6px;
+  margin-bottom: 14px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.webmcp-gate-notice--hitl {
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+}
+
+.webmcp-gate-notice--stepup {
+  background: #f0f9ff;
+  border: 1px solid #38bdf8;
+}
+
+.webmcp-gate-notice__icon {
+  font-size: 16px;
+  flex-shrink: 0;
+  line-height: 1.5;
+}
+
+.webmcp-gate-notice strong {
+  display: block;
+  margin-bottom: 3px;
+}
+
+.webmcp-gate-notice--hitl strong { color: #92400e; }
+.webmcp-gate-notice--stepup strong { color: #0369a1; }
+
+.webmcp-gate-notice p {
+  margin: 0;
+  color: #4a6080;
+  font-size: 13px;
+}
+
+/* ── Parameter form ─────────────────────────────────────────────────────── */
+
 .webmcp-params {
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
 .webmcp-params h5 {
   margin: 0 0 10px;
   font-size: 13px;
-  color: #8899bb;
+  color: #4a6080;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -142,41 +204,42 @@
   flex-direction: column;
   margin-bottom: 10px;
   font-size: 15px;
-  color: #c5d0e6;
+  color: #0f2044;
 }
 
 .webmcp-required {
-  color: #f87171;
+  color: #dc2626;
   margin-left: 2px;
 }
 
 .webmcp-param-hint {
   font-size: 13px;
-  color: #7888a8;
+  color: #4a6080;
 }
 
 .webmcp-param-input {
   margin-top: 6px;
   padding: 8px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid #c0ccd8;
   border-radius: 4px;
-  background: rgba(0, 0, 0, 0.2);
-  color: #e0e6f0;
+  background: #f4f7fb;
+  color: #0f2044;
   font-size: 15px;
   font-family: inherit;
 }
 
 .webmcp-param-input:focus {
   outline: none;
-  border-color: rgba(59, 130, 246, 0.5);
+  border-color: #3b82f6;
+  background: #fff;
 }
 
-/* Spinner keyframe shared by both spinners */
+/* ── Spinner / call button ──────────────────────────────────────────────── */
+
 @keyframes webmcp-spin {
   to { transform: rotate(360deg); }
 }
 
-/* Call button */
 .webmcp-call-btn {
   display: inline-flex;
   align-items: center;
@@ -201,19 +264,17 @@
   cursor: not-allowed;
 }
 
-/* Spinner inside the button */
 .webmcp-btn-spinner {
   display: inline-block;
-  width: 13px;
-  height: 13px;
-  border: 2px solid rgba(255, 255, 255, 0.35);
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
   border-top-color: #fff;
   border-radius: 50%;
   animation: webmcp-spin 0.7s linear infinite;
   flex-shrink: 0;
 }
 
-/* Inline status block below the button */
 .webmcp-calling-status {
   display: flex;
   align-items: center;
@@ -221,34 +282,35 @@
   margin-top: 14px;
   padding: 12px 16px;
   border-radius: 6px;
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.25);
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
   font-size: 15px;
-  color: #a3b5d6;
+  color: #1e40af;
 }
 
 .webmcp-calling-status strong {
-  color: #c5d0e6;
+  color: #1e3a8a;
 }
 
-/* Larger spinner in the status block */
 .webmcp-calling-spinner {
   display: inline-block;
   width: 16px;
   height: 16px;
-  border: 2px solid rgba(59, 130, 246, 0.3);
+  border: 2px solid #bfdbfe;
   border-top-color: #3b82f6;
   border-radius: 50%;
   animation: webmcp-spin 0.7s linear infinite;
   flex-shrink: 0;
 }
 
-/* Stream log */
+/* ── Pipeline events ────────────────────────────────────────────────────── */
+
 .webmcp-stream-log {
-  margin-top: 12px;
+  margin-top: 14px;
   max-height: 200px;
   overflow-y: auto;
-  background: rgba(0, 0, 0, 0.3);
+  background: #f4f7fb;
+  border: 1px solid #d0d9e8;
   border-radius: 6px;
   padding: 10px;
 }
@@ -256,7 +318,7 @@
 .webmcp-stream-log h5 {
   margin: 0 0 8px;
   font-size: 13px;
-  color: #8899bb;
+  color: #4a6080;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -264,24 +326,26 @@
 .webmcp-stream-event {
   font-family: inherit;
   font-size: 13px;
-  color: #a3b5d6;
+  color: #0f2044;
   white-space: pre-wrap;
   word-break: break-all;
   margin-bottom: 4px;
   padding: 6px 8px;
   border-radius: 3px;
-  background: rgba(0, 0, 0, 0.2);
+  background: #fff;
+  border: 1px solid #e2e8f0;
 }
 
-/* Result */
+/* ── Result area ────────────────────────────────────────────────────────── */
+
 .webmcp-result {
-  margin-top: 12px;
+  margin-top: 14px;
 }
 
 .webmcp-result h5 {
-  margin: 0 0 8px;
+  margin: 10px 0 8px;
   font-size: 13px;
-  color: #8899bb;
+  color: #4a6080;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -289,50 +353,109 @@
 .webmcp-result pre {
   margin: 0;
   padding: 12px;
-  background: rgba(0, 0, 0, 0.3);
+  background: #f4f7fb;
+  border: 1px solid #d0d9e8;
   border-radius: 6px;
   font-family: inherit;
   font-size: 14px;
-  color: #c5d0e6;
+  color: #0f2044;
   white-space: pre-wrap;
   word-break: break-all;
-  max-height: 300px;
+  max-height: 340px;
   overflow-y: auto;
 }
 
-/* Error */
-.webmcp-error {
-  margin-top: 12px;
-  padding: 10px;
+/* Interpretation banner shown above Server Response */
+.webmcp-result-context {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
   border-radius: 6px;
-  background: rgba(248, 113, 113, 0.1);
-  border: 1px solid rgba(248, 113, 113, 0.3);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.webmcp-result-context--success {
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  align-items: center;
+}
+
+.webmcp-result-context--hitl {
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+}
+
+.webmcp-result-context--stepup {
+  background: #f0f9ff;
+  border: 1px solid #38bdf8;
+}
+
+.webmcp-result-context--tool_error {
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+}
+
+.webmcp-result-context__icon {
+  font-size: 16px;
+  flex-shrink: 0;
+  line-height: 1.5;
+}
+
+.webmcp-result-context strong {
+  display: block;
+  margin-bottom: 3px;
+  color: #0f2044;
+}
+
+.webmcp-result-context--hitl strong   { color: #92400e; }
+.webmcp-result-context--stepup strong { color: #0369a1; }
+.webmcp-result-context--tool_error strong { color: #dc2626; }
+.webmcp-result-context--success strong { color: #15803d; }
+
+.webmcp-result-context p {
+  margin: 0;
+  font-size: 13px;
+  color: #4a6080;
+  line-height: 1.6;
+}
+
+/* ── HTTP-level error ───────────────────────────────────────────────────── */
+
+.webmcp-error {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 6px;
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
 }
 
 .webmcp-error p {
   margin: 0 0 6px;
-  font-size: 13px;
-  color: #f87171;
+  font-size: 14px;
+  color: #dc2626;
 }
 
 .webmcp-error details {
-  font-size: 12px;
-  color: #a3b5d6;
+  font-size: 13px;
+  color: #4a6080;
 }
 
 .webmcp-error summary {
   cursor: pointer;
-  color: #8899bb;
-  font-size: 12px;
+  color: #4a6080;
+  font-size: 13px;
 }
 
 .webmcp-error pre {
   margin: 6px 0 0;
   padding: 8px;
-  background: rgba(0, 0, 0, 0.2);
+  background: #fff;
+  border: 1px solid #e2e8f0;
   border-radius: 4px;
-  font-size: 11px;
-  color: #c5d0e6;
+  font-size: 13px;
+  color: #0f2044;
   white-space: pre-wrap;
   word-break: break-all;
 }
