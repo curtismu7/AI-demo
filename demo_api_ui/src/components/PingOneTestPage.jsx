@@ -4,7 +4,7 @@ import apiClient from "../services/apiClient";
 import { resolveApiBaseUrl } from "../utils/resolveApiBaseUrl";
 import { notifyError, notifyInfo, notifySuccess } from "../utils/appToast";
 import ApiCallDisplay from "./ApiCallDisplay";
-import DecodedTokenPanel from "./DecodedTokenPanel";
+import TokenCard from "./TokenCard";
 import ScopeNarrowingVisualization from "./ScopeNarrowingVisualization";
 import { TokenColorLegend } from "./TokenColorSystem";
 import "./PingOneTestPage.css";
@@ -1244,9 +1244,10 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 								</div>
 							)}
 							{workerDecoded && (
-								<DecodedTokenPanel
+								<TokenCard
 									decoded={workerDecoded}
-									label="Worker Token (Management API)"
+									title="Worker Token (Management API)"
+									defaultExpanded
 								/>
 							)}
 							<div className="token-actions">
@@ -1618,9 +1619,10 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 													: null
 											}
 										/>
-										<DecodedTokenPanel
+										<TokenCard
 											decoded={authzDecoded}
-											label={authzLabel}
+											title={authzLabel}
+											defaultExpanded
 										/>
 									</>
 								);
@@ -1657,9 +1659,10 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 									label="Agent Token (Client Credentials)"
 								/>
 							)}
-							<DecodedTokenPanel
+							<TokenCard
 								decoded={agentDecoded}
-								label="Agent Token (Client Credentials)"
+								title="Agent Token (Client Credentials)"
+								defaultExpanded
 							/>
 						</div>
 					</div>
@@ -2016,19 +2019,22 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 										)}
 										{(exchange2SubjectDecoded || exchange2ActorDecoded) && (
 											<>
-												<DecodedTokenPanel
+												<TokenCard
 													decoded={exchange2SubjectDecoded}
-													label={`Subject: ${t1Label}`}
+													title={`Subject: ${t1Label}`}
+													defaultExpanded
 												/>
-												<DecodedTokenPanel
+												<TokenCard
 													decoded={exchange2ActorDecoded}
-													label="Actor: Agent CC Token"
+													title="Actor: Agent CC Token"
+													defaultExpanded
 												/>
 											</>
 										)}
-										<DecodedTokenPanel
+										<TokenCard
 											decoded={exchange2Decoded}
-											label="MCP Gateway Token (2-exchange)"
+											title="MCP Gateway Token (2-exchange)"
+											defaultExpanded
 										/>
 										<TokenLineageDiff
 											fromDecoded={authzDecoded}
@@ -2104,21 +2110,24 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 								</div>
 							)}
 							{exchange186SubjectDecoded && (
-								<DecodedTokenPanel
+								<TokenCard
 									decoded={exchange186SubjectDecoded}
-									label="Subject: User ID Token"
+									title="Subject: User ID Token"
+									defaultExpanded
 								/>
 							)}
 							{exchange186ActorDecoded && (
-								<DecodedTokenPanel
+								<TokenCard
 									decoded={exchange186ActorDecoded}
-									label="Actor: Agent CC Token"
+									title="Actor: Agent CC Token"
+									defaultExpanded
 								/>
 							)}
 							{exchange186Decoded && (
-								<DecodedTokenPanel
+								<TokenCard
 									decoded={exchange186Decoded}
-									label="MCP Gateway Token (ID Token + Agent CC)"
+									title="MCP Gateway Token (ID Token + Agent CC)"
+									defaultExpanded
 								/>
 							)}
 							{exchange186Decoded && exchange186SubjectDecoded && (
@@ -2189,21 +2198,24 @@ Authorization: Basic ${workerConfig.clientId && workerConfig.clientSecret ? "***
 								</ul>
 							)}
 							{exchange401SubjectDecoded && (
-								<DecodedTokenPanel
+								<TokenCard
 									decoded={exchange401SubjectDecoded}
-									label="User Access Token (Subject — causes 401)"
+									title="User Access Token (Subject — causes 401)"
+									defaultExpanded
 								/>
 							)}
 							{exchange401AgentDecoded && (
-								<DecodedTokenPanel
+								<TokenCard
 									decoded={exchange401AgentDecoded}
-									label="Agent Token (MCP Exchanger CC)"
+									title="Agent Token (MCP Exchanger CC)"
+									defaultExpanded
 								/>
 							)}
 							{exchange401Decoded && (
-								<DecodedTokenPanel
+								<TokenCard
 									decoded={exchange401Decoded}
-									label="MCP Token (Simple Exchange Result)"
+									title="MCP Token (Simple Exchange Result)"
+									defaultExpanded
 								/>
 							)}
 							{exchange401SubjectDecoded && exchange401Decoded && (
