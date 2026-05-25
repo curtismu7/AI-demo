@@ -18,6 +18,9 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Added
 - `authorize_failover_mode` configStore key (default: `fallback_simulated`) — explicit policy for when PingOne Authorize is unreachable; `deny` (503 fail-closed), `permit` (fail-open), or `fallback_simulated` (switch to in-process engine)
+
+### Changed
+- MCP Compliance Checklist: skipped (non-applicable) steps now show ☑️ (blue checkmark) instead of ○; executed steps keep ✅ (green)
 - Tests for `useMcpFieldState` hook: defaultValue seeding, source option, empty-string guard, no-overwrite, and auto-filled fallback (10 tests total in McpFieldContext suite)
 - `authorize.parity.test.js` — parity contract tests asserting simulated ≡ PingOne enforcement flags for same inputs (14 tests)
 

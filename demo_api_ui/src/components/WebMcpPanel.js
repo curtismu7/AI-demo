@@ -182,10 +182,26 @@ export default function WebMcpPanel() {
         setError(null);
       })
       .catch((err) => {
+        let parsedBody = null;
+        if (err.body) {
+          try { parsedBody = JSON.parse(err.body); } catch (_) {}
+        }
+        const summaryCandidate = parsedBody ? {
+          error:             parsedBody.error,
+          error_description: parsedBody.error_description,
+          authorize_engine:  parsedBody.authorize_engine,
+          decisionContext:   parsedBody.decisionContext,
+          decisionId:        parsedBody.decisionId,
+        } : null;
+        const hasSummaryFields = summaryCandidate &&
+          Object.values(summaryCandidate).some(v => v != null);
         setError({
           message:
             "Could not load MCP tools — check that the MCP server is running.",
-          details: `${err.message}${err.body ? "\n" + err.body : ""}`,
+          statusLine: err.message,
+          summary: hasSummaryFields ? summaryCandidate : null,
+          parsedBody: parsedBody || null,
+          rawBody:    parsedBody ? null : (err.body || null),
         });
       })
       .finally(() => setLoading(false));
@@ -261,7 +277,7 @@ export default function WebMcpPanel() {
         decisionId:        parsedBody.decisionId,
       } : null;
       const hasSummaryFields = summaryCandidate &&
-        Object.values(summaryCandidate).some(v => v !== undefined);
+        Object.values(summaryCandidate).some(v => v != null);
       setError({
         message: "Tool call failed — check connection or permissions.",
         statusLine: err.message,
@@ -358,7 +374,9 @@ export default function WebMcpPanel() {
               <p>{error.message}</p>
               <details>
                 <summary>Technical details</summary>
-                <p className="webmcp-error__status">{error.statusLine}</p>
+                {error.statusLine && (
+                  <p className="webmcp-error__status">{error.statusLine}</p>
+                )}
                 {error.summary && (
                   <table className="webmcp-error__summary">
                     <tbody>
@@ -373,7 +391,7 @@ export default function WebMcpPanel() {
                     </tbody>
                   </table>
                 )}
-                {error.parsedBody && error.summary && (
+                {error.parsedBody && (
                   <details className="webmcp-error__full">
                     <summary>Full response</summary>
                     <pre>{JSON.stringify(error.parsedBody, null, 2)}</pre>
@@ -598,7 +616,32 @@ export default function WebMcpPanel() {
                     <p>{error.message}</p>
                     <details>
                       <summary>Technical details</summary>
-                      <pre>{error.details}</pre>
+                      {error.statusLine && (
+                        <p className="webmcp-error__status">{error.statusLine}</p>
+                      )}
+                      {error.summary && (
+                        <table className="webmcp-error__summary">
+                          <tbody>
+                            {Object.entries(error.summary)
+                              .filter(([, v]) => v != null)
+                              .map(([k, v]) => (
+                                <tr key={k}>
+                                  <th>{k}</th>
+                                  <td>{typeof v === 'object' ? JSON.stringify(v) : String(v)}</td>
+                                </tr>
+                              ))}
+                          </tbody>
+                        </table>
+                      )}
+                      {error.parsedBody && (
+                        <details className="webmcp-error__full">
+                          <summary>Full response</summary>
+                          <pre>{JSON.stringify(error.parsedBody, null, 2)}</pre>
+                        </details>
+                      )}
+                      {error.rawBody && (
+                        <pre>{error.rawBody}</pre>
+                      )}
                     </details>
                   </div>
                 )}
