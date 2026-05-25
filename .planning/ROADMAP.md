@@ -61,6 +61,7 @@ A developer or architect who runs through the live demo in 5 minutes understands
 | 214 | fix-fido-registration-and-check-authentication-look-at-curl- | Fix FIDO2 registration and authentication; compare backend and UI to PingOne docs and curl commands; show request/response for FIDO2 on test page | In Progress | 2026-04-23 |
 | 223 | fido2-registration-authentication | FIDO2 registration and authentication parity with PingOne docs; test page visibility | Planned | 2026-04-23 |
 | 279 | skip-token-validation-production-guard | Add startup RuntimeError guard in langchain_agent/src/config/settings.py refusing to start if SKIP_TOKEN_SIGNATURE_VALIDATION=true outside development; verify session→user binding | GUARD-01, GUARD-02, GUARD-03 | 1 plan |
+| 277 | add-streamable-http-mcp-transport | Add streamable_http transport option to Python LangChain agent MCP client; align with MCP spec 2025-03-26 deprecation of WebSocket | TRANSPORT-01, TRANSPORT-02, TRANSPORT-03 | 1 plan |
 | 281 | handle-mcp-notifications-cancelled | Handle notifications/cancelled from MCP server to prevent _pending dict leak; CancelledError guard in MCPTool._arun | CANCEL-01, CANCEL-02, CANCEL-03 | 1 plan |
 
 ---
@@ -2389,3 +2390,16 @@ Plans:
 
 Plans:
 - [ ] 281-01-PLAN.md — Add notifications/cancelled handler in _read_loop; CancelledError guard in _arun; three new tests in test_mcp_connection_demux.py
+
+### Phase 277: add-streamable-http-mcp-transport
+
+**Goal:** Add streamable_http as a transport option in the Python LangChain agent MCP client config (alongside existing WebSocket), aligning with MCP spec 2025-03-26 deprecation of WebSocket in favour of Streamable HTTP. The TypeScript MCP server already has HttpMCPTransport.ts; this phase wires the Python client to use it via httpx. Keep WebSocket as default for local dev.
+
+**Requirements:** TRANSPORT-01, TRANSPORT-02, TRANSPORT-03
+
+**Depends on:** none (httpx already in requirements.txt; no langchain-mcp-adapters required)
+
+**Plans:** 1 plan
+
+Plans:
+- [ ] 277-01-PLAN.md — Add MCPConfig.mcp_transport setting; StreamableHttpMCPConnection with httpx; route in MCPConnectionPool
