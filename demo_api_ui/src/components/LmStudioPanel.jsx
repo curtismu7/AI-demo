@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import apiClient from '../services/apiClient';
 import { notifySuccess, notifyError, notifyInfo } from '../utils/appToast';
+import './LlmConfig.css';
 
 const DEFAULT_MODEL = 'google/gemma-4-e2b';
 const DEFAULT_BASE_URL = 'http://localhost:1234';
@@ -132,26 +133,11 @@ export default function LmStudioPanel() {
   };
 
   // ── Derived state ──────────────────────────────────────────────────────────
-  const downloadedModels = models.filter(m => !m.loaded); // downloaded but not loaded
   const loadedModels = models.filter(m => m.loaded);
   const selectedLoaded = models.find(m => m.key === selectedModel && m.loaded);
   const selectedDownloaded = models.find(m => m.key === selectedModel && !m.loaded);
 
-  const statusColor = serverStatus === 'running' ? '#166534' : serverStatus === 'unreachable' ? '#991b1b' : '#92400e';
-  const statusBg = serverStatus === 'running' ? '#dcfce7' : serverStatus === 'unreachable' ? '#fecaca' : '#fef3c7';
   const statusLabel = serverStatus === 'running' ? '✅ Server running' : serverStatus === 'unreachable' ? '❌ Server not reachable' : checking ? '…' : '⚠️ Unknown';
-
-  const codeStyle = {
-    display: 'block',
-    background: '#f3f4f6',
-    border: '1px solid #e5e7eb',
-    borderRadius: 4,
-    padding: '0.5rem 0.75rem',
-    fontFamily: 'monospace',
-    fontSize: '0.85rem',
-    color: '#1f2937',
-    userSelect: 'all',
-  };
 
   const formatBytes = (bytes) => {
     if (!bytes) return '';
@@ -160,141 +146,192 @@ export default function LmStudioPanel() {
   };
 
   return (
-    <div style={{ padding: '1.5rem' }}>
-      <h3>LM Studio Configuration</h3>
-      <p style={{ marginBottom: '1.25rem', color: '#666', fontSize: '0.9rem' }}>
-        LM Studio runs models locally using the Anthropic API format — no cloud API key required.
-        Inference endpoint: <code style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{baseUrl}/v1/messages</code>
-      </p>
-
-      {/* Setup instructions — shown when server is unreachable */}
-      {serverStatus !== 'running' && (
-        <div style={{ marginBottom: '1.5rem', padding: '1rem 1.25rem', background: '#fafafa', border: '1px solid #e5e7eb', borderRadius: 6 }}>
-          <p style={{ margin: '0 0 0.75rem', fontWeight: 600, fontSize: '0.9rem' }}>Getting started with LM Studio</p>
-          <ol style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.7 }}>
-            <li>Download and install LM Studio from{' '}
-              <a href="https://lmstudio.ai/download" target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb' }}>lmstudio.ai/download</a>
-            </li>
-            <li>Open LM Studio, go to the <strong>Developer</strong> tab and start the local server:
-              <code style={{ ...codeStyle, marginTop: '0.4rem' }}>Default port: 1234</code>
-            </li>
-            <li>Click <strong>Check Status</strong> below, then use <strong>Download &amp; Load</strong> to set up Gemma.</li>
-          </ol>
+    <div className="cfg-card">
+      {/* Card header */}
+      <div className="cfg-card-header">
+        <div>
+          <p className="cfg-card-title">LM Studio Configuration</p>
+          <p className="cfg-card-sub">
+            Local inference via Anthropic API format ·{' '}
+            <a href="https://lmstudio.ai/download" target="_blank" rel="noopener noreferrer">
+              lmstudio.ai ↗
+            </a>
+          </p>
         </div>
-      )}
-
-      {/* Status + refresh */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
-        <span style={{ display: 'inline-block', padding: '0.25rem 0.75rem', borderRadius: 6, fontSize: '0.85rem', fontWeight: 500, backgroundColor: statusBg, color: statusColor }}>
-          {statusLabel}
+        <span className={`cfg-badge${
+          serverStatus === 'running'     ? ' cfg-badge--active' :
+          serverStatus === 'unreachable' ? ' cfg-badge--unreachable' :
+          ' cfg-badge--loading'
+        }`}>
+          {serverStatus === 'running'     && 'Running'}
+          {serverStatus === 'unreachable' && 'Unreachable'}
+          {(!serverStatus || checking)    && '…'}
         </span>
-        <button type="button" onClick={checkStatus} disabled={checking}
-          style={{ padding: '0.35rem 0.85rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: checking ? 'not-allowed' : 'pointer', opacity: checking ? 0.6 : 1, fontSize: '0.85rem' }}>
-          {checking ? '…' : 'Check Status'}
-        </button>
       </div>
 
-      {/* Server URL */}
-      <div style={{ marginBottom: '1.25rem', maxWidth: 480 }}>
-        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '0.35rem' }}>
-          LM Studio Server URL
-        </label>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <input type="text" value={baseUrl} onChange={e => setBaseUrl(e.target.value)}
-            placeholder={DEFAULT_BASE_URL}
-            style={{ flex: 1, padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.9rem' }} />
-        </div>
-        <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.35rem' }}>
-          Default: {DEFAULT_BASE_URL} — Anthropic endpoint: <code style={{ fontFamily: 'monospace' }}>/v1/messages</code>
-        </div>
-      </div>
+      {/* Card body */}
+      <div className="cfg-card-body">
 
-      {/* Model section — only shown when server is running */}
-      {serverStatus === 'running' && (
-        <>
-          {/* Loaded models */}
-          {loadedModels.length > 0 && (
-            <div style={{ marginBottom: '1rem', padding: '0.75rem 1rem', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 6 }}>
-              <p style={{ margin: '0 0 0.4rem', fontSize: '0.85rem', fontWeight: 600, color: '#166534' }}>✅ Loaded in memory</p>
-              {loadedModels.map(m => (
-                <div key={m.key} style={{ fontSize: '0.85rem', color: '#166534' }}>{m.display_name || m.key}</div>
-              ))}
-            </div>
-          )}
-
-          {/* Model selector */}
-          <div style={{ marginBottom: '1rem', maxWidth: 480 }}>
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '0.35rem' }}>
-              Model
-            </label>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <select value={selectedModel} onChange={e => setSelectedModel(e.target.value)}
-                style={{ flex: 1, padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.9rem' }}>
-                {models.length > 0
-                  ? models.map(m => (
-                    <option key={m.key} value={m.key}>
-                      {m.display_name || m.key}{m.loaded ? ' (loaded)' : ' (not loaded)'}
-                      {m.size_bytes ? ` — ${formatBytes(m.size_bytes)}` : ''}
-                    </option>
-                  ))
-                  : <option value={DEFAULT_MODEL}>{DEFAULT_MODEL}</option>
-                }
-              </select>
-              <button type="button" onClick={handleSaveModel} disabled={saving}
-                style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 4, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1, fontSize: '0.9rem' }}>
-                {saving ? 'Saving…' : 'Save'}
-              </button>
-            </div>
+        {/* Setup instructions — shown when server is not running */}
+        {serverStatus !== 'running' && (
+          <div className="cfg-setup-box">
+            <p>Getting started with LM Studio</p>
+            <ol>
+              <li>
+                Download and install from{' '}
+                <a href="https://lmstudio.ai/download" target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb' }}>
+                  lmstudio.ai/download
+                </a>
+              </li>
+              <li>
+                Open LM Studio → <strong>Developer</strong> tab → start local server
+                <code className="cfg-code" style={{ marginTop: '0.4rem' }}>Default port: 1234</code>
+              </li>
+              <li>Click <strong>Check Status</strong> below, then <strong>Download &amp; Load</strong> to set up Gemma.</li>
+            </ol>
           </div>
+        )}
 
-          {/* Load / Download actions */}
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-            {/* Load button — shown when model is downloaded but not loaded */}
-            {(selectedDownloaded || models.length === 0) && !selectedLoaded && (
-              <button type="button" onClick={() => handleLoad(selectedModel)} disabled={loading}
-                style={{ padding: '0.5rem 1.1rem', background: '#059669', color: '#fff', border: 'none', borderRadius: 4, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1, fontSize: '0.9rem' }}>
-                {loading ? 'Loading…' : 'Load Model'}
-              </button>
-            )}
+        {/* Status row */}
+        <div className="cfg-status-row">
+          <span className={`cfg-badge${
+            serverStatus === 'running'     ? ' cfg-badge--active' :
+            serverStatus === 'unreachable' ? ' cfg-badge--unreachable' :
+            ' cfg-badge--loading'
+          }`} style={{ borderRadius: '8px' }}>
+            {statusLabel}
+          </span>
+          <button
+            type="button"
+            className="cfg-btn cfg-btn--secondary"
+            onClick={checkStatus}
+            disabled={checking}
+          >
+            {checking ? '…' : 'Check Status'}
+          </button>
+        </div>
 
-            {/* Download + Load button */}
-            <button type="button" onClick={handleDownload} disabled={downloading || loading}
-              style={{ padding: '0.5rem 1.1rem', background: '#7c3aed', color: '#fff', border: 'none', borderRadius: 4, cursor: (downloading || loading) ? 'not-allowed' : 'pointer', opacity: (downloading || loading) ? 0.6 : 1, fontSize: '0.9rem' }}>
-              {downloading ? 'Downloading…' : 'Download & Load'}
-            </button>
-          </div>
-
-          {/* Download progress */}
-          {downloadStatus && downloading && (
-            <div style={{ marginBottom: '1rem', padding: '0.75rem 1rem', background: '#f5f3ff', border: '1px solid #ddd6fe', borderRadius: 6 }}>
-              <p style={{ margin: '0 0 0.4rem', fontSize: '0.85rem', fontWeight: 600, color: '#5b21b6' }}>
-                Downloading {selectedModel}…
-              </p>
-              {downloadStatus.progress_pct != null && (
-                <div style={{ height: 8, background: '#e5e7eb', borderRadius: 4, overflow: 'hidden', marginBottom: '0.4rem' }}>
-                  <div style={{ height: '100%', width: `${downloadStatus.progress_pct}%`, background: '#7c3aed', borderRadius: 4, transition: 'width 0.3s' }} />
-                </div>
-              )}
-              <p style={{ margin: 0, fontSize: '0.8rem', color: '#6b7280' }}>
-                {downloadStatus.downloaded_bytes && downloadStatus.total_size_bytes
-                  ? `${formatBytes(downloadStatus.downloaded_bytes)} / ${formatBytes(downloadStatus.total_size_bytes)}`
-                  : 'Calculating…'}
-                {downloadStatus.progress_pct != null ? ` (${downloadStatus.progress_pct}%)` : ''}
-              </p>
-            </div>
-          )}
-
-          {/* Anthropic endpoint info */}
-          <div style={{ marginTop: '1.25rem', padding: '0.75rem 1rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 6 }}>
-            <p style={{ margin: '0 0 0.5rem', fontSize: '0.85rem', fontWeight: 600 }}>Anthropic API endpoint</p>
-            <code style={codeStyle}>{baseUrl}/v1/messages</code>
-            <p style={{ margin: '0.5rem 0 0', fontSize: '0.78rem', color: '#6b7280' }}>
-              x-api-key: any value accepted — LM Studio does not validate API keys.
-              Model field must match the key shown above (e.g. <code style={{ fontFamily: 'monospace' }}>google/gemma-4-e2b</code>).
+        {/* Server URL */}
+        <div className="cfg-grid" style={{ marginBottom: '1.25rem' }}>
+          <div className="cfg-field cfg-field--full">
+            <label htmlFor="lmstudio-url" className="cfg-label">LM Studio Server URL</label>
+            <input
+              id="lmstudio-url"
+              type="text"
+              className="cfg-input"
+              value={baseUrl}
+              placeholder={DEFAULT_BASE_URL}
+              onChange={(e) => setBaseUrl(e.target.value)}
+            />
+            <p className="cfg-hint">
+              Default: {DEFAULT_BASE_URL} · Anthropic endpoint: <code style={{ fontFamily: 'monospace' }}>/v1/messages</code>
             </p>
           </div>
-        </>
-      )}
+        </div>
+
+        {/* Model section — only when server is running */}
+        {serverStatus === 'running' && (
+          <>
+            {loadedModels.length > 0 && (
+              <div className="cfg-loaded-box">
+                ✅ Loaded in memory:{' '}
+                {loadedModels.map((m) => m.display_name || m.key).join(', ')}
+              </div>
+            )}
+
+            <div className="cfg-grid" style={{ marginBottom: '1rem' }}>
+              <div className="cfg-field cfg-field--full">
+                <label htmlFor="lmstudio-model" className="cfg-label">Model</label>
+                <select
+                  id="lmstudio-model"
+                  className="cfg-select"
+                  value={selectedModel}
+                  onChange={(e) => setSelectedModel(e.target.value)}
+                >
+                  {models.length > 0
+                    ? models.map((m) => (
+                      <option key={m.key} value={m.key}>
+                        {m.display_name || m.key}
+                        {m.loaded ? ' (loaded)' : ' (not loaded)'}
+                        {m.size_bytes ? ` — ${formatBytes(m.size_bytes)}` : ''}
+                      </option>
+                    ))
+                    : <option value={DEFAULT_MODEL}>{DEFAULT_MODEL}</option>
+                  }
+                </select>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Download progress */}
+        {downloadStatus && downloading && (
+          <div className="cfg-progress-box">
+            <p>Downloading {selectedModel}…</p>
+            {downloadStatus.progress_pct != null && (
+              <div className="cfg-progress-track">
+                <div
+                  className="cfg-progress-fill"
+                  style={{ width: `${downloadStatus.progress_pct}%` }}
+                />
+              </div>
+            )}
+            <p className="cfg-progress-label">
+              {downloadStatus.downloaded_bytes && downloadStatus.total_size_bytes
+                ? `${formatBytes(downloadStatus.downloaded_bytes)} / ${formatBytes(downloadStatus.total_size_bytes)}`
+                : 'Calculating…'}
+              {downloadStatus.progress_pct != null ? ` (${downloadStatus.progress_pct}%)` : ''}
+            </p>
+          </div>
+        )}
+
+        <hr className="cfg-divider" style={{ marginTop: '1.25rem' }} />
+
+        <div className="cfg-actions">
+          {serverStatus === 'running' && (selectedDownloaded || models.length === 0) && !selectedLoaded && (
+            <button
+              type="button"
+              className="cfg-btn cfg-btn--green"
+              onClick={() => handleLoad(selectedModel)}
+              disabled={loading}
+            >
+              {loading ? 'Loading…' : 'Load Model'}
+            </button>
+          )}
+          <button
+            type="button"
+            className="cfg-btn cfg-btn--purple"
+            onClick={handleDownload}
+            disabled={downloading || loading}
+          >
+            {downloading ? 'Downloading…' : 'Download & Load'}
+          </button>
+          {serverStatus === 'running' && (
+            <button
+              type="button"
+              className="cfg-btn cfg-btn--secondary"
+              onClick={handleSaveModel}
+              disabled={saving}
+            >
+              {saving ? 'Saving…' : 'Save Model'}
+            </button>
+          )}
+        </div>
+
+        {/* Endpoint info */}
+        {serverStatus === 'running' && (
+          <div className="cfg-info-panel" style={{ marginTop: '1.25rem' }}>
+            <strong>Anthropic API endpoint</strong>
+            <code className="cfg-code">{baseUrl}/v1/messages</code>
+            <p style={{ margin: '0.5rem 0 0', fontSize: '0.75rem', color: '#94a3b8' }}>
+              x-api-key: any value accepted — LM Studio does not validate API keys.
+              Model field must match the key shown above (e.g.{' '}
+              <code style={{ fontFamily: 'monospace' }}>google/gemma-4-e2b</code>).
+            </p>
+          </div>
+        )}
+
+      </div>
     </div>
   );
 }
