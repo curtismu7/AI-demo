@@ -2349,3 +2349,17 @@ Plans:
 
 Plans:
 - [ ] 273-01-PLAN.md — Replace MCPTool PrivateAttr session state with ContextVars; add concurrent-isolation tests; REGRESSION_PLAN §4 entry
+
+### Phase 274: migrate-langchain-mcp-adapters
+
+**Goal:** Replace the ~400 LOC hand-rolled MCPToolProvider / MCPTool(BaseTool) / _create_schema_from_properties machinery in langchain_agent/src/agent/mcp_tool_provider.py with langchain-mcp-adapters (MultiServerMCPClient), the official LangChain-AI library that provides MCP→BaseTool conversion, multi-server routing, schema generation, name sanitization, and per-invocation auth headers out of the box.
+
+**Requirements:** ADAPT-01, ADAPT-02
+
+**Depends on:** none
+
+**Plans:** 2 plans
+
+Plans:
+- [ ] 274-01-PLAN.md — Install langchain-mcp-adapters, replace MCPToolProvider with MultiServerMCPClient in langchain_mcp_agent.py, reduce mcp_tool_provider.py to stub
+- [ ] 274-02-PLAN.md — Delete obsolete tests, update surviving tests to mock MultiServerMCPClient, verify full suite passes
