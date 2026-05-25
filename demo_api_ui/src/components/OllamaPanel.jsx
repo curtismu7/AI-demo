@@ -53,12 +53,60 @@ export default function OllamaPanel() {
     status === 'unreachable' ? '❌ Unreachable' :
     checking ? '…' : '⚠️ Unknown';
 
+  const codeStyle = {
+    display: 'block',
+    background: '#f3f4f6',
+    border: '1px solid #e5e7eb',
+    borderRadius: 4,
+    padding: '0.5rem 0.75rem',
+    fontFamily: 'monospace',
+    fontSize: '0.85rem',
+    color: '#1f2937',
+    userSelect: 'all',
+  };
+
   return (
     <div style={{ padding: '1.5rem' }}>
       <h3>Ollama Configuration</h3>
-      <p style={{ marginBottom: '1rem', color: '#666', fontSize: '0.9rem' }}>
-        Ollama runs models locally. Make sure the Ollama desktop app is running before saving.
+      <p style={{ marginBottom: '1.25rem', color: '#666', fontSize: '0.9rem' }}>
+        Ollama runs open-source models locally — no API key required.
       </p>
+
+      {/* Install instructions — shown when Ollama is unreachable or unknown */}
+      {status !== 'available' && (
+        <div style={{
+          marginBottom: '1.5rem',
+          padding: '1rem 1.25rem',
+          background: '#fafafa',
+          border: '1px solid #e5e7eb',
+          borderRadius: 6,
+        }}>
+          <p style={{ margin: '0 0 0.75rem', fontWeight: 600, fontSize: '0.9rem' }}>
+            Getting started with Ollama
+          </p>
+          <ol style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.7 }}>
+            <li>
+              Download and install Ollama from{' '}
+              <a href="https://ollama.com/download" target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb' }}>
+                ollama.com/download
+              </a>
+              {' '}(macOS, Linux, Windows)
+            </li>
+            <li>
+              Start the Ollama server — it starts automatically after install, or run:
+              <code style={{ ...codeStyle, marginTop: '0.4rem' }}>ollama serve</code>
+            </li>
+            <li>
+              Pull a model to use with the agent (recommended — fast and capable):
+              <code style={{ ...codeStyle, marginTop: '0.4rem' }}>ollama pull llama3.2</code>
+              <span style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginTop: '0.25rem' }}>
+                Other options: <code style={{ fontFamily: 'monospace' }}>mistral</code>, <code style={{ fontFamily: 'monospace' }}>gemma2</code>, <code style={{ fontFamily: 'monospace' }}>phi3</code>
+              </span>
+            </li>
+            <li>Click <strong>Test</strong> below to confirm Ollama is reachable, then <strong>Save</strong>.</li>
+          </ol>
+        </div>
+      )}
 
       <div style={{ marginBottom: '1rem' }}>
         <span style={{
