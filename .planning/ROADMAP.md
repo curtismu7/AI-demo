@@ -60,6 +60,7 @@ A developer or architect who runs through the live demo in 5 minutes understands
 | 213 | dev-tools-dashboard-complete-data-wiring-deduplication-and-panel-polish | Complete data wiring, deduplication, and panel polish for Dev Tools Dashboard | In Progress | 2026-04-23 |
 | 214 | fix-fido-registration-and-check-authentication-look-at-curl- | Fix FIDO2 registration and authentication; compare backend and UI to PingOne docs and curl commands; show request/response for FIDO2 on test page | In Progress | 2026-04-23 |
 | 223 | fido2-registration-authentication | FIDO2 registration and authentication parity with PingOne docs; test page visibility | Planned | 2026-04-23 |
+| 276 | replace-callback-streaming-astream-events | Replace WebSocketStreamCallbackHandler callbacks with LangGraph astream_events v2 streaming loop; add langgraph to requirements | STREAM-01 | 1 plan |
 | 279 | skip-token-validation-production-guard | Add startup RuntimeError guard in langchain_agent/src/config/settings.py refusing to start if SKIP_TOKEN_SIGNATURE_VALIDATION=true outside development; verify session→user binding | GUARD-01, GUARD-02, GUARD-03 | 1 plan |
 | 277 | add-streamable-http-mcp-transport | Add streamable_http transport option to Python LangChain agent MCP client; align with MCP spec 2025-03-26 deprecation of WebSocket | TRANSPORT-01, TRANSPORT-02, TRANSPORT-03 | 1 plan |
 | 281 | handle-mcp-notifications-cancelled | Handle notifications/cancelled from MCP server to prevent _pending dict leak; CancelledError guard in MCPTool._arun | CANCEL-01, CANCEL-02, CANCEL-03 | 1 plan |
@@ -2377,6 +2378,17 @@ Plans:
 Plans:
 - [ ] 274-01-PLAN.md — Install langchain-mcp-adapters, replace MCPToolProvider with MultiServerMCPClient in langchain_mcp_agent.py, reduce mcp_tool_provider.py to stub
 - [ ] 274-02-PLAN.md — Delete obsolete tests, update surviving tests to mock MultiServerMCPClient, verify full suite passes
+
+### Phase 276: replace-callback-streaming-astream-events
+
+**Goal:** Replace the WebSocketStreamCallbackHandler callback class (attached to AgentExecutor.callbacks) with LangGraph astream_events(version="v2") async generator. Add langgraph to requirements, migrate AgentExecutor to create_react_agent compiled graph, and drive streaming via on_tool_start/on_tool_end/on_chat_model_stream events. Eliminates manual run_id correlation; events propagate through nested sub-graphs automatically.
+
+**Requirements:** STREAM-01
+
+**Plans:** 1 plan
+
+Plans:
+- [ ] 276-01-PLAN.md — Add langgraph, replace AgentExecutor with create_react_agent, replace callback streaming with astream_events loop, delete WebSocketStreamCallbackHandler
 
 ### Phase 281: handle-mcp-notifications-cancelled
 
