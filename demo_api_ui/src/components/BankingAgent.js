@@ -2736,7 +2736,12 @@ export default function BankingAgent({
   useEffect(() => {
     if (!isOpen) return;
     const el = messagesContainerRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (!el) return;
+    // requestAnimationFrame ensures scrollHeight is measured after the browser paints new content
+    const raf = requestAnimationFrame(() => {
+      el.scrollTop = el.scrollHeight;
+    });
+    return () => cancelAnimationFrame(raf);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, isOpen, loading, nlLoading]);
 
@@ -8702,110 +8707,96 @@ export default function BankingAgent({
                 )}
               </div>
 
-              {/* Start Over button — clear conversation */}
-              {messages.length > 0 && (
-                <button
-                  type="button"
-                  className="ba-start-over-btn"
-                  onClick={() => {
-                    setMessages([]);
-                    setNlInput("");
-                    setInputHistory([]);
-                    setHistoryIndex(-1);
-                  }}
-                  title="Clear conversation and start fresh"
-                  style={{
-                    margin: "6px 12px 0",
-                    width: "calc(100% - 24px)",
-                    padding: "8px 12px",
-                    backgroundColor: "var(--ba-bg-secondary)",
-                    border: "1px solid var(--ba-border)",
-                    borderRadius: "6px",
-                    color: "var(--ba-text-secondary)",
-                    fontSize: "13px",
-                    fontWeight: "500",
-                    cursor: "pointer",
-                    transition: "all 0.2s",
-                  }}
-                >
-                  Start Over
-                </button>
-              )}
-
-              {/* Dashboard navigation button — pinned below prompt (hidden on marketing pages) */}
-              {isLoggedIn &&
-                !isPublicMarketingAgentPath(
-                  (location.pathname || "").replace(/\/$/, "") || "/",
-                ) && (
+              {/* Start Over + nav + chips — always visible below input bar */}
+              <div className="ba-bottom-extra">
+                {/* Start Over button — clear conversation */}
+                {messages.length > 0 && (
                   <button
                     type="button"
-                    className="ba-left-auth-btn primary"
-                    style={{
-                      margin: "6px 12px 0",
-                      width: "calc(100% - 24px)",
-                      display: "block",
-                    }}
+                    className="ba-start-over-btn"
                     onClick={() => {
-                      setIsOpen(false);
-                      navigate(
-                        effectiveUser?.role === "admin"
-                          ? "/admin"
-                          : "/dashboard",
-                      );
+                      setMessages([]);
+                      setNlInput("");
+                      setInputHistory([]);
+                      setHistoryIndex(-1);
                     }}
+                    title="Clear conversation and start fresh"
                   >
-                    {effectiveUser?.role === "admin"
-                      ? "Admin Dashboard"
-                      : "My Dashboard"}
+                    Start Over
                   </button>
                 )}
 
-              {/* Connected services chips — below prompt */}
-              <div className="ba-chips-footer">
-                <span
-                  className="ba-server-chip ba-server-chip--active"
-                  title={
-                    isConfigEmbeddedFocus
-                      ? "MCP tools (same server — use for discovery)"
-                      : "AI tools service — connected"
-                  }
-                >
-                  <span className="ba-chip-dot" />
-                  {isConfigEmbeddedFocus ? "MCP tools" : "AI Tools"}
-                  {mcpStatus.connected && mcpStatus.toolCount != null && (
-                    <span className="ba-chip-count">
-                      {mcpStatus.toolCount} actions
-                    </span>
+                {/* Dashboard navigation button — pinned below prompt (hidden on marketing pages) */}
+                {isLoggedIn &&
+                  !isPublicMarketingAgentPath(
+                    (location.pathname || "").replace(/\/$/, "") || "/",
+                  ) && (
+                    <button
+                      type="button"
+                      className="ba-left-auth-btn primary"
+                      style={{ display: "block" }}
+                      onClick={() => {
+                        setIsOpen(false);
+                        navigate(
+                          effectiveUser?.role === "admin"
+                            ? "/admin"
+                            : "/dashboard",
+                        );
+                      }}
+                    >
+                      {effectiveUser?.role === "admin"
+                        ? "Admin Dashboard"
+                        : "My Dashboard"}
+                    </button>
                   )}
-                </span>
-                <span
-                  className="ba-server-chip ba-server-chip--active"
-                  title="PingOne Identity — connected"
-                >
-                  <span className="ba-chip-dot" />
-                  PingOne Identity
-                </span>
-                <span
-                  className="ba-server-chip ba-server-chip--active"
-                  title="MCP Gateway"
-                >
-                  <span className="ba-chip-dot" />
-                  MCP Gateway
-                </span>
-                <span
-                  className="ba-server-chip ba-server-chip--active"
-                  title="PingOne Authorize"
-                >
-                  <span className="ba-chip-dot" />
-                  Authorize
-                </span>
-                <span
-                  className="ba-server-chip ba-server-chip--active"
-                  title="MCP Server"
-                >
-                  <span className="ba-chip-dot" />
-                  MCP Server
-                </span>
+
+                {/* Connected services chips — below prompt */}
+                <div className="ba-chips-footer">
+                  <span
+                    className="ba-server-chip ba-server-chip--active"
+                    title={
+                      isConfigEmbeddedFocus
+                        ? "MCP tools (same server — use for discovery)"
+                        : "AI tools service — connected"
+                    }
+                  >
+                    <span className="ba-chip-dot" />
+                    {isConfigEmbeddedFocus ? "MCP tools" : "AI Tools"}
+                    {mcpStatus.connected && mcpStatus.toolCount != null && (
+                      <span className="ba-chip-count">
+                        {mcpStatus.toolCount} actions
+                      </span>
+                    )}
+                  </span>
+                  <span
+                    className="ba-server-chip ba-server-chip--active"
+                    title="PingOne Identity — connected"
+                  >
+                    <span className="ba-chip-dot" />
+                    PingOne Identity
+                  </span>
+                  <span
+                    className="ba-server-chip ba-server-chip--active"
+                    title="MCP Gateway"
+                  >
+                    <span className="ba-chip-dot" />
+                    MCP Gateway
+                  </span>
+                  <span
+                    className="ba-server-chip ba-server-chip--active"
+                    title="PingOne Authorize"
+                  >
+                    <span className="ba-chip-dot" />
+                    Authorize
+                  </span>
+                  <span
+                    className="ba-server-chip ba-server-chip--active"
+                    title="MCP Server"
+                  >
+                    <span className="ba-chip-dot" />
+                    MCP Server
+                  </span>
+                </div>
               </div>
             </div>
           </div>
