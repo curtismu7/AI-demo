@@ -2878,7 +2878,6 @@ body > .banking-agent-float-root .banking-agent-panel {
   display: none;
 }
 
-/* Dashboard nav button ("My Dashboard") is redundant when already on /dashboard */
 .ud-dashboard-inline-agent .ba-bottom-extra .ba-left-auth-btn {
   display: none;
 }

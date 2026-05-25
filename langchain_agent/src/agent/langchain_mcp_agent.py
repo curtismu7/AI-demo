@@ -78,6 +78,7 @@ class LangChainMCPAgent(TracingMixin):
             streaming=bool(getattr(lc, "stream_llm_tokens", True)),
             ollama_base_url=getattr(lc, "ollama_base_url", "http://localhost:11434"),
             lmstudio_base_url=getattr(lc, "lmstudio_base_url", "http://localhost:1234/v1"),
+            anthropic_base_url=getattr(lc, "anthropic_base_url", ""),
             helix_base_url=getattr(lc, "helix_base_url", ""),
             helix_api_key=getattr(lc, "helix_api_key", ""),
             helix_environment_id=getattr(lc, "helix_environment_id", ""),
@@ -937,7 +938,6 @@ What's your email address?"""
             estimated_input_tokens = len(prompt_text.split()) * 1.3
             self._log_llm_start(tracer, "Processing user request with LangGraph", prompt_text, int(estimated_input_tokens))
 
-            # Hoist loop-invariant WS flags so they are not re-evaluated per event.
             ws_handler = stream_context.get("websocket_handler") if stream_context else None
             stream_tools = ws_handler and getattr(self.config.langchain, "stream_mcp_tool_events", True)
             stream_tokens = ws_handler and getattr(self.config.langchain, "stream_llm_tokens", True)
@@ -948,6 +948,7 @@ What's your email address?"""
 
             async for event in self._graph.astream_events(agent_input, config=config, version="v2"):
                 event_name = event.get("event")
+                event_data = event.get("data") or {}
 
                 if event_name == "on_tool_start" and stream_tools:
                     await ws_handler.send_message_to_session(session_id, {
@@ -955,13 +956,12 @@ What's your email address?"""
                         "session_id": session_id,
                         "event": "tool_start",
                         "tool": event.get("name", "unknown_tool"),
-                        "input": event.get("data", {}).get("input"),
+                        "input": event_data.get("input"),
                     })
 
                 elif event_name == "on_tool_end" and stream_tools:
-                    output = event.get("data", {}).get("output", "")
+                    output = event_data.get("output", "")
                     output_str = str(output) if not isinstance(output, str) else output
-                    # len check is load-bearing: ellipsis suffix only added when truncation occurs
                     preview = output_str[:400] + "..." if len(output_str) > 400 else output_str
                     await ws_handler.send_message_to_session(session_id, {
                         "type": "stream_event",
@@ -971,7 +971,7 @@ What's your email address?"""
                     })
 
                 elif event_name == "on_chat_model_stream" and stream_tokens:
-                    chunk = event.get("data", {}).get("chunk")
+                    chunk = event_data.get("chunk")
                     token = getattr(chunk, "content", "") if chunk is not None else ""
                     if token:
                         await ws_handler.send_message_to_session(session_id, {
@@ -982,13 +982,15 @@ What's your email address?"""
                         })
 
                 elif event_name == "on_chain_end":
-                    output = event.get("data", {}).get("output")
+                    output = event_data.get("output")
                     if isinstance(output, dict) and "messages" in output:
                         msgs = output.get("messages", [])
                         if msgs:
-                            content = getattr(msgs[-1], "content", "")
-                            if isinstance(content, str) and content:
-                                last_response = content
+                            last_msg = msgs[-1]
+                            if getattr(last_msg, "type", None) == "ai":
+                                content = getattr(last_msg, "content", "")
+                                if isinstance(content, str) and content:
+                                    last_response = content
 
             processing_time = int((datetime.now() - start_time).total_seconds() * 1000)
             response = last_response or "I'm sorry, I couldn't process your request."
