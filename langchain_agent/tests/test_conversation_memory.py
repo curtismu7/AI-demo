@@ -9,7 +9,7 @@ updated to reflect the slimmed interface.
 import pytest
 import asyncio
 from unittest.mock import Mock, AsyncMock, patch
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from src.agent.conversation_memory import ConversationMemory
 from src.models.chat import ChatMessage, ChatSession
@@ -44,8 +44,8 @@ def sample_chat_session():
     return ChatSession(
         session_id="session-123",
         user_id="user-456",
-        created_at=datetime.now(),
-        last_activity=datetime.now(),
+        created_at=datetime.now(timezone.utc),
+        last_activity=datetime.now(timezone.utc),
         context={"key": "value"}
     )
 
