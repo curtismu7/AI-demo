@@ -164,10 +164,8 @@ function buildRules(config) {
 // ---------------------------------------------------------------------------
 export default function AuthorizeRulesPanel() {
   const [config, setConfig] = useState(null);
-  const [evalStatus, setEvalStatus] = useState(null);
   const [configError, setConfigError] = useState(null);
   const [configLoading, setConfigLoading] = useState(true);
-  const [adminFallback, setAdminFallback] = useState(false);
   const [selectedRuleId, setSelectedRuleId] = useState(null);
 
   const [testAmount, setTestAmount] = useState('');
@@ -184,32 +182,15 @@ export default function AuthorizeRulesPanel() {
     async function load() {
       setConfigLoading(true);
       setConfigError(null);
-
-      let evalStatusData = null;
       try {
-        const res = await bffAxios.get('/api/authorize/evaluation-status');
-        if (!cancelled) evalStatusData = res.data;
-      } catch {
-        // non-fatal
-      }
-
-      try {
-        const res = await bffAxios.get('/api/admin/authorize/config');
+        const res = await bffAxios.get('/api/authorize/rules');
         if (!cancelled) {
           setConfig(res.data);
-          setEvalStatus(evalStatusData);
-          setAdminFallback(false);
           setConfigLoading(false);
         }
       } catch (err) {
         if (cancelled) return;
-        const status4xx = err.response?.status;
-        if (status4xx === 401 || status4xx === 403) {
-          setAdminFallback(true);
-        } else {
-          setConfigError(err.response?.data?.message || 'Failed to load authorize config');
-        }
-        setEvalStatus(evalStatusData);
+        setConfigError(err.response?.data?.message || 'Failed to load authorize rules');
         setConfigLoading(false);
       }
     }
@@ -259,7 +240,7 @@ export default function AuthorizeRulesPanel() {
   const rules = config ? buildRules(config) : { txRules: [], mcpRules: [] };
   const allRules = [...rules.txRules, ...rules.mcpRules];
   const selectedRule = allRules.find(r => r.id === selectedRuleId) || null;
-  const activeEngine = evalStatus?.activeEngine || config?.status?.activeEngine || 'unknown';
+  const activeEngine = config?.activeEngine || 'unknown';
 
   return (
     <div style={{ border: '1px solid #e5e5e5', borderRadius: '8px', overflow: 'hidden', background: '#fff', marginBottom: '24px' }}>
@@ -274,7 +255,6 @@ export default function AuthorizeRulesPanel() {
         <RuleList
           loading={configLoading}
           error={configError}
-          adminFallback={adminFallback}
           txRules={rules.txRules}
           mcpRules={rules.mcpRules}
           selectedRuleId={selectedRuleId}
@@ -287,8 +267,6 @@ export default function AuthorizeRulesPanel() {
         <RuleDetail
           rule={selectedRule}
           activeEngine={activeEngine}
-          config={config}
-          adminFallback={adminFallback}
           testAmount={testAmount}
           setTestAmount={setTestAmount}
           testType={testType}
@@ -310,7 +288,7 @@ export default function AuthorizeRulesPanel() {
 // ---------------------------------------------------------------------------
 // RuleList
 // ---------------------------------------------------------------------------
-function RuleList({ loading, error, adminFallback, txRules, mcpRules, selectedRuleId, onSelect }) {
+function RuleList({ loading, error, txRules, mcpRules, selectedRuleId, onSelect }) {
   const listStyle = {
     width: '240px',
     minWidth: '240px',
@@ -347,14 +325,6 @@ function RuleList({ loading, error, adminFallback, txRules, mcpRules, selectedRu
     return (
       <div style={{ ...listStyle, padding: '16px 12px' }}>
         <p style={{ fontSize: '12px', color: '#dc2626' }}>❌ {error}</p>
-      </div>
-    );
-  }
-
-  if (adminFallback) {
-    return (
-      <div style={{ ...listStyle, padding: '16px 12px' }}>
-        <p style={{ fontSize: '12px', color: '#666' }}>Sign in as an admin to see rule details.</p>
       </div>
     );
   }
@@ -397,7 +367,7 @@ function RuleCard({ rule, selected, onSelect }) {
 // RuleDetail
 // ---------------------------------------------------------------------------
 function RuleDetail({
-  rule, activeEngine, config, adminFallback,
+  rule, activeEngine,
   testAmount, setTestAmount, testType, setTestType,
   testAcr, setTestAcr, testTool, setTestTool,
   testRunning, testResult, testError, onRunTest,
@@ -426,32 +396,8 @@ function RuleDetail({
 
   return (
     <div style={{ flex: 1, padding: '18px 20px', overflowY: 'auto', background: '#fff' }}>
-      {!rule && !adminFallback && (
+      {!rule && (
         <p style={{ color: '#999', fontSize: '13px' }}>Select a rule from the list.</p>
-      )}
-
-      {adminFallback && (
-        <>
-          <p style={{ color: '#666', fontSize: '13px', marginBottom: '16px' }}>
-            Sign in as an admin to browse rule details. You can still test the engine below.
-          </p>
-          {(() => {
-            const resultNode = resultDisplay();
-            return (
-              <TestForm
-                isMcp={false}
-                testAmount={testAmount} setTestAmount={setTestAmount}
-                testType={testType} setTestType={setTestType}
-                testAcr={testAcr} setTestAcr={setTestAcr}
-                testTool={testTool} setTestTool={setTestTool}
-                testRunning={testRunning}
-                onRunTest={onRunTest}
-                resultDisplay={resultNode}
-              />
-            );
-          })()}
-          <EngineNote note={engineNote()} />
-        </>
       )}
 
       {rule && (

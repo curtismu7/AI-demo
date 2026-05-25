@@ -20,6 +20,11 @@ const {
 const {
   getSimulatedRecentDecisions,
   evaluateTransaction: evaluateSimulatedTransaction,
+  getDenyAmountUsd,
+  getStepUpAmountUsd,
+  getConfirmAmountUsd,
+  getConsentTypes,
+  getStepUpTypes,
 } = require('../services/simulatedAuthorizeService');
 const { getAuthorizationStatusSummary } = require('../services/transactionAuthorizationService');
 const { getMcpFirstToolGateStatus } = require('../services/mcpToolAuthorizationService');
@@ -98,6 +103,37 @@ router.get('/simulated-recent-decisions', authenticateToken, async (req, res) =>
     return res.json({ decisions, source: 'simulated', limit: parsedLimit });
   } catch (err) {
     console.error('[authorize/simulated-recent-decisions] Error:', err.message);
+    return res.status(500).json({ error: 'internal_error', message: err.message });
+  }
+});
+
+/**
+ * GET /api/authorize/rules
+ * Public (no auth) — returns simulated rule thresholds, MCP tool lists, and engine status.
+ * No secrets: no PingOne credentials, no env vars. Safe for any user including unauthenticated.
+ */
+router.get('/rules', async (_req, res) => {
+  try {
+    const consentTypesSet = getConsentTypes();
+    const stepUpTypesSet = getStepUpTypes();
+    return res.json({
+      simulated: {
+        confirmAmount: getConfirmAmountUsd(),
+        denyAmount: getDenyAmountUsd(),
+        stepUpAmount: getStepUpAmountUsd(),
+        consentTypes: Array.from(consentTypesSet).join(','),
+        stepUpTypes: Array.from(stepUpTypesSet).join(','),
+        mcpDenyTools: (configStore.get('SIMULATED_MCP_DENY_TOOLS') || '').split(',').filter(Boolean),
+        mcpHitlTools: (configStore.get('SIMULATED_MCP_HITL_TOOLS') || '').split(',').filter(Boolean),
+      },
+      flags: {
+        ff_authorize_mcp_first_tool: configStore.get('ff_authorize_mcp_first_tool') === 'true',
+      },
+      ...getAuthorizationStatusSummary(),
+      ...getMcpFirstToolGateStatus(),
+    });
+  } catch (err) {
+    console.error('[authorize/rules] Error:', err.message);
     return res.status(500).json({ error: 'internal_error', message: err.message });
   }
 });
