@@ -253,16 +253,19 @@ export default function WebMcpPanel() {
       if (err.body) {
         try { parsedBody = JSON.parse(err.body); } catch (_) {}
       }
+      const summaryCandidate = parsedBody ? {
+        error:             parsedBody.error,
+        error_description: parsedBody.error_description,
+        authorize_engine:  parsedBody.authorize_engine,
+        decisionContext:   parsedBody.decisionContext,
+        decisionId:        parsedBody.decisionId,
+      } : null;
+      const hasSummaryFields = summaryCandidate &&
+        Object.values(summaryCandidate).some(v => v !== undefined);
       setError({
         message: "Tool call failed — check connection or permissions.",
         statusLine: err.message,
-        summary: parsedBody ? {
-          error:             parsedBody.error,
-          error_description: parsedBody.error_description,
-          authorize_engine:  parsedBody.authorize_engine,
-          decisionContext:   parsedBody.decisionContext,
-          decisionId:        parsedBody.decisionId,
-        } : null,
+        summary: hasSummaryFields ? summaryCandidate : null,
         parsedBody: parsedBody || null,
         rawBody:    parsedBody ? null : (err.body || null),
       });
