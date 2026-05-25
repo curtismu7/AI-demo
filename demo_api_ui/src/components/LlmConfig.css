@@ -245,7 +245,7 @@
 .cfg-btn--danger:hover:not(:disabled) { background: #fef2f2; }
 
 /* ── Info / setup boxes ─────────────────────────────────────── */
-.cfg-info-box {
+.cfg-info-panel {
   padding: 0.875rem 1rem;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
@@ -253,13 +253,13 @@
   font-size: 0.82rem;
   color: #374151;
 }
-.cfg-info-box strong {
+.cfg-info-panel strong {
   display: block;
   margin-bottom: 0.35rem;
   color: #0f172a;
   font-size: 0.82rem;
 }
-.cfg-info-box ul {
+.cfg-info-panel ul {
   margin: 0;
   padding-left: 1.1rem;
   line-height: 1.7;
