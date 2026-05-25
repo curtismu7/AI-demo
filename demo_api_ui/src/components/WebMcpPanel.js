@@ -249,9 +249,22 @@ export default function WebMcpPanel() {
       if (extracted?.userOptions)         setUserOptions(extracted.userOptions);
       if (extracted?.adminAccountOptions) setAdminAccountOptions(extracted.adminAccountOptions);
     } catch (err) {
+      let parsedBody = null;
+      if (err.body) {
+        try { parsedBody = JSON.parse(err.body); } catch (_) {}
+      }
       setError({
         message: "Tool call failed — check connection or permissions.",
-        details: `${err.message}${err.body ? "\n" + err.body : ""}`,
+        statusLine: err.message,
+        summary: parsedBody ? {
+          error:             parsedBody.error,
+          error_description: parsedBody.error_description,
+          authorize_engine:  parsedBody.authorize_engine,
+          decisionContext:   parsedBody.decisionContext,
+          decisionId:        parsedBody.decisionId,
+        } : null,
+        parsedBody: parsedBody || null,
+        rawBody:    parsedBody ? null : (err.body || null),
       });
     } finally {
       setLoading(false);
