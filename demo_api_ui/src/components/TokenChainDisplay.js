@@ -13,6 +13,7 @@ import {
 } from "./TokenColorSystem";
 // Phase 266 R3 — spec-citation pills (educational/teaching demo). Runs offline.
 import { SPEC_GUIDE } from "./specGuide";
+import TokenCard from "./TokenCard";
 import { isEducationalPath } from "../utils/educationalPages";
 
 const FETCH_COOLDOWN_MS = 5000; // Don't fetch more than once per 5 seconds
@@ -1710,6 +1711,19 @@ function TokenInspectorPanel({ event, initialPos, onClose }) {
       {/* Body — scrollable content */}
       {!collapsed && (
         <div className="tci-body">
+          <TokenCard
+            decoded={{
+              header: event.jwtFullDecode?.header || {},
+              payload: event.jwtFullDecode?.claims || event.claims || {},
+              tokenType: event.tokenType,
+            }}
+            title={event.label || 'Token'}
+            defaultExpanded
+            showHeader
+            showIdentity
+            showScopes
+            showRaw
+          />
           <EventDetail event={event} />
         </div>
       )}

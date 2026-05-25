@@ -3,72 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import bffAxios from '../services/bffAxios';
 import { fetchEnrichedUserInfo } from '../services/userInfoService';
 import './OAuthTokenDisplayPage.css';
-
-const CLAIM_GLOSSARY = {
-  sub: 'Subject — unique identifier of the authenticated user',
-  iss: 'Issuer — the PingOne authorization server that issued this token',
-  aud: 'Audience — the resource server(s) this token is valid for',
-  exp: 'Expiration — Unix epoch time after which the token MUST be rejected',
-  iat: 'Issued At — Unix epoch time when the token was created',
-  scope: 'Scopes — permissions granted to the bearer',
-  client_id: 'Client ID — the OAuth 2.0 application that requested this token',
-  env: 'PingOne Environment ID',
-  org: 'PingOne Organization ID',
-  act: 'Actor claim (RFC 8693) — identifies the party acting on behalf of the subject',
-  may_act: 'May Act — allows the named client to perform a Token Exchange with this token',
-  acr: 'Authentication Context Class Reference — level of assurance (e.g. Multi_Factor)',
-  amr: 'Authentication Methods References — how the user authenticated',
-  sid: 'Session ID — PingOne session identifier',
-  auth_time: 'Authentication Time — when the user last authenticated',
-};
-
-function formatTimestamp(ts) {
-  if (!ts) return '—';
-  try {
-    return new Date(ts * 1000).toLocaleString();
-  } catch {
-    return String(ts);
-  }
-}
-
-function calculateTimeRemaining(expTs) {
-  if (!expTs) return null;
-  const diffMs = expTs * 1000 - Date.now();
-  if (diffMs <= 0) return 'Expired';
-  const minutes = Math.floor(diffMs / 60000);
-  const seconds = Math.floor((diffMs % 60000) / 1000);
-  if (minutes > 0) return `${minutes}m ${seconds}s remaining`;
-  return `${seconds}s remaining`;
-}
-
-function ScopesBadges({ scope }) {
-  if (!scope) return <span className="otdp-muted">No scopes</span>;
-  const scopes = typeof scope === 'string' ? scope.split(' ') : scope;
-  return (
-    <div className="otdp-scopes">
-      {scopes.map((s) => (
-        <span key={s} className="otdp-scope-badge">{s}</span>
-      ))}
-    </div>
-  );
-}
-
-function ClaimRow({ label, value, glossary }) {
-  if (value === undefined || value === null) return null;
-  const displayValue = typeof value === 'object' ? JSON.stringify(value) : String(value);
-  return (
-    <div className="otdp-claim-row">
-      <span
-        className="otdp-claim-key"
-        title={glossary || ''}
-        style={{ cursor: glossary ? 'help' : 'default', borderBottom: glossary ? '1px dotted #94a3b8' : 'none' }}
-      >
-        {label}
-      </span>
-      <span className="otdp-claim-value">{displayValue}</span>
-    </div>
-  );
-}
+import TokenCard from './TokenCard';
 
 function hasAnyField(data) {
   if (!data) return false;
@@ -90,24 +25,10 @@ export default function OAuthTokenDisplayPage() {
   const [error, setError] = useState(null);
   const [enrichedInfo, setEnrichedInfo] = useState(null);
   const [enrichedLoading, setEnrichedLoading] = useState(false);
-  const [timeRemaining, setTimeRemaining] = useState(null);
-  const [isExpired, setIsExpired] = useState(false);
-  
-  // Collapsible sections state
-  const [expandedSections, setExpandedSections] = useState({
-    identity: true,
-    authorization: true,
-    validity: true,
-    provider: true,
-    account: true,
-    rawJson: false,
-  });
+  const [expandedSections, setExpandedSections] = useState({ account: true, rawJson: false });
 
   const toggleSection = (section) => {
-    setExpandedSections(prev => ({
-      ...prev,
-      [section]: !prev[section]
-    }));
+    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
   const [mcpFlowStep, setMcpFlowStep] = useState('idle');
 
@@ -197,20 +118,6 @@ export default function OAuthTokenDisplayPage() {
     }, 1200);
   }, []);
 
-  // Refresh time-remaining display every 30s
-  const expTs = tokenClaims?.payload?.exp;
-  const updateTimeRemaining = useCallback(() => {
-    setTimeRemaining(calculateTimeRemaining(expTs));
-    setIsExpired(expTs ? (expTs * 1000 < Date.now()) : false);
-  }, [expTs]);
-
-  useEffect(() => {
-    if (!expTs) return;
-    updateTimeRemaining();
-    const interval = setInterval(updateTimeRemaining, 30000);
-    return () => clearInterval(interval);
-  }, [expTs, updateTimeRemaining]);
-
   if (loading) {
     return (
       <div className="otdp-container">
@@ -297,135 +204,91 @@ export default function OAuthTokenDisplayPage() {
   }
 
   const payload = tokenClaims?.payload || {};
-  const header = tokenClaims?.header || {};
-  const user = userStatus?.user;
 
   return (
     <div className="otdp-container">
       <div className="otdp-header">
         <h2>OAuth Token Information</h2>
         <div className="otdp-status">
-          {isExpired ? (
-            <span className="otdp-badge otdp-badge--expired">⚠ Token Expired</span>
-          ) : (
-            <span className="otdp-badge otdp-badge--active">✓ Active Session</span>
-          )}
           {userStatus?.oauthProvider && (
             <span className="otdp-badge otdp-badge--provider">{userStatus.oauthProvider}</span>
           )}
         </div>
       </div>
 
-      <div className="otdp-grid">
-        {/* Identity & Profile */}
-        <div className="otdp-card">
-          <div className="otdp-card-header" onClick={() => toggleSection('identity')}>
-            <div className="otdp-card-title">👤 Identity & Profile</div>
-            <span className="otdp-toggle-icon">{expandedSections.identity ? '▼' : '▶'}</span>
-          </div>
-          {expandedSections.identity && (
-            <div className="otdp-card-content">
-              <ClaimRow label="Username" value={user?.username} />
-              <ClaimRow label="Email" value={user?.email} />
-              <ClaimRow label="Name" value={user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : null} />
-              <ClaimRow label="Role" value={user?.role} />
-              <ClaimRow label="Subject (sub)" value={payload.sub} glossary={CLAIM_GLOSSARY.sub} />
-              <ClaimRow label="Session ID (sid)" value={payload.sid} glossary={CLAIM_GLOSSARY.sid} />
-            </div>
-          )}
-        </div>
-
-        {/* Authorization */}
-        <div className="otdp-card">
-          <div className="otdp-card-header" onClick={() => toggleSection('authorization')}>
-            <div className="otdp-card-title">🔑 Authorization</div>
-            <span className="otdp-toggle-icon">{expandedSections.authorization ? '▼' : '▶'}</span>
-          </div>
-          {expandedSections.authorization && (
-            <div className="otdp-card-content">
-              <div className="otdp-claim-row">
-                <span className="otdp-claim-key" title={CLAIM_GLOSSARY.scope} style={{ cursor: 'help', borderBottom: '1px dotted #94a3b8' }}>
-                  Scopes
-                </span>
-                <ScopesBadges scope={payload.scope} />
-              </div>
-              <ClaimRow label="Audience (aud)" value={Array.isArray(payload.aud) ? payload.aud.join(', ') : payload.aud} glossary={CLAIM_GLOSSARY.aud} />
-              <ClaimRow label="Client ID" value={payload.client_id} glossary={CLAIM_GLOSSARY.client_id} />
-              <ClaimRow label="ACR" value={payload.acr} glossary={CLAIM_GLOSSARY.acr} />
-              {payload.may_act && (
-                <ClaimRow label="May Act" value={payload.may_act} glossary={CLAIM_GLOSSARY.may_act} />
-              )}
-              {payload.act && (
-                <ClaimRow label="Actor (act)" value={payload.act} glossary={CLAIM_GLOSSARY.act} />
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Token Validity */}
-        <div className="otdp-card">
-          <div className="otdp-card-header" onClick={() => toggleSection('validity')}>
-            <div className="otdp-card-title">⏱ Token Validity</div>
-            <span className="otdp-toggle-icon">{expandedSections.validity ? '▼' : '▶'}</span>
-          </div>
-          {expandedSections.validity && (
-            <div className="otdp-card-content">
-              <ClaimRow label="Issued At" value={payload.iat ? formatTimestamp(payload.iat) : null} glossary={CLAIM_GLOSSARY.iat} />
-              <ClaimRow label="Expires At" value={payload.exp ? formatTimestamp(payload.exp) : null} glossary={CLAIM_GLOSSARY.exp} />
-              {timeRemaining && (
-                <div className="otdp-claim-row">
-                  <span className="otdp-claim-key">Time Remaining</span>
-                  <span className={`otdp-claim-value ${isExpired ? 'otdp-expired-text' : 'otdp-active-text'}`}>
-                    {timeRemaining}
-                  </span>
-                </div>
-              )}
-              <ClaimRow label="Auth Time" value={payload.auth_time ? formatTimestamp(payload.auth_time) : null} glossary={CLAIM_GLOSSARY.auth_time} />
-            </div>
-          )}
-        </div>
-
-        {/* Provider / Token Metadata */}
-        <div className="otdp-card">
-          <div className="otdp-card-header" onClick={() => toggleSection('provider')}>
-            <div className="otdp-card-title">🏛 Provider</div>
-            <span className="otdp-toggle-icon">{expandedSections.provider ? '▼' : '▶'}</span>
-          </div>
-          {expandedSections.provider && (
-            <div className="otdp-card-content">
-              <ClaimRow label="Issuer (iss)" value={payload.iss} glossary={CLAIM_GLOSSARY.iss} />
-              <ClaimRow label="Algorithm" value={header.alg} />
-              <ClaimRow label="Key ID (kid)" value={header.kid} />
-              <ClaimRow label="Environment" value={payload.env} glossary={CLAIM_GLOSSARY.env} />
-              <ClaimRow label="Organization" value={payload.org} glossary={CLAIM_GLOSSARY.org} />
-            </div>
-          )}
-        </div>
-      </div>
+      <TokenCard
+        decoded={tokenClaims}
+        title="User Access Token"
+        defaultExpanded
+        showHeader
+        showIdentity
+        showScopes
+        showRaw={false}
+      />
 
       {/* PingOne Userinfo Enrichment — only render card if loading, error, or has data */}
       {(enrichedLoading || enrichedInfo?.error || hasAnyField(enrichedInfo?.data)) && (
         <div className="otdp-card">
           <div className="otdp-card-header" onClick={() => toggleSection('account')}>
-            <div className="otdp-card-title">📋 Account Information <span className="otdp-source-label">(from PingOne userinfo)</span></div>
+            <div className="otdp-card-title">Account Information <span className="otdp-source-label">(from PingOne userinfo)</span></div>
             <span className="otdp-toggle-icon">{expandedSections.account ? '▼' : '▶'}</span>
           </div>
           {expandedSections.account && (
             <div className="otdp-card-content">
               {enrichedLoading && <div className="otdp-muted">Loading PingOne profile…</div>}
               {enrichedInfo?.error && (
-                <div className="otdp-muted">⚠ {enrichedInfo.error} — showing token data only</div>
+                <div className="otdp-muted">⚠️ {enrichedInfo.error} — showing token data only</div>
               )}
               {enrichedInfo?.data && hasAnyField(enrichedInfo.data) && (
                 <>
-                  <ClaimRow label="Email" value={enrichedInfo.data.email} />
-                  <ClaimRow label="Email Verified" value={enrichedInfo.data.email_verified != null ? String(enrichedInfo.data.email_verified) : null} />
-                  <ClaimRow label="Given Name" value={enrichedInfo.data.given_name} />
-                  <ClaimRow label="Family Name" value={enrichedInfo.data.family_name} />
-                  <ClaimRow label="Phone" value={enrichedInfo.data.phone_number || enrichedInfo.data.phone} />
-                  <ClaimRow label="Locale" value={enrichedInfo.data.locale} />
-                  <ClaimRow label="Address" value={enrichedInfo.data.address?.formatted} />
-                  <ClaimRow label="Updated At" value={enrichedInfo.data.updated_at ? formatTimestamp(enrichedInfo.data.updated_at) : null} />
+                  {enrichedInfo.data.email != null && (
+                    <div className="otdp-claim-row">
+                      <span className="otdp-claim-key">Email</span>
+                      <span className="otdp-claim-value">{enrichedInfo.data.email}</span>
+                    </div>
+                  )}
+                  {enrichedInfo.data.email_verified != null && (
+                    <div className="otdp-claim-row">
+                      <span className="otdp-claim-key">Email Verified</span>
+                      <span className="otdp-claim-value">{String(enrichedInfo.data.email_verified)}</span>
+                    </div>
+                  )}
+                  {enrichedInfo.data.given_name != null && (
+                    <div className="otdp-claim-row">
+                      <span className="otdp-claim-key">Given Name</span>
+                      <span className="otdp-claim-value">{enrichedInfo.data.given_name}</span>
+                    </div>
+                  )}
+                  {enrichedInfo.data.family_name != null && (
+                    <div className="otdp-claim-row">
+                      <span className="otdp-claim-key">Family Name</span>
+                      <span className="otdp-claim-value">{enrichedInfo.data.family_name}</span>
+                    </div>
+                  )}
+                  {(enrichedInfo.data.phone_number || enrichedInfo.data.phone) != null && (
+                    <div className="otdp-claim-row">
+                      <span className="otdp-claim-key">Phone</span>
+                      <span className="otdp-claim-value">{enrichedInfo.data.phone_number || enrichedInfo.data.phone}</span>
+                    </div>
+                  )}
+                  {enrichedInfo.data.locale != null && (
+                    <div className="otdp-claim-row">
+                      <span className="otdp-claim-key">Locale</span>
+                      <span className="otdp-claim-value">{enrichedInfo.data.locale}</span>
+                    </div>
+                  )}
+                  {enrichedInfo.data.address?.formatted != null && (
+                    <div className="otdp-claim-row">
+                      <span className="otdp-claim-key">Address</span>
+                      <span className="otdp-claim-value">{enrichedInfo.data.address.formatted}</span>
+                    </div>
+                  )}
+                  {enrichedInfo.data.updated_at != null && (
+                    <div className="otdp-claim-row">
+                      <span className="otdp-claim-key">Updated At</span>
+                      <span className="otdp-claim-value">{new Date(enrichedInfo.data.updated_at * 1000).toLocaleString()}</span>
+                    </div>
+                  )}
                   {enrichedInfo.timestamp && (
                     <div className="otdp-claim-row">
                       <span className="otdp-claim-key otdp-muted">Fetched</span>
@@ -443,7 +306,7 @@ export default function OAuthTokenDisplayPage() {
       {Object.keys(payload).length > 0 && (
         <div className="otdp-card otdp-raw-section">
           <div className="otdp-card-header" onClick={() => toggleSection('rawJson')}>
-            <div className="otdp-card-title">📋 Raw JWT Claims (JSON)</div>
+            <div className="otdp-card-title">Raw JWT Claims (JSON)</div>
             <span className="otdp-toggle-icon">{expandedSections.rawJson ? '▼' : '▶'}</span>
           </div>
           {expandedSections.rawJson && (
