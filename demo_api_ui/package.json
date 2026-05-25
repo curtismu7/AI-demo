@@ -117,6 +117,7 @@
     "npm": ">=9"
   },
   "jest": {
+    "resetMocks": false,
     "transformIgnorePatterns": [
       "/node_modules/(?!(axios)/)"
     ],
