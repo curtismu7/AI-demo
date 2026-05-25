@@ -5,6 +5,21 @@ Update this file whenever a bug is fixed: add the bug, cause, fix, and test refe
 
 ---
 
+## 2026-05-25 — Authorize wire-contract divergence and implicit fail-open on engine error (F7/F6/F4)
+
+**Symptoms**: (F7) The `/api/authorize/test-evaluate` endpoint returned `consentRequired` when using the simulated engine but `hitlRequired` when using PingOne — different field names for the same concept. A UI component reading either field would work in one mode and silently fail in the other. (F6) When PingOne Authorize was unreachable (network error, 5xx), the catch block in `transactionAuthorizationService` returned a raw `{ ran: true, pingoneError: err }` object, which propagated behavior that depended on the calling route's ad-hoc error handling — no declared failover policy. (F4) Unrecognised obligation types from PingOne Authorize (e.g. a new policy attribute) were silently discarded by `_classifyRawObligations`, producing a PERMIT decision when the policy intended a gate.
+
+**Root causes**:
+- **F7**: The route forwarded `result.consentRequired` for the simulated branch but `result.hitlRequired` for the PingOne branch — each service used its own field name and the route didn't normalize.
+- **F6**: No `authorize_failover_mode` config existed; the service let errors propagate as untyped error objects without a declared policy for network-unreachable scenarios.
+- **F4**: `_classifyRawObligations` called `classifyObligations()` but never warned when an obligation type fell through all patterns unrecognised.
+
+**Fix**: (F7) Both engine branches in `test-evaluate` now emit both `consentRequired` and `hitlRequired` (identical values, both always present). (F6) Added `authorize_failover_mode` to `configStore` FIELD_DEFS (default `fallback_simulated`); `transactionAuthorizationService` and the `test-evaluate` route both apply the configured policy on catch — `fallback_simulated` keeps the demo running with in-process policy, `deny` returns 503, `permit` fail-opens with a warning log. Legacy `ff_authorize_fail_open=true` maps to `permit`. (F4) `_classifyRawObligations` now logs `console.warn` for unrecognised obligation types.
+
+**Tests**: `demo_api_server/src/__tests__/authorize.parity.test.js` (NEW) — 14 tests asserting simulated ≡ PingOne enforcement flags for the same inputs, DENY parity, and wire-contract field presence. `npx jest authorize.parity authorizeObligations authorize-gate transactions.authorization` → 51 pass.
+
+---
+
 ## 2026-05-16 — Token Chain blank/unfaithful (review C1–C3, H1–H5, M1–M5)
 
 **Symptoms**: The Token Chain diagnostic panel did not faithfully reflect the agent flow. Most damaging: on an RFC 8693 exchange failure the panel went completely blank; failed/denied steps rendered with benign amber styling (looked "in progress"); the gateway's second token exchange for real banking tools was invisible; a panel refresh after a failure showed a corrupted/empty chain; a failed call left the previous call's chain on screen labelled "live".

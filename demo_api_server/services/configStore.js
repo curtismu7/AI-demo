@@ -321,6 +321,13 @@ ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic 
   debug_show_api_calls:            { public: true, default: 'false' },
   log_filter_categories:           { public: true, default: '' },
 
+  // PingOne Authorize failover — what happens when the live policy engine is unreachable.
+  // 'fallback_simulated' (default): switch to in-process simulated engine (keeps demo running)
+  // 'deny': block all transactions with 503 (fail-closed)
+  // 'permit': allow all transactions with a warning log (fail-open — weakest)
+  // Legacy: ff_authorize_fail_open=true is treated as authorize_failover_mode=permit.
+  authorize_failover_mode: { public: true, default: 'fallback_simulated' },
+
   // Simulated (mock) Authorize rules — override env vars at runtime
   SIMULATED_AUTHORIZE_CONFIRM_AMOUNT:    { public: true, default: '250' },
   SIMULATED_AUTHORIZE_DENY_AMOUNT:       { public: true, default: '2000' },
@@ -792,6 +799,7 @@ class ConfigStore {
       pingone_admin_client_id:          ['PINGONE_ADMIN_CLIENT_ID', 'PINGONE_AI_CORE_CLIENT_ID', 'PINGONE_CORE_CLIENT_ID'],
       pingone_resource_langchain_agent_uri: ['PINGONE_RESOURCE_LANGCHAIN_AGENT_URI'],
       authorize_decision_endpoint_id:   ['PINGONE_AUTHORIZE_DECISION_ENDPOINT_ID'],
+      authorize_failover_mode:          ['PINGONE_AUTHORIZE_FAILOVER_MODE'],
       authorize_mcp_decision_endpoint_id: ['PINGONE_AUTHORIZE_MCP_DECISION_ENDPOINT_ID'],
       debug_oauth:                      ['DEBUG_OAUTH'],
       ciba_enabled:           ['CIBA_ENABLED'],
@@ -954,6 +962,11 @@ class ConfigStore {
       // MCP Gateway token introspection (consumed by demo_mcp_gateway via process.env)
       gw_introspection_client_id:           ['GW_INTROSPECTION_CLIENT_ID'],
       gw_introspection_client_secret:       ['GW_INTROSPECTION_CLIENT_SECRET'],
+
+      // MCP WebSocket URLs (consumed by demo_mcp_gateway via process.env)
+      mcp_olb_ws_url:                       ['MCP_OLB_WS_URL'],
+      mcp_invest_ws_url:                    ['MCP_INVEST_WS_URL'],
+      upstream_mcp_url:                     ['UPSTREAM_MCP_URL'],
     };
 
     const envVars = envFallbackMap[key] || [];

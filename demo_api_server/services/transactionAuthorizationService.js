@@ -6,6 +6,19 @@
  * - **PingOne Authorize**: decision endpoint (preferred) or legacy PDP
  *
  * Used by POST /api/transactions so behavior and HTTP shapes stay consistent between engines.
+ *
+ * ## Failover mode (F6)
+ * When the PingOne Authorize engine is unreachable (network error, 5xx), the service
+ * applies the configured failover policy rather than propagating a raw error:
+ *
+ *   authorize_failover_mode = 'fallback_simulated' (default)
+ *     → Switch to in-process simulated engine. Demo continues; policy gates still enforced.
+ *   authorize_failover_mode = 'deny'
+ *     → Return 503 — block all transactions when live policy is unavailable (fail-closed).
+ *   authorize_failover_mode = 'permit'
+ *     → Allow transaction with a warning log (fail-open). Weakest posture.
+ *
+ * Legacy: ff_authorize_fail_open=true is treated as authorize_failover_mode=permit.
  */
 
 'use strict';
@@ -211,9 +224,110 @@ async function evaluateTransactionPolicy({
     };
   } catch (err) {
     if (USE_SIMULATED) {
+      // Simulated engine failure is unexpected — propagate as-is (simulated never calls network).
       return { ran: true, simulatedError: err };
     }
-    return { ran: true, pingoneError: err };
+
+    // PingOne engine failure — apply configured failover policy (F6).
+    // Legacy: ff_authorize_fail_open=true maps to failover_mode=permit for
+    // backward compatibility with existing deployments that set that flag.
+    const legacyFailOpen = configStore.getEffective('ff_authorize_fail_open') === 'true';
+    const failoverMode = legacyFailOpen
+      ? 'permit'
+      : (configStore.getEffective('authorize_failover_mode') || 'fallback_simulated');
+
+    logEvent(EVENT_CATEGORIES.AUTHORIZE, 'error',
+      `[Authorize] PingOne unreachable — failover_mode=${failoverMode}: ${err.message}`,
+      { tag: 'authorize/failover', metadata: { failoverMode, error: err.message, type, amount, userId } });
+
+    if (failoverMode === 'permit') {
+      // Fail-open: allow the transaction and log prominently.
+      logEvent(EVENT_CATEGORIES.AUTHORIZE, 'warning',
+        `[Authorize] FAIL-OPEN — transaction permitted without policy evaluation (failover_mode=permit)`,
+        { tag: 'authorize/fail-open', metadata: { type, amount, userId } });
+      return {
+        ran: true,
+        permit: true,
+        evaluation: {
+          engine: 'failover',
+          decision: 'PERMIT',
+          path: 'failover',
+          failoverMode: 'permit',
+          note: 'PingOne Authorize unreachable — permitted by failover policy',
+        },
+      };
+    }
+
+    if (failoverMode === 'deny') {
+      // Fail-closed: block all transactions when live policy is unavailable.
+      return {
+        ran: true,
+        block: {
+          status: 503,
+          body: {
+            error: 'authorization_service_unavailable',
+            error_description:
+              'The authorization service is temporarily unavailable. Transactions are blocked (failover mode: deny). Please try again shortly.',
+            failover_mode: 'deny',
+          },
+        },
+      };
+    }
+
+    // failoverMode === 'fallback_simulated' (default): run simulated engine.
+    // This keeps the demo running and still enforces policy gates.
+    try {
+      const fallback = await simulatedAuthorizeService.evaluateTransaction({ userId, amount, type, acr });
+
+      logEvent(EVENT_CATEGORIES.AUTHORIZE, 'warning',
+        `[Authorize] Fell back to simulated engine — ${type} $${amount} — decision=${fallback.decision}`,
+        { tag: 'authorize/fallback-simulated', metadata: { type, amount, userId, decision: fallback.decision } });
+
+      if (fallback.stepUpRequired) {
+        return {
+          ran: true,
+          block: {
+            status: 428,
+            body: buildStepUpBody({ useSimulated: true, policyId: AUTHORIZE_POLICY_ID, runtimeSettings }),
+          },
+        };
+      }
+      if (fallback.consentRequired) {
+        return { ran: true, block: { status: 428, body: buildConsentBody() } };
+      }
+      if (fallback.decision === 'DENY') {
+        return {
+          ran: true,
+          block: { status: 403, body: buildDenyBody({ useSimulated: true, policyId: AUTHORIZE_POLICY_ID }) },
+        };
+      }
+      return {
+        ran: true,
+        permit: true,
+        evaluation: {
+          engine: 'fallback_simulated',
+          decision: fallback.decision,
+          path: fallback.path,
+          decisionId: fallback.decisionId,
+          note: 'PingOne Authorize unreachable — evaluated by fallback simulated engine',
+        },
+      };
+    } catch (fallbackErr) {
+      // Even the fallback failed (should never happen) — hard deny.
+      logEvent(EVENT_CATEGORIES.AUTHORIZE, 'error',
+        `[Authorize] Fallback simulated engine also failed: ${fallbackErr.message}`,
+        { tag: 'authorize/fallback-error', metadata: { type, amount, userId } });
+      return {
+        ran: true,
+        block: {
+          status: 503,
+          body: {
+            error: 'authorization_service_unavailable',
+            error_description: 'Authorization evaluation failed. Please try again.',
+          },
+        },
+      };
+    }
   }
 }
 
