@@ -13,6 +13,8 @@ const BADGE_STYLES = {
   PERMIT:   { background: '#dcfce7', color: '#166534' },
 };
 
+const NO_VALUE = '—';
+
 function Badge({ type }) {
   const style = BADGE_STYLES[type] || { background: '#f3f4f6', color: '#374151' };
   return (
@@ -32,7 +34,7 @@ function Badge({ type }) {
 // ---------------------------------------------------------------------------
 // Build rule list from config response
 // ---------------------------------------------------------------------------
-function buildRules(config, evalStatus) {
+function buildRules(config) {
   const sim = config?.simulated || {};
   const flags = config?.flags || {};
   const txRules = [];
@@ -85,7 +87,7 @@ function buildRules(config, evalStatus) {
       badge: 'CONSENT',
       chips: {
         outcome: 'CONSENT',
-        value: '—',
+        value: NO_VALUE,
         scope: sim.consentTypes,
       },
       testType: 'transaction',
@@ -100,7 +102,7 @@ function buildRules(config, evalStatus) {
       badge: 'STEP-UP',
       chips: {
         outcome: 'STEP-UP',
-        value: '—',
+        value: NO_VALUE,
         scope: sim.stepUpTypes,
       },
       testType: 'transaction',
@@ -115,7 +117,7 @@ function buildRules(config, evalStatus) {
       badge: 'GATE',
       chips: {
         outcome: 'GATE',
-        value: '—',
+        value: NO_VALUE,
         scope: 'First call / session',
       },
       testType: 'mcp',
@@ -183,10 +185,10 @@ export default function AuthorizeRulesPanel() {
       setConfigLoading(true);
       setConfigError(null);
 
-      let status = null;
+      let evalStatusData = null;
       try {
         const res = await bffAxios.get('/api/authorize/evaluation-status');
-        if (!cancelled) status = res.data;
+        if (!cancelled) evalStatusData = res.data;
       } catch {
         // non-fatal
       }
@@ -195,7 +197,7 @@ export default function AuthorizeRulesPanel() {
         const res = await bffAxios.get('/api/admin/authorize/config');
         if (!cancelled) {
           setConfig(res.data);
-          setEvalStatus(status);
+          setEvalStatus(evalStatusData);
           setAdminFallback(false);
           setConfigLoading(false);
         }
@@ -207,7 +209,7 @@ export default function AuthorizeRulesPanel() {
         } else {
           setConfigError(err.response?.data?.message || 'Failed to load authorize config');
         }
-        setEvalStatus(status);
+        setEvalStatus(evalStatusData);
         setConfigLoading(false);
       }
     }
@@ -218,10 +220,10 @@ export default function AuthorizeRulesPanel() {
 
   useEffect(() => {
     if (config && !selectedRuleId) {
-      const { txRules } = buildRules(config, evalStatus);
+      const { txRules } = buildRules(config);
       if (txRules.length > 0) setSelectedRuleId(txRules[0].id);
     }
-  }, [config, evalStatus, selectedRuleId]);
+  }, [config, selectedRuleId]);
 
   const handleRunTest = useCallback(async (rule) => {
     setTestRunning(true);
@@ -254,7 +256,7 @@ export default function AuthorizeRulesPanel() {
     }
   }, [testAmount, testType, testAcr, testTool, config]);
 
-  const rules = config ? buildRules(config, evalStatus) : { txRules: [], mcpRules: [] };
+  const rules = config ? buildRules(config) : { txRules: [], mcpRules: [] };
   const allRules = [...rules.txRules, ...rules.mcpRules];
   const selectedRule = allRules.find(r => r.id === selectedRuleId) || null;
   const activeEngine = evalStatus?.activeEngine || config?.status?.activeEngine || 'unknown';
@@ -385,7 +387,7 @@ function RuleCard({ rule, selected, onSelect }) {
       }}
     >
       <div style={{ fontSize: '12px', fontWeight: 600, color: '#111', marginBottom: '3px' }}>{rule.name}</div>
-      <div style={{ fontSize: '11px', color: '#777', lineHeight: 1.4, marginBottom: '5px' }}>{rule.chips.value !== '—' ? rule.chips.value : rule.chips.scope}</div>
+      <div style={{ fontSize: '11px', color: '#777', lineHeight: 1.4, marginBottom: '5px' }}>{rule.chips.value !== NO_VALUE ? rule.chips.value : rule.chips.scope}</div>
       <Badge type={rule.badge} />
     </div>
   );
@@ -433,16 +435,21 @@ function RuleDetail({
           <p style={{ color: '#666', fontSize: '13px', marginBottom: '16px' }}>
             Sign in as an admin to browse rule details. You can still test the engine below.
           </p>
-          <TestForm
-            isMcp={false}
-            testAmount={testAmount} setTestAmount={setTestAmount}
-            testType={testType} setTestType={setTestType}
-            testAcr={testAcr} setTestAcr={setTestAcr}
-            testTool={testTool} setTestTool={setTestTool}
-            testRunning={testRunning}
-            onRunTest={onRunTest}
-            resultDisplay={resultDisplay()}
-          />
+          {(() => {
+            const resultNode = resultDisplay();
+            return (
+              <TestForm
+                isMcp={false}
+                testAmount={testAmount} setTestAmount={setTestAmount}
+                testType={testType} setTestType={setTestType}
+                testAcr={testAcr} setTestAcr={setTestAcr}
+                testTool={testTool} setTestTool={setTestTool}
+                testRunning={testRunning}
+                onRunTest={onRunTest}
+                resultDisplay={resultNode}
+              />
+            );
+          })()}
           <EngineNote note={engineNote()} />
         </>
       )}
@@ -466,16 +473,21 @@ function RuleDetail({
             ))}
           </div>
 
-          <TestForm
-            isMcp={isMcp}
-            testAmount={testAmount} setTestAmount={setTestAmount}
-            testType={testType} setTestType={setTestType}
-            testAcr={testAcr} setTestAcr={setTestAcr}
-            testTool={testTool} setTestTool={setTestTool}
-            testRunning={testRunning}
-            onRunTest={onRunTest}
-            resultDisplay={resultDisplay()}
-          />
+          {(() => {
+            const resultNode = resultDisplay();
+            return (
+              <TestForm
+                isMcp={isMcp}
+                testAmount={testAmount} setTestAmount={setTestAmount}
+                testType={testType} setTestType={setTestType}
+                testAcr={testAcr} setTestAcr={setTestAcr}
+                testTool={testTool} setTestTool={setTestTool}
+                testRunning={testRunning}
+                onRunTest={onRunTest}
+                resultDisplay={resultNode}
+              />
+            );
+          })()}
 
           <EngineNote note={engineNote()} />
         </>
