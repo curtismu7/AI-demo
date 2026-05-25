@@ -114,6 +114,7 @@ import { ExchangeModeProvider } from "./context/ExchangeModeContext";
 import { SpinnerProvider } from "./context/SpinnerContext";
 import { TokenChainProvider } from "./context/TokenChainContext";
 import { McpFieldProvider } from './context/McpFieldContext';
+import { SessionTokenProvider } from './context/SessionTokenContext';
 import LangChainPage from "./pages/LangChainPage";
 import { monitorApiHealth } from "./services/bankingRestartNotificationService";
 import { getCachedJson } from "./services/cachedStatusService";
@@ -1507,18 +1508,20 @@ function AppWithAuth() {
 
 export default function App() {
   return (
-    <SpinnerProvider>
-      <AgentUiModeProvider>
-        <McpFieldProvider>
-          <ExchangeModeProvider>
-            <Router
-              future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-            >
-              <AppWithAuth />
-            </Router>
-          </ExchangeModeProvider>
-        </McpFieldProvider>
-      </AgentUiModeProvider>
-    </SpinnerProvider>
+    <SessionTokenProvider>
+      <SpinnerProvider>
+        <AgentUiModeProvider>
+          <McpFieldProvider>
+            <ExchangeModeProvider>
+              <Router
+                future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+              >
+                <AppWithAuth />
+              </Router>
+            </ExchangeModeProvider>
+          </McpFieldProvider>
+        </AgentUiModeProvider>
+      </SpinnerProvider>
+    </SessionTokenProvider>
   );
 }
