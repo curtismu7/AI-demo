@@ -2,6 +2,7 @@
 import React from 'react';
 import { render, act } from '@testing-library/react';
 import { McpFieldProvider, useMcpField } from '../context/McpFieldContext';
+import { useMcpFieldState } from '../hooks/useMcpFieldState';
 
 function Consumer({ fieldKey }) {
   const { value, source } = useMcpField(fieldKey);
@@ -75,4 +76,63 @@ test('useMcpField throws when used outside provider', () => {
   const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
   expect(() => render(<Consumer fieldKey="x" />)).toThrow();
   spy.mockRestore();
+});
+
+// --- useMcpFieldState tests ---
+
+test('useMcpFieldState seeds defaultValue on mount', () => {
+  function Seeder() {
+    const { value } = useMcpFieldState('pingOneEnvUrl', { defaultValue: 'https://auth.example.com' });
+    return <div data-testid="seeded">{value}</div>;
+  }
+  const { getByTestId } = render(<Wrapper><Seeder /></Wrapper>);
+  expect(getByTestId('seeded').textContent).toBe('https://auth.example.com');
+});
+
+test('useMcpFieldState uses source option as chip label', () => {
+  function Seeder() {
+    const { source } = useMcpFieldState('pingOneEnvUrl', { defaultValue: 'https://auth.example.com', source: 'auto-filled' });
+    return <div data-testid="src">{source}</div>;
+  }
+  const { getByTestId } = render(<Wrapper><Seeder /></Wrapper>);
+  expect(getByTestId('src').textContent).toBe('auto-filled');
+});
+
+test('useMcpFieldState does not seed when defaultValue is empty string', () => {
+  function Seeder() {
+    const { value } = useMcpFieldState('mcpScope', { defaultValue: '' });
+    return <div data-testid="val">{value}</div>;
+  }
+  const { getByTestId } = render(<Wrapper><Seeder /></Wrapper>);
+  expect(getByTestId('val').textContent).toBe('');
+});
+
+test('useMcpFieldState does not overwrite existing value', () => {
+  function WriteThenSeed() {
+    const { value, setValue } = useMcpFieldState('gatewayUrl', { defaultValue: 'default-url' });
+    return (
+      <>
+        <div data-testid="val">{value}</div>
+        <button type="button" onClick={() => setValue('user-typed', null)}>set</button>
+      </>
+    );
+  }
+  // The Seeder component seeds 'default-url' — then user types something
+  // A second render with the same defaultValue should not overwrite
+  const { getByTestId, getByText } = render(<Wrapper><WriteThenSeed /></Wrapper>);
+  // First: seeded by defaultValue
+  expect(getByTestId('val').textContent).toBe('default-url');
+  // User types their own value
+  act(() => { getByText('set').click(); });
+  expect(getByTestId('val').textContent).toBe('user-typed');
+  // No further state changes expected — user value persists
+});
+
+test('useMcpFieldState falls back to auto-filled when no source option given', () => {
+  function Seeder() {
+    const { source } = useMcpFieldState('introspectEndpoint', { defaultValue: 'https://token.example.com/introspect' });
+    return <div data-testid="src">{source}</div>;
+  }
+  const { getByTestId } = render(<Wrapper><Seeder /></Wrapper>);
+  expect(getByTestId('src').textContent).toBe('auto-filled');
 });

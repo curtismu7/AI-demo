@@ -20,6 +20,7 @@ export function useMcpFieldState(fieldKey, options = {}) {
     if (defaultValue !== undefined && defaultValue !== '' && value === '') {
       setValue(defaultValue, defaultSource || 'auto-filled');
     }
+    // setValue is stable (memoised via useCallback in McpFieldContext) — safe to omit from deps
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultValue]); // only re-run if defaultValue changes (e.g. after data load)
 
