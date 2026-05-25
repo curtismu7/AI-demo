@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from "react";
 import apiClient from "../services/apiClient";
 import { notifySuccess, notifyError } from "../utils/appToast";
+import './LlmConfig.css';
 
 export default function HelixPanel() {
   // Initial blanks — server-side configStore (FIELD_DEFS in configStore.js)
@@ -24,11 +25,9 @@ export default function HelixPanel() {
       const statusRes = await apiClient.get(
         "/api/langchain/provider/helix/status",
       );
-      console.log("[HelixPanel] Status response:", statusRes);
       setHelixStatus(statusRes.data?.status);
 
       const configRes = await apiClient.get("/api/langchain/config/status");
-      console.log("[HelixPanel] Config response:", configRes.data);
       const cfg = configRes.data;
 
       setHelixConfig({
@@ -37,11 +36,6 @@ export default function HelixPanel() {
         environment_id: cfg?.helix_environment_id || "",
         agent_id: cfg?.helix_agent_id || "",
         prompt_field_id: cfg?.helix_prompt_field_id || "",
-      });
-      console.log("[HelixPanel] Updated config:", {
-        base_url: cfg?.helix_base_url,
-        environment_id: cfg?.helix_environment_id,
-        agent_id: cfg?.helix_agent_id,
       });
       notifySuccess("Helix configuration loaded");
     } catch (err) {
@@ -103,8 +97,7 @@ export default function HelixPanel() {
       sessionStorage.setItem("helix_config", JSON.stringify(helixConfig));
       notifySuccess("Helix LLM configuration saved");
       await fetchHelixStatus();
-    } catch (err) {
-      console.error("Helix save failed:", err);
+    } catch {
       notifyError("Failed to save Helix configuration");
     } finally {
       setHelixSaving(false);
@@ -130,8 +123,7 @@ export default function HelixPanel() {
       setHelixStatus("unconfigured");
       sessionStorage.removeItem("helix_config");
       notifySuccess("Helix configuration cleared");
-    } catch (err) {
-      console.error("[HelixPanel] Clear failed:", err);
+    } catch {
       notifyError("Failed to clear Helix config");
     } finally {
       setHelixSaving(false);
@@ -144,8 +136,8 @@ export default function HelixPanel() {
     if (savedHelix) {
       try {
         setHelixConfig(JSON.parse(savedHelix));
-      } catch (err) {
-        console.warn("Failed to parse Helix config from session:", err);
+      } catch {
+        // Ignore parse errors silently
       }
     }
 
@@ -155,10 +147,9 @@ export default function HelixPanel() {
         const statusRes = await apiClient.get(
           "/api/langchain/provider/helix/status",
         );
-        console.log("[HelixPanel] Initial status:", statusRes.data?.status);
         setHelixStatus(statusRes.data?.status);
-      } catch (err) {
-        console.error("[HelixPanel] Failed to load initial status:", err);
+      } catch {
+        // Silently handle initial status load failure
       }
     };
     loadStatus();
@@ -170,352 +161,163 @@ export default function HelixPanel() {
   }, [helixConfig]);
 
   return (
-    <div style={{ padding: "1.5rem" }}>
-      <h3>Helix LLM Configuration</h3>
-      <p style={{ marginBottom: "1rem", color: "#666", fontSize: "0.9rem" }}>
-        Configure Helix as your agent LLM.
-        <br />
-        <a
-          href="https://openam-helix.forgeblocks.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ color: "#2563eb" }}
-        >
-          Open Helix Console ↗
-        </a>
-      </p>
-
-      {/* Status pill */}
-      <div style={{ marginBottom: "1rem" }}>
-        <span
-          style={{
-            display: "inline-block",
-            padding: "0.25rem 0.75rem",
-            borderRadius: 6,
-            fontSize: "0.85rem",
-            fontWeight: 500,
-            backgroundColor:
-              helixStatus === "available"
-                ? "#dcfce7"
-                : helixStatus === "unconfigured"
-                  ? "#fef3c7"
-                  : "#fecaca",
-            color:
-              helixStatus === "available"
-                ? "#166534"
-                : helixStatus === "unconfigured"
-                  ? "#92400e"
-                  : "#991b1b",
-          }}
-        >
-          {helixStatus === "available" && "Active"}
-          {helixStatus === "unconfigured" && "Unconfigured"}
-          {helixStatus === null && "…"}
+    <div className="cfg-card">
+      {/* Card header */}
+      <div className="cfg-card-header">
+        <div>
+          <p className="cfg-card-title">Helix Configuration</p>
+          <p className="cfg-card-sub">
+            PingOne AI agent LLM ·{' '}
+            <a href="https://openam-helix.forgeblocks.com" target="_blank" rel="noopener noreferrer">
+              Open Helix Console ↗
+            </a>
+          </p>
+        </div>
+        <span className={`cfg-badge${
+          helixStatus === 'available'    ? ' cfg-badge--active' :
+          helixStatus === 'unconfigured' ? ' cfg-badge--unconfigured' :
+          helixStatus === 'unreachable'  ? ' cfg-badge--unreachable' :
+          ' cfg-badge--loading'
+        }`}>
+          {helixStatus === 'available'    && 'Active'}
+          {helixStatus === 'unconfigured' && 'Unconfigured'}
+          {helixStatus === 'unreachable'  && 'Unreachable'}
+          {helixStatus === null           && '…'}
         </span>
       </div>
 
-      {/* Form fields */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "1rem",
-          marginBottom: "1rem",
-        }}
-      >
-        <div>
-          <label
-            style={{
-              display: "block",
-              fontSize: "0.85rem",
-              fontWeight: 500,
-              marginBottom: "0.35rem",
-            }}
-          >
-            Base URL
-          </label>
-          <input
-            type="text"
-            placeholder="https://openam-helix.forgeblocks.com"
-            value={helixConfig.base_url}
-            onChange={(e) =>
-              setHelixConfig({ ...helixConfig, base_url: e.target.value })
-            }
-            style={{
-              width: "100%",
-              padding: "0.5rem 0.75rem",
-              border: "1px solid #d1d5db",
-              borderRadius: 4,
-              fontSize: "0.9rem",
-            }}
-          />
-          <div
-            style={{
-              fontSize: "0.75rem",
-              color: "#6b7280",
-              marginTop: "0.35rem",
-            }}
-          >
-            Your Helix tenant origin — leave as-is if you use the shared Ping-hosted preview tenant.
+      {/* Card body */}
+      <div className="cfg-card-body">
+        <div className="cfg-grid">
+          <div className="cfg-field">
+            <label htmlFor="helix-base-url" className="cfg-label">Base URL</label>
+            <input
+              id="helix-base-url"
+              type="text"
+              className="cfg-input"
+              placeholder="https://openam-helix.forgeblocks.com"
+              value={helixConfig.base_url}
+              onChange={(e) => setHelixConfig({ ...helixConfig, base_url: e.target.value })}
+            />
+            <p className="cfg-hint">Your Helix tenant origin</p>
+          </div>
+          <div className="cfg-field">
+            <label htmlFor="helix-api-key" className="cfg-label">API Key</label>
+            <input
+              id="helix-api-key"
+              type="password"
+              className="cfg-input"
+              placeholder="Helix API Key"
+              value={helixConfig.api_key}
+              onChange={(e) => setHelixConfig({ ...helixConfig, api_key: e.target.value })}
+            />
+          </div>
+          <div className="cfg-field">
+            <label htmlFor="helix-env-id" className="cfg-label">Environment ID</label>
+            <input
+              id="helix-env-id"
+              type="text"
+              className="cfg-input"
+              placeholder="Environment / Tenant ID"
+              value={helixConfig.environment_id}
+              onChange={(e) => setHelixConfig({ ...helixConfig, environment_id: e.target.value })}
+            />
+          </div>
+          <div className="cfg-field">
+            <label htmlFor="helix-agent-id" className="cfg-label">Agent Name</label>
+            <input
+              id="helix-agent-id"
+              type="text"
+              className="cfg-input"
+              placeholder="my-banking-agent"
+              value={helixConfig.agent_id}
+              onChange={(e) => setHelixConfig({ ...helixConfig, agent_id: e.target.value })}
+            />
+          </div>
+          <div className="cfg-field cfg-field--full">
+            <label htmlFor="helix-prompt-field-id" className="cfg-label">Prompt Field ID</label>
+            <input
+              id="helix-prompt-field-id"
+              type="text"
+              className="cfg-input"
+              placeholder="e.g. textInputa7c39a0e8292"
+              value={helixConfig.prompt_field_id}
+              onChange={(e) => setHelixConfig({ ...helixConfig, prompt_field_id: e.target.value })}
+            />
           </div>
         </div>
 
-        <div>
-          <label
-            style={{
-              display: "block",
-              fontSize: "0.85rem",
-              fontWeight: 500,
-              marginBottom: "0.35rem",
-            }}
-          >
-            API Key
-          </label>
-          <input
-            type="password"
-            placeholder="Helix API Key"
-            value={helixConfig.api_key}
-            onChange={(e) =>
-              setHelixConfig({ ...helixConfig, api_key: e.target.value })
-            }
-            style={{
-              width: "100%",
-              padding: "0.5rem 0.75rem",
-              border: "1px solid #d1d5db",
-              borderRadius: 4,
-              fontSize: "0.9rem",
-            }}
-          />
-        </div>
+        <hr className="cfg-divider" />
 
-        <div>
-          <label
-            style={{
-              display: "block",
-              fontSize: "0.85rem",
-              fontWeight: 500,
-              marginBottom: "0.35rem",
-            }}
-          >
-            Environment ID
-          </label>
-          <input
-            type="text"
-            placeholder="Environment/Tenant ID"
-            value={helixConfig.environment_id}
-            onChange={(e) =>
-              setHelixConfig({ ...helixConfig, environment_id: e.target.value })
+        <div className="cfg-actions">
+          <button
+            type="button"
+            className="cfg-btn cfg-btn--primary"
+            onClick={handleHelixSave}
+            disabled={
+              helixSaving ||
+              !helixConfig.base_url ||
+              !helixConfig.api_key ||
+              !helixConfig.environment_id ||
+              !helixConfig.agent_id ||
+              !helixConfig.prompt_field_id
             }
-            style={{
-              width: "100%",
-              padding: "0.5rem 0.75rem",
-              border: "1px solid #d1d5db",
-              borderRadius: 4,
-              fontSize: "0.9rem",
-            }}
-          />
-        </div>
-
-        <div>
-          <label
-            style={{
-              display: "block",
-              fontSize: "0.85rem",
-              fontWeight: 500,
-              marginBottom: "0.35rem",
-            }}
           >
-            Agent Name
-          </label>
-          <input
-            type="text"
-            placeholder="Helix Agent Name (e.g. my-banking-agent)"
-            value={helixConfig.agent_id}
-            onChange={(e) =>
-              setHelixConfig({ ...helixConfig, agent_id: e.target.value })
-            }
-            style={{
-              width: "100%",
-              padding: "0.5rem 0.75rem",
-              border: "1px solid #d1d5db",
-              borderRadius: 4,
-              fontSize: "0.9rem",
-            }}
-          />
-        </div>
-
-        <div>
-          <label
-            style={{
-              display: "block",
-              fontSize: "0.85rem",
-              fontWeight: 500,
-              marginBottom: "0.35rem",
-            }}
+            {helixSaving ? 'Saving…' : 'Save & Activate'}
+          </button>
+          <button
+            type="button"
+            className="cfg-btn cfg-btn--secondary"
+            onClick={fetchHelixStatus}
+            disabled={helixChecking}
           >
-            Prompt Field ID
+            {helixChecking ? 'Loading…' : 'Load from Database'}
+          </button>
+          <label className="cfg-btn cfg-btn--secondary">
+            Import JSON
+            <input type="file" accept=".json" onChange={handleImportJson} style={{ display: 'none' }} />
           </label>
-          <input
-            type="text"
-            placeholder="e.g. textInputa7c39a0e8292"
-            value={helixConfig.prompt_field_id}
-            onChange={(e) =>
-              setHelixConfig({
-                ...helixConfig,
-                prompt_field_id: e.target.value,
-              })
-            }
-            style={{
-              width: "100%",
-              padding: "0.5rem 0.75rem",
-              border: "1px solid #d1d5db",
-              borderRadius: 4,
-              fontSize: "0.9rem",
-            }}
-          />
+          <button
+            type="button"
+            className="cfg-btn cfg-btn--danger"
+            onClick={handleHelixClear}
+            disabled={helixSaving}
+          >
+            Clear
+          </button>
         </div>
       </div>
 
-      {/* Action buttons */}
-      <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-        <label
-          style={{
-            padding: "0.5rem 1rem",
-            background: "#f3f4f6",
-            border: "1px solid #d1d5db",
-            borderRadius: 4,
-            cursor: "pointer",
-            fontSize: "0.9rem",
-          }}
-        >
-          Import API Key JSON
-          <input
-            type="file"
-            accept=".json"
-            onChange={handleImportJson}
-            style={{ display: "none" }}
-          />
-        </label>
-        <button
-          onClick={fetchHelixStatus}
-          disabled={helixChecking}
-          style={{
-            padding: "0.5rem 1rem",
-            background: "#f3f4f6",
-            border: "1px solid #d1d5db",
-            borderRadius: 4,
-            cursor: helixChecking ? "not-allowed" : "pointer",
-            opacity: helixChecking ? 0.6 : 1,
-          }}
-        >
-          {helixChecking ? "Loading…" : "Load from Database"}
-        </button>
-        <button
-          onClick={handleHelixSave}
-          disabled={
-            helixSaving ||
-            !helixConfig.base_url ||
-            !helixConfig.api_key ||
-            !helixConfig.environment_id ||
-            !helixConfig.agent_id ||
-            !helixConfig.prompt_field_id
-          }
-          style={{
-            padding: "0.5rem 1rem",
-            background: "#3b82f6",
-            color: "#fff",
-            border: "none",
-            borderRadius: 4,
-            cursor: helixSaving ? "not-allowed" : "pointer",
-            opacity: helixSaving || !helixConfig.base_url ? 0.6 : 1,
-          }}
-        >
-          {helixSaving ? "Saving…" : "Save & Activate"}
-        </button>
-        <button
-          onClick={handleHelixClear}
-          disabled={helixSaving}
-          style={{
-            padding: "0.5rem 1rem",
-            background: "#fee2e2",
-            color: "#dc2626",
-            border: "none",
-            borderRadius: 4,
-            cursor: helixSaving ? "not-allowed" : "pointer",
-          }}
-        >
-          Clear
-        </button>
-      </div>
-
-      {/* Clear confirmation modal */}
+      {/* Clear confirmation modal — unchanged */}
       {showClearConfirm && (
         <div
           style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
             zIndex: 1000,
           }}
         >
-          <div
-            style={{
-              backgroundColor: "#fff",
-              borderRadius: 8,
-              padding: "2rem",
-              maxWidth: "400px",
-              boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-            }}
-          >
-            <h3 style={{ marginTop: 0, marginBottom: "1rem" }}>
-              Clear Helix Configuration?
-            </h3>
-            <p style={{ color: "#666", marginBottom: "1.5rem" }}>
-              This will delete your Helix configuration and cannot be undone.
-            </p>
-            <div
-              style={{
-                display: "flex",
-                gap: "0.75rem",
-                justifyContent: "flex-end",
-              }}
-            >
+          <div style={{ backgroundColor: '#fff', borderRadius: 8, padding: '2rem', maxWidth: '400px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+            <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>Clear Helix Configuration?</h3>
+            <p style={{ color: '#666', marginBottom: '1.5rem' }}>This will delete your Helix configuration and cannot be undone.</p>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
               <button
                 type="button"
+                className="cfg-btn cfg-btn--secondary"
                 onClick={() => setShowClearConfirm(false)}
                 disabled={helixSaving}
-                style={{
-                  padding: "0.5rem 1rem",
-                  background: "#f3f4f6",
-                  border: "1px solid #d1d5db",
-                  borderRadius: 4,
-                  cursor: helixSaving ? "not-allowed" : "pointer",
-                  opacity: helixSaving ? 0.6 : 1,
-                }}
               >
                 Cancel
               </button>
               <button
                 type="button"
+                className="cfg-btn cfg-btn--primary"
+                style={{ background: '#dc2626' }}
                 onClick={confirmHelixClear}
                 disabled={helixSaving}
-                style={{
-                  padding: "0.5rem 1rem",
-                  background: "#dc2626",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: 4,
-                  cursor: helixSaving ? "not-allowed" : "pointer",
-                  opacity: helixSaving ? 0.6 : 1,
-                }}
               >
-                {helixSaving ? "Clearing…" : "Clear"}
+                {helixSaving ? 'Clearing…' : 'Clear'}
               </button>
             </div>
           </div>
