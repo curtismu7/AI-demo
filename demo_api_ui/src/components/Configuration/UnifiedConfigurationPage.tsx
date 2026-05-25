@@ -24,6 +24,7 @@ import DemoSetupPanel from "../DemoSetupPanel";
 import OllamaPanel from "../OllamaPanel";
 import HelixPanel from "../HelixPanel";
 import AuthorizeConfigPage from "../AuthorizeConfigPage";
+import AuthorizeRulesPanel from "../AuthorizeRulesPanel";
 import McpGatewayConfig from "../McpGatewayConfig";
 import MigrationPanel from "../MigrationPanel";
 import CustomChipsTab from "../CustomChipsTab";
@@ -3744,6 +3745,7 @@ const UnifiedConfigurationPage: FC<{
     if (s === "authorize-rules") {
       return (
         <div className="cfg-section cfg-section--full-width">
+          <AuthorizeRulesPanel />
           <AuthorizeConfigPage />
         </div>
       );
