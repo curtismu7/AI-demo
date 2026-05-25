@@ -3,6 +3,7 @@ MCP connection management with pooling and retry logic.
 """
 import asyncio
 import logging
+import os
 import secrets
 import uuid
 from typing import Dict, Any, Optional, List
@@ -10,8 +11,18 @@ from datetime import datetime, timedelta
 from enum import Enum
 import json
 import inspect
+import httpx
 import websockets
 from websockets.exceptions import ConnectionClosed, WebSocketException
+
+# Transport selection:
+#   MCPConnection               — WebSocket (ws:// / wss://), default for local dev.
+#                                 Maintains a persistent connection; handles reconnect.
+#   StreamableHttpMCPConnection — Streamable HTTP (http:// / https://), MCP spec 2025-03-26
+#                                 preferred. Stateless POST /mcp per JSON-RPC call, session
+#                                 tracked via Mcp-Session-Id header. No persistent socket.
+#                                 Simpler reconnect: just re-send initialize on 404.
+#                                 Enable with MCP_TRANSPORT=streamable_http in .env.
 
 
 # websockets renamed extra_headers -> additional_headers in v13. Detect which
@@ -671,6 +682,28 @@ class MCPConnectionPool:
                 connections.append(local_connection)
                 return local_connection
             
+            # Route to StreamableHttpMCPConnection when MCP_TRANSPORT=streamable_http
+            # and the endpoint is an HTTP(S) URL.
+            if (
+                os.environ.get("MCP_TRANSPORT") == "streamable_http"
+                and server_config.endpoint.startswith(("http://", "https://"))
+            ):
+                if server_name not in self._connections:
+                    self._connections[server_name] = []
+
+                connections = self._connections[server_name]
+
+                # Return existing connected StreamableHttpMCPConnection if available
+                for connection in connections:
+                    if isinstance(connection, StreamableHttpMCPConnection) and connection.is_connected:
+                        return connection
+
+                # Create and connect a new StreamableHttpMCPConnection
+                http_conn = StreamableHttpMCPConnection(server_config)
+                await http_conn.connect(server_config)
+                connections.append(http_conn)
+                return http_conn
+
             # Handle WebSocket connections (existing logic)
             # Initialize connection list for server if not exists
             if server_name not in self._connections:
@@ -733,5 +766,209 @@ class MCPConnectionPool:
                 "local": sum(1 for conn in connections if isinstance(conn, LocalMCPConnection))
             }
             status[server_name] = server_status
-        
+
         return status
+
+
+class StreamableHttpMCPConnection(MCPClient):
+    """MCP connection using Streamable HTTP transport (MCP spec 2025-03-26).
+
+    Issues one HTTP POST /mcp per JSON-RPC call. Session is tracked via the
+    Mcp-Session-Id header returned by the server's initialize response and sent
+    on every subsequent request.  On a 404 (session expired) the caller must
+    reconnect — just call connect() again.
+
+    Enable by setting MCP_TRANSPORT=streamable_http in .env and providing an
+    http:// or https:// endpoint in MCP_SERVER_*_ENDPOINT.
+    """
+
+    def __init__(
+        self,
+        server_config: MCPServerConfig,
+        connection_timeout: float = 30.0,
+    ):
+        self.server_config = server_config
+        self.connection_timeout = connection_timeout
+        self._mcp_session_id: Optional[str] = None
+        self._available_tools: List[str] = []
+        self._tool_schemas: Dict[str, Dict[str, Any]] = {}
+        self._is_connected: bool = False
+        self._http_base_url: str = server_config.endpoint.rstrip("/")
+        self._mcp_url: str = f"{self._http_base_url}/mcp"
+        # Bearer token — set from agent_token on first call_tool()
+        self._authorization_header: Optional[str] = None
+
+        logger.info(
+            f"Initialized StreamableHttpMCPConnection for server: {server_config.name} "
+            f"at {self._mcp_url}"
+        )
+
+    @property
+    def is_connected(self) -> bool:
+        """Return True when an active MCP session exists."""
+        return self._is_connected
+
+    async def connect(self, server_config: MCPServerConfig) -> None:
+        """Send MCP initialize via POST /mcp and capture the Mcp-Session-Id header."""
+        initialize_message = {
+            "jsonrpc": "2.0",
+            "id": str(uuid.uuid4()),
+            "method": "initialize",
+            "params": {
+                "protocolVersion": "2025-03-26",
+                "capabilities": {"tools": {"listChanged": False}},
+            },
+        }
+        try:
+            response = await self._post_rpc(initialize_message)
+        except httpx.HTTPError as exc:
+            self._is_connected = False
+            raise ConnectionError(
+                f"HTTP error during MCP initialize for {server_config.name}: {exc}"
+            ) from exc
+
+        if response.status_code != 200:
+            self._is_connected = False
+            raise ConnectionError(
+                f"MCP initialize returned HTTP {response.status_code} for {server_config.name}"
+            )
+
+        body = response.json()
+        if "error" in body:
+            self._is_connected = False
+            raise ConnectionError(
+                f"MCP initialize JSON-RPC error for {server_config.name}: {body['error']}"
+            )
+
+        # Capture the session id from response headers (case-insensitive lookup)
+        session_id = response.headers.get("mcp-session-id")
+        if session_id:
+            self._mcp_session_id = session_id
+        self._is_connected = True
+        logger.info(
+            f"Connected to {server_config.name} via streamable HTTP; "
+            f"mcp-session-id={self._mcp_session_id!r}"
+        )
+
+        await self._refresh_tools()
+
+    async def disconnect(self) -> None:
+        """Send a best-effort DELETE to the MCP session endpoint and mark disconnected."""
+        if self._mcp_session_id:
+            try:
+                async with httpx.AsyncClient(timeout=self.connection_timeout) as client:
+                    headers: Dict[str, str] = {"mcp-session-id": self._mcp_session_id}
+                    await client.delete(self._mcp_url, headers=headers)
+            except Exception as exc:  # noqa: BLE001 — best-effort teardown
+                logger.debug(
+                    f"Best-effort DELETE for {self.server_config.name} session "
+                    f"{self._mcp_session_id!r} failed (ignored): {exc}"
+                )
+        self._is_connected = False
+        self._mcp_session_id = None
+        logger.info(f"Disconnected StreamableHttpMCPConnection for {self.server_config.name}")
+
+    async def call_tool(self, tool_call: MCPToolCall) -> Dict[str, Any]:
+        """Execute a tool call via POST /mcp with session header."""
+        # Accept a fresh bearer token if provided
+        if tool_call.agent_token:
+            self._authorization_header = tool_call.agent_token.token
+
+        if not self._is_connected:
+            await self.connect(self.server_config)
+
+        message = {
+            "jsonrpc": "2.0",
+            "id": str(uuid.uuid4()),
+            "method": "tools/call",
+            "params": {
+                "name": tool_call.tool_name,
+                "arguments": tool_call.parameters,
+            },
+        }
+
+        response = await self._post_rpc(message)
+
+        if response.status_code == 404:
+            self._is_connected = False
+            self._mcp_session_id = None
+            raise MCPConnectionClosedError(
+                f"MCP session expired (404) for {self.server_config.name}; reconnect required"
+            )
+
+        body = response.json()
+        if "error" in body:
+            error = body["error"]
+            raise Exception(
+                f"MCP server error {error.get('code', 'unknown')}: {error.get('message', 'Unknown error')}"
+            )
+
+        return body.get("result", {})
+
+    async def list_tools(self) -> List[str]:
+        """Return the list of tool names cached during connect()."""
+        if not self._is_connected:
+            await self.connect(self.server_config)
+        return self._available_tools.copy()
+
+    async def get_tool_schema(self, tool_name: str) -> Optional[Dict[str, Any]]:
+        """Return the cached schema for a tool, or None if not found."""
+        return self._tool_schemas.get(tool_name)
+
+    async def handle_auth_challenge(self, challenge: AuthChallenge) -> Dict[str, Any]:
+        """Auth challenges are not used by the HTTP transport; raises NotImplementedError."""
+        raise NotImplementedError(
+            "StreamableHttpMCPConnection does not support auth challenges. "
+            "Auth is handled via the Authorization header."
+        )
+
+    async def _refresh_tools(self) -> None:
+        """Fetch the tools/list from the server and populate internal caches."""
+        message = {
+            "jsonrpc": "2.0",
+            "id": str(uuid.uuid4()),
+            "method": "tools/list",
+            "params": {},
+        }
+        try:
+            response = await self._post_rpc(message)
+            body = response.json()
+            if "error" in body:
+                logger.warning(
+                    f"tools/list error for {self.server_config.name}: {body['error']}"
+                )
+                return
+            tools = body.get("result", {}).get("tools", [])
+            self._available_tools = []
+            self._tool_schemas = {}
+            for tool in tools:
+                name = tool.get("name")
+                if name:
+                    self._available_tools.append(name)
+                    self._tool_schemas[name] = {
+                        "name": name,
+                        "description": tool.get("description", ""),
+                        "inputSchema": tool.get("inputSchema", {}),
+                    }
+            logger.info(
+                f"Refreshed {len(self._available_tools)} tools for "
+                f"{self.server_config.name}: {self._available_tools}"
+            )
+        except Exception as exc:
+            logger.error(
+                f"Error refreshing tools for {self.server_config.name}: {exc}"
+            )
+
+    async def _post_rpc(self, message: Dict[str, Any]) -> httpx.Response:
+        """POST a JSON-RPC message to the MCP endpoint and return the raw response."""
+        headers: Dict[str, str] = {
+            "Content-Type": "application/json",
+            "mcp-protocol-version": "2025-03-26",
+        }
+        if self._mcp_session_id:
+            headers["mcp-session-id"] = self._mcp_session_id
+        if self._authorization_header:
+            headers["Authorization"] = f"Bearer {self._authorization_header}"
+
+        async with httpx.AsyncClient(timeout=self.connection_timeout) as client:
+            return await client.post(self._mcp_url, json=message, headers=headers)

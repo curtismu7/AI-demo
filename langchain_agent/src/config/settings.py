@@ -47,6 +47,12 @@ class MCPConfig:
     max_connections_per_server: int = 5
     retry_attempts: int = 3
     heartbeat_interval_seconds: int = 30
+    # MCP transport protocol.
+    #   "websocket"       — long-lived WebSocket connection per server (default; keeps
+    #                        local dev working without changes to run.sh or .env).
+    #   "streamable_http" — HTTP POST per JSON-RPC request with Mcp-Session-Id session
+    #                        tracking (MCP spec 2025-03-26 preferred; use in staging/prod).
+    mcp_transport: str = "websocket"
 
 
 @dataclass
@@ -66,8 +72,12 @@ class LangChainConfig:
     provider: str = "helix"
     ollama_base_url: str = "http://localhost:11434"
     lmstudio_base_url: str = "http://localhost:1234/v1"
-    # Anthropic API key — used by "anthropic-lmstudio" (any value works; LM Studio ignores it)
+    # Anthropic credentials — used by both "anthropic" (cloud) and "anthropic-lmstudio" (local).
+    # When ANTHROPIC_BASE_URL is set to an LM Studio origin, the "anthropic" provider hits LM Studio
+    # instead of api.anthropic.com, letting you demo "Anthropic" using a local model.
+    # LM Studio accepts any non-empty API key value.
     anthropic_api_key: str = "lm-studio"
+    anthropic_base_url: str = ""  # override: e.g. http://localhost:1234 → routes anthropic→LM Studio
     # Helix configuration (mirrors HELIX_* env vars used by demo_api_server)
     helix_base_url: str = "https://openam-helix.forgeblocks.com"
     helix_api_key: str = ""
@@ -354,8 +364,14 @@ class ConfigManager:
             connection_timeout_seconds=int(get_env_value("MCP_CONNECTION_TIMEOUT_SECONDS", "30")),
             max_connections_per_server=int(get_env_value("MCP_MAX_CONNECTIONS_PER_SERVER", "5")),
             retry_attempts=int(get_env_value("MCP_RETRY_ATTEMPTS", "3")),
-            heartbeat_interval_seconds=int(get_env_value("MCP_HEARTBEAT_INTERVAL_SECONDS", "30"))
+            heartbeat_interval_seconds=int(get_env_value("MCP_HEARTBEAT_INTERVAL_SECONDS", "30")),
+            mcp_transport=get_env_value("MCP_TRANSPORT", "websocket"),
         )
+        _valid_transports = {"websocket", "streamable_http"}
+        if mcp_config.mcp_transport not in _valid_transports:
+            raise ValueError(
+                f"MCP_TRANSPORT must be one of {_valid_transports}, got {mcp_config.mcp_transport!r}"
+            )
         
         # LangChain configuration
         langchain_config = LangChainConfig(
@@ -372,8 +388,9 @@ class ConfigManager:
             provider=get_env_value("LANGCHAIN_LLM_PROVIDER", "helix"),
             ollama_base_url=get_env_value("OLLAMA_BASE_URL", "http://localhost:11434"),
             lmstudio_base_url=get_env_value("LMSTUDIO_BASE_URL", "http://localhost:1234/v1"),
-            # Anthropic API key — used by "anthropic-lmstudio"; LM Studio accepts any value
+            # Anthropic credentials — cloud or LM Studio proxy depending on ANTHROPIC_BASE_URL
             anthropic_api_key=get_env_value("ANTHROPIC_API_KEY", "lm-studio"),
+            anthropic_base_url=get_env_value("ANTHROPIC_BASE_URL", ""),
             # Helix — mirrors HELIX_* env vars from demo_api_server
             helix_base_url=get_env_value("HELIX_BASE_URL", "https://openam-helix.forgeblocks.com"),
             helix_api_key=get_env_value("HELIX_API_KEY", ""),
