@@ -1122,8 +1122,8 @@ function buildAllowedScopesByAudience() {
 
   // MCP Gateway — the BFF's single subject+actor RFC 8693 exchange is
   // audienced here (canonical chain). Must allow the tool scopes the exchange
-  // requests (read / write) plus the actor/invoke scopes.
-  // Audience: mcpgateway.ping.demo — see docs/PINGONE_CONFIG.md
+  // requests (read / write / mortgage:read) plus the actor/invoke scopes.
+  // Audience: mcpgateway.ping.demo — see docs/PINGONE_CONFIG.md and scope-topology.json
   const mcpGatewayUri = configStore.getEffective('pingone_resource_mcp_gateway_uri');
   if (mcpGatewayUri) {
     mapping[mcpGatewayUri] = [
@@ -1131,17 +1131,20 @@ function buildAllowedScopesByAudience() {
       'write',
       'mcp:invoke',
       'ai:agent',
+      'mortgage:read',
     ];
   }
 
   // MCP Resource Server — the gateway re-exchanges to this audience downstream.
-  // Audience: mcpserver.ping.demo — see docs/PINGONE_CONFIG.md
+  // Audience: mcpserver.ping.demo — see docs/PINGONE_CONFIG.md and scope-topology.json
+  // mirroredScopes from scope-topology.json must be kept in sync here.
   const mcpServerUri = configStore.getEffective('pingone_resource_mcp_server_uri');
   if (mcpServerUri) {
     mapping[mcpServerUri] = [
       'read',
       'write',
       'mcp:invoke',
+      'mortgage:read',
     ];
   }
 
