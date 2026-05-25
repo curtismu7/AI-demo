@@ -35,7 +35,7 @@ async function runReasonLoop(p) {
     const data = resp.data;
     if (data.type === 'final') {
       if (data.reasoningUnavailable) return { ok: false, reason: 'reasoning_unavailable' };
-      return { ok: true, answer: data.answer };
+      return { ok: true, answer: data.answer, inputTokens: data.inputTokens ?? 0, outputTokens: data.outputTokens ?? 0 };
     }
     if (data.type === 'tool_calls') {
       const toolMessages = [];
