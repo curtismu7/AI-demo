@@ -125,8 +125,8 @@ const DEMO_TRANSACTIONS = [
 ];
 
 const MIDDLE_HEIGHT_KEY = "middle_agent_height_px";
-const MIDDLE_DEFAULT_HEIGHT = 580;
-const MIDDLE_MIN_HEIGHT = 280;
+const MIDDLE_DEFAULT_HEIGHT = 720;
+const MIDDLE_MIN_HEIGHT = 420;
 
 function readStoredMiddleHeight() {
   try {

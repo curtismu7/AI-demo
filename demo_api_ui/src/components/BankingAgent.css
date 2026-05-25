@@ -2862,6 +2862,33 @@ body > .banking-agent-float-root .banking-agent-panel {
   font-size: 11px;
 }
 
+/* ─── Dashboard inline agent (ud-dashboard-inline-agent) ──────────────────────
+   The dashboard already provides a tall resizable container. Keep bottom chrome
+   compact so messages + input are always visible without scrolling the panel. */
+
+/* Chips row: scroll horizontally instead of wrapping to multiple rows */
+.ud-dashboard-inline-agent .ba-chips-footer {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.ud-dashboard-inline-agent .ba-chips-footer::-webkit-scrollbar {
+  display: none;
+}
+
+/* Dashboard nav button ("My Dashboard") is redundant when already on /dashboard */
+.ud-dashboard-inline-agent .ba-bottom-extra .ba-left-auth-btn {
+  display: none;
+}
+
+/* Ensure the right column clips correctly so input bar is never pushed out */
+.ud-dashboard-inline-agent .ba-right-col {
+  height: 100%;
+  overflow: hidden;
+}
+
 /* ─── Resize handles ───────────────────────────────────────────────────────── */
 .ba-resize-handle {
   position: absolute;
