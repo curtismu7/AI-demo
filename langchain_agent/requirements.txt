@@ -4,6 +4,8 @@
 # openai SDK were never imported (verified by grep) — ~80MB of dead deps.
 langchain>=0.3.0,<0.4.0
 langchain-core>=0.3.0,<0.4.0
+# LangGraph — stateful agent runtime with MemorySaver checkpointer
+langgraph>=0.2.0,<1.0.0
 langchain-ollama>=0.2.0,<0.3.0
 pydantic>=2.0.0,<3.0.0
 fastapi>=0.100.0
