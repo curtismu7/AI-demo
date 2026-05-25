@@ -4473,10 +4473,10 @@ export default function BankingAgent({
             "withdraw",
           ].includes(actionId);
           if (isTransactionAction) {
+            const _rawMsg = normalized.message || normalized.error || "Request failed";
             setTxErrorModal({
               title: "Transaction Failed",
-              message:
-                normalized.message || normalized.error || "Request failed",
+              message: typeof _rawMsg === "string" ? _rawMsg : JSON.stringify(_rawMsg),
             });
           } else {
             notifyError(
@@ -8058,7 +8058,7 @@ export default function BankingAgent({
                     ❌ {txErrorModal.title}
                   </div>
                   <div className="ba-tx-error-modal__body">
-                    {txErrorModal.message}
+                    {typeof txErrorModal.message === "string" ? txErrorModal.message : JSON.stringify(txErrorModal.message)}
                   </div>
                   <button
                     type="button"
