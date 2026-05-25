@@ -366,3 +366,60 @@ class TestMCPServerConfigs:
             assert configs["another"]["endpoint"] == "ws://localhost:3002"
             assert configs["another"]["capabilities"] == ["read"]
             assert configs["another"]["auth_required"] is False
+
+class TestSkipTokenSignatureValidationGuard:
+    """Tests for SKIP_TOKEN_SIGNATURE_VALIDATION production guard (Phase 279)."""
+
+    _BASE_ENV = {
+        "PINGONE_BASE_URL": "https://auth.pingone.com/test/as",
+        "PINGONE_CLIENT_REGISTRATION_ENDPOINT": "https://auth.pingone.com/test/as/register",
+        "PINGONE_TOKEN_ENDPOINT": "https://auth.pingone.com/test/as/token",
+        "PINGONE_AUTHORIZATION_ENDPOINT": "https://auth.pingone.com/test/as/authorize",
+        "PINGONE_REDIRECT_URI": "https://api.ping.demo:4000/callback",
+        "ENCRYPTION_MASTER_KEY": "a" * 32,
+        "ENCRYPTION_SALT": "b" * 16,
+    }
+
+    def test_guard_fires_in_staging(self):
+        """SKIP_TOKEN_SIGNATURE_VALIDATION=true + staging → RuntimeError at startup."""
+        env = {**self._BASE_ENV, "ENVIRONMENT": "staging", "SKIP_TOKEN_SIGNATURE_VALIDATION": "true"}
+        with patch.dict(os.environ, env, clear=True):
+            with pytest.raises(RuntimeError, match="SKIP_TOKEN_SIGNATURE_VALIDATION"):
+                ConfigManager().load_config()
+
+    def test_guard_fires_in_production(self):
+        """SKIP_TOKEN_SIGNATURE_VALIDATION=true + production → RuntimeError at startup."""
+        env = {**self._BASE_ENV, "ENVIRONMENT": "production", "SKIP_TOKEN_SIGNATURE_VALIDATION": "true"}
+        with patch.dict(os.environ, env, clear=True):
+            with pytest.raises(RuntimeError, match="SKIP_TOKEN_SIGNATURE_VALIDATION"):
+                ConfigManager().load_config()
+
+    def test_guard_allows_development(self):
+        """SKIP_TOKEN_SIGNATURE_VALIDATION=true + development → no RuntimeError from guard."""
+        env = {
+            **self._BASE_ENV,
+            "ENVIRONMENT": "development",
+            "SKIP_TOKEN_SIGNATURE_VALIDATION": "true",
+            "PINGONE_REDIRECT_URI": "http://localhost:4000/callback",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            try:
+                ConfigManager().load_config()
+            except RuntimeError as e:
+                if "SKIP_TOKEN_SIGNATURE_VALIDATION" in str(e):
+                    raise AssertionError(f"Guard must not fire in development: {e}") from e
+                # Other RuntimeErrors (unrelated) are acceptable
+            except Exception:
+                pass  # Other errors (e.g. ValueError) are fine — guard didn't fire
+
+    def test_guard_absent_when_flag_false(self):
+        """SKIP_TOKEN_SIGNATURE_VALIDATION=false + production → no RuntimeError from guard."""
+        env = {**self._BASE_ENV, "ENVIRONMENT": "production", "SKIP_TOKEN_SIGNATURE_VALIDATION": "false"}
+        with patch.dict(os.environ, env, clear=True):
+            try:
+                ConfigManager().load_config()
+            except RuntimeError as e:
+                if "SKIP_TOKEN_SIGNATURE_VALIDATION" in str(e):
+                    raise AssertionError(f"Guard must not fire when flag is false: {e}") from e
+            except Exception:
+                pass  # ValueError from prod validators is expected and fine
