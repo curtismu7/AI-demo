@@ -18,6 +18,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Added
 
+- **`ff_agent_results_panel` feature flag** — added to configStore FIELD_DEFS (default `false`); controls visibility of floating results panel in agent UI.
 - **`diagram-components` skill** — codifies shared diagram component contracts: `DiagramControls`, `DiagramLegend`, `PathFilterBar`; CSS namespaces (`.dc-*` / `.dl-*` / `.pfb-*`); canonical colour palette; rules for adding new diagram pages; exemptions (ReactFlow, Mermaid); Architecture Simulation spec pointer.
 - **TraT context binding + gateway↔MCP mTLS** — `X-TraT-Context` header carries simulated transaction-token claims (`reqctx`, `purp`, `azd`, `rctx`) from BFF through gateway to upstream; evaluated by PingAuthorize alongside the JWT (gated by `ff_trat_mode`, default off). mTLS between gateway and MCP servers (self-signed ephemeral cert, pinned by SHA-256) prevents direct MCP access with a valid TX token; gated by `MCP_MTLS_ENABLED=false` default. Token Chain gains `trat-context` and `gw-mtls` events with inline education boxes. New `TransactionTokensPanel` education panel. See REGRESSION_PLAN §4 (2026-05-20).
 - **`setupTratClaims.js` — idempotent TraT claim provisioning script** — new `demo_api_server/scripts/setupTratClaims.js` checks the MCP Token Exchanger app in PingOne and logs guidance for configuring `reqctx`, `purp`, `azd`, `rctx` passthrough claim mappings. Gracefully skips when creds are absent (local dev). Integrated as a non-fatal post-step in `bootstrapPingOne.js`. Callable standalone via `npm run pingone:setup:trat`.

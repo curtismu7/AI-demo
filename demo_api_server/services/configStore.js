@@ -173,6 +173,7 @@ ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic 
   ff_id_token_exchange:            { public: true, default: 'false' }, // RFC 8693 with ID token as subject_token (agent never holds access token)
   mcp_use_pingone_server:          { public: true, default: 'false' }, // Spawn pingidentity/pingone-mcp-server stdio binary; bypass custom gateway
   ff_show_banking_in_middle_agent: { public: true, default: 'false' }, // Show banking column alongside centered agent (legacy dashboard layout)
+  ff_agent_results_panel:          { public: true, default: 'false' }, // Show floating results panel alongside agent (off by default; results still appear inline in chat)
   step_up_enabled:                 { public: true, default: 'true'  }, // Step-up MFA gate; mirrored into runtimeSettings.stepUpEnabled (runtimeKey)
   ff_trat_mode:                    { public: true, default: 'false' }, // Enrich RFC 8693 exchange with Transaction Token (TraT) claims — draft-oauth-transaction-tokens-for-agents-00
   ff_agent_restrictions:           { public: true, default: 'false' }, // P1AZ resource server gate + AgentRestrictions attribute
@@ -953,6 +954,11 @@ class ConfigStore {
       // MCP Gateway token introspection (consumed by demo_mcp_gateway via process.env)
       gw_introspection_client_id:           ['GW_INTROSPECTION_CLIENT_ID'],
       gw_introspection_client_secret:       ['GW_INTROSPECTION_CLIENT_SECRET'],
+
+      // MCP WebSocket URLs
+      mcp_olb_ws_url:                       ['MCP_OLB_WS_URL'],
+      mcp_invest_ws_url:                    ['MCP_INVEST_WS_URL'],
+      upstream_mcp_url:                     ['UPSTREAM_MCP_URL'],
     };
 
     const envVars = envFallbackMap[key] || [];
