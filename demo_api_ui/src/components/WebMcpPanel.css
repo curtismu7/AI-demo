@@ -86,19 +86,6 @@
   font-size: 13px;
 }
 
-/* ── Required indicator and hint text ──────────────────────────────────── */
-
-.webmcp-required {
-  color: #dc2626;
-  margin-left: 2px;
-}
-
-.webmcp-param-hint {
-  font-size: 11px;
-  color: #4a6080;
-  line-height: 1.6;
-  margin-bottom: 4px;
-}
 
 /* ── Spinner / call button ──────────────────────────────────────────────── */
 
