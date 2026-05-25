@@ -311,9 +311,9 @@ const FLAG_REGISTRY = [
       'letting users browse active authorization policy rules and test transactions ' +
       'against the engine. Always visible in /configure (Authorize tab) regardless of this flag.',
     impact:
-      'OFF (default) = panel hidden on /dashboard. ON = panel appears on the dashboard below the main content area.',
+      'OFF = panel hidden on /dashboard. ON (default) = panel appears on the dashboard below the main content area.',
     type:         'boolean',
-    defaultValue: false,
+    defaultValue: true,
   },
 
 ];
