@@ -62,9 +62,15 @@ class LangChainConfig:
     # WebSocket streaming: MCP tool lifecycle + optional LLM token deltas
     stream_mcp_tool_events: bool = True
     stream_llm_tokens: bool = True
-    # Multi-provider support
-    provider: str = "ollama"
+    # LLM provider — "helix" (default, project-wide) or "ollama" (explicit fallback)
+    provider: str = "helix"
     ollama_base_url: str = "http://localhost:11434"
+    # Helix configuration (mirrors HELIX_* env vars used by demo_api_server)
+    helix_base_url: str = "https://openam-helix.forgeblocks.com"
+    helix_api_key: str = ""
+    helix_environment_id: str = "fe213c3c-9c1d-4bdb-954a-a22879dad26d"
+    helix_agent_id: str = "LLM2"
+    helix_prompt_field_id: str = "textInputa7c39a0e8292"
 
 
 @dataclass
@@ -359,6 +365,15 @@ class ConfigManager:
             max_execution_time=int(get_env_value("LANGCHAIN_MAX_EXECUTION_TIME", "60")),
             stream_mcp_tool_events=get_env_value("LANGCHAIN_STREAM_MCP_TOOL_EVENTS", "true").lower() == "true",
             stream_llm_tokens=get_env_value("LANGCHAIN_STREAM_LLM_TOKENS", "true").lower() == "true",
+            # LLM provider — defaults to "helix" (project-wide default)
+            provider=get_env_value("LANGCHAIN_LLM_PROVIDER", "helix"),
+            ollama_base_url=get_env_value("OLLAMA_BASE_URL", "http://localhost:11434"),
+            # Helix — mirrors HELIX_* env vars from demo_api_server
+            helix_base_url=get_env_value("HELIX_BASE_URL", "https://openam-helix.forgeblocks.com"),
+            helix_api_key=get_env_value("HELIX_API_KEY", ""),
+            helix_environment_id=get_env_value("HELIX_ENVIRONMENT_ID", "fe213c3c-9c1d-4bdb-954a-a22879dad26d"),
+            helix_agent_id=get_env_value("HELIX_AGENT_ID", "LLM2"),
+            helix_prompt_field_id=get_env_value("HELIX_PROMPT_FIELD_ID", "textInputa7c39a0e8292"),
         )
         
         # Chat configuration

@@ -66,17 +66,23 @@ class LangChainMCPAgent(TracingMixin):
         logger.info("Initialized LangChain MCP Agent")
     
     def _initialize_llm(self) -> BaseChatModel:
-        """Initialize the language model for the agent via Ollama factory."""
+        """Initialize the language model via the LLM factory (Helix by default)."""
         lc = self.config.langchain
+        provider = getattr(lc, "provider", "helix")
         llm = get_llm(
-            provider="ollama",
+            provider=provider,
             model=lc.model_name or None,
             temperature=lc.temperature,
             max_tokens=lc.max_tokens,
             streaming=bool(getattr(lc, "stream_llm_tokens", True)),
             ollama_base_url=getattr(lc, "ollama_base_url", "http://localhost:11434"),
+            helix_base_url=getattr(lc, "helix_base_url", ""),
+            helix_api_key=getattr(lc, "helix_api_key", ""),
+            helix_environment_id=getattr(lc, "helix_environment_id", ""),
+            helix_agent_id=getattr(lc, "helix_agent_id", ""),
+            helix_prompt_field_id=getattr(lc, "helix_prompt_field_id", ""),
         )
-        logger.info("Initialized LLM via factory: provider=ollama model=%s", lc.model_name)
+        logger.info("Initialized LLM via factory: provider=%s", provider)
         return llm
     
     async def initialize_tools(self) -> None:
