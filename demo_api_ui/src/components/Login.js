@@ -5,7 +5,6 @@ import { useEducationUIOptional } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import { notifyError } from '../utils/appToast';
 import { useIndustryBranding } from '../context/IndustryBrandingContext';
-import UserTokenStatusBar from './UserTokenStatusBar';
 import { navigateToAdminOAuthLogin, navigateToCustomerOAuthLogin } from '../utils/authUi';
 import './Login.css';
 
@@ -82,7 +81,6 @@ const Login = () => {
   return (
     <div className="login-container login-page" style={loginContainerStyle}>
         <div className="login-card">
-          <UserTokenStatusBar user={null} tokenSecondsLeft={null} onOpenModal={() => {}} />
           <div className="login-header login-card__header">
             <div className="login-branding">
               <div className="login-logo">

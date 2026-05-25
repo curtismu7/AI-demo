@@ -37,8 +37,6 @@ import ConfirmModal from "./ConfirmModal";
 import TransactionConsentModal from "./TransactionConsentModal";
 import FloatingPanel from "./FloatingPanel";
 import "./UserDashboard.css";
-import DashboardHeader from "./DashboardHeader";
-import UserTokenStatusBar from "./UserTokenStatusBar";
 import OAuthTokenDisplayPage from "./OAuthTokenDisplayPage";
 import { useTheme } from "../context/ThemeContext";
 import RetailDashboard from "./RetailDashboard";
@@ -2526,12 +2524,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       <a href="#main-dashboard-content" className="dash-skip-link">
         Skip to main content
       </a>
-      <DashboardHeader variant="customer" />
-      <UserTokenStatusBar
-        user={user}
-        tokenSecondsLeft={tokenSecondsLeft}
-        onOpenModal={() => setShowTokenModal(true)}
-      />
       {/* ── Toolbar row with additional actions ────────────────────── */}
       <div className="dashboard-header-stack" style={{ marginTop: 0 }}>
         <div
