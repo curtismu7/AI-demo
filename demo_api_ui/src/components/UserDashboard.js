@@ -32,6 +32,7 @@ import ThresholdControls from "./ThresholdControls";
 import ExchangeModeToggle from "./ExchangeModeToggle";
 import Fido2Challenge from "./Fido2Challenge";
 import TokenChainDisplay from "./TokenChainDisplay";
+import { useSessionToken } from '../context/SessionTokenContext';
 import ConfirmModal from "./ConfirmModal";
 import TransactionConsentModal from "./TransactionConsentModal";
 import FloatingPanel from "./FloatingPanel";
@@ -192,6 +193,11 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   const [showResetModal, setShowResetModal] = useState(false);
   const [tokenExpiresAt, setTokenExpiresAt] = useState(null);
   const [tokenSecondsLeft, setTokenSecondsLeft] = useState(null);
+  const { publishTokenState } = useSessionToken();
+
+  useEffect(() => {
+    publishTokenState(tokenSecondsLeft, () => setShowTokenModal(true));
+  }, [tokenSecondsLeft, publishTokenState]); // setShowTokenModal is stable
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedAccount, setSelectedAccount] = useState(null);
