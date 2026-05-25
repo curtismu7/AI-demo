@@ -2025,15 +2025,15 @@ Plans:
 - [x] 259-03-PLAN.md — Gateway wiring: introspection step-0, amount-aware Authorize, X-Gw-Audit-Trail header (Wave 2)
 - [x] 259-04-PLAN.md — BFF: extract audit trail → tokenEvents + hitl_required → HTTP 428 (Wave 3)
 
-### Phase 260: to fix these gaps
+### Phase 260: Gateway auth pipeline compliance — architecture spec
 
-**Goal:** [To be planned]
+**Goal:** Produce the authoritative gateway auth pipeline compliance architecture spec (docs/GATEWAY_COMPLIANCE_SPEC.md) covering all 7 gaps identified after Phase 259. The spec defines current vs target state, file targets, wave ordering, and acceptance criteria for Phase 261 implementation.
 **Requirements**: TBD
 **Depends on:** Phase 259
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 260 to break down)
+- [ ] 260-01-PLAN.md — Wave 1: Gateway compliance architecture spec
 
 ### Phase 261: Phase 260 compliance: gateway denial metadata, agent recovery, BFF propagation, UI checklist, OLB resource token exchange, PingOne claim diagnostics
 
