@@ -267,66 +267,6 @@
   }
 }
 
-/* ─── View Switch Button ─────────────────────────────────────────────── */
-
-.topnav-view-switch {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 14px;
-  border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  background: transparent;
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition:
-    background 0.15s ease,
-    border-color 0.15s ease;
-  white-space: nowrap;
-}
-
-.topnav-view-switch:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.5);
-}
-
-.topnav-view-switch:active {
-  background: rgba(255, 255, 255, 0.15);
-}
-
-/* "Switch to Admin" – subtle warning tint */
-.topnav-view-switch--admin {
-  border-color: rgba(255, 255, 255, 0.35);
-  color: rgba(255, 255, 255, 0.75);
-}
-
-.topnav-view-switch--admin:hover {
-  background: rgba(197, 164, 78, 0.1);
-  border-color: rgba(197, 164, 78, 0.7);
-}
-
-/* "Switch to Customer" – teal/friendly tint */
-.topnav-view-switch--customer {
-  border-color: rgba(52, 211, 153, 0.4);
-  color: #a7f3d0;
-}
-
-.topnav-view-switch--customer:hover {
-  background: rgba(52, 211, 153, 0.08);
-  border-color: rgba(52, 211, 153, 0.6);
-}
-
-@media (max-width: 600px) {
-  .topnav-view-switch {
-    padding: 5px 10px;
-    font-size: 12px;
-  }
-}
-
 /* Login button in the topnav bar */
 .topnav-login-btn {
   display: flex;
@@ -346,52 +286,113 @@
   background: rgba(255, 255, 255, 0.28);
 }
 
-/* ── Page Label ────────────────────────────────────────────────────────── */
-.topnav-page-label {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 20px;
-  padding: 4px 14px 4px 10px;
-  pointer-events: none;
+/* Dashboard badge */
+.topnav-brand-divider {
+  display: inline-block;
+  width: 1px;
+  height: 16px;
+  background: #475569;
+  margin: 0 6px;
   flex-shrink: 0;
 }
 
-.topnav-page-label__icon {
-  font-size: 0.9rem;
-  line-height: 1;
-}
-
-.topnav-page-label__text {
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.92);
-  letter-spacing: 0.01em;
+.topnav-dashboard-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.07);
+  padding: 2px 7px;
+  border-radius: 3px;
+  border: 1px solid #475569;
   white-space: nowrap;
 }
 
-/* ── Run Servers Button ────────────────────────────────────────────────── */
-.topnav-run-servers-btn {
+/* Token pill */
+.topnav-token-pill {
   display: flex;
   align-items: center;
   gap: 5px;
-  padding: 6px 12px;
-  border-radius: 6px;
-  border: 1px solid rgba(34, 197, 94, 0.45);
-  background: rgba(34, 197, 94, 0.15);
-  color: #86efac;
-  font-size: 0.82rem;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid #334155;
+  border-radius: 5px;
+  padding: 3px 10px;
+  min-width: 0;
+}
+
+.topnav-token-pill__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #22c55e;
+  flex-shrink: 0;
+}
+
+.topnav-token-pill--expiring .topnav-token-pill__dot {
+  background: #f59e0b;
+}
+
+.topnav-token-pill--expired .topnav-token-pill__dot {
+  background: #ef4444;
+}
+
+.topnav-token-pill__name {
+  font-size: 12px;
+  color: #e2e8f0;
   font-weight: 600;
-  cursor: pointer;
-  transition:
-    background 0.15s,
-    border-color 0.15s;
+  white-space: nowrap;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topnav-token-pill__countdown {
+  font-size: 12px;
+  color: #4ade80;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-.topnav-run-servers-btn:hover {
-  background: rgba(34, 197, 94, 0.28);
-  border-color: rgba(34, 197, 94, 0.7);
-  color: #bbf7d0;
+
+.topnav-token-pill--expiring .topnav-token-pill__countdown {
+  color: #fbbf24;
 }
+
+.topnav-token-pill__view-btn {
+  font-size: 11px;
+  color: #60a5fa;
+  background: none;
+  border: none;
+  border-left: 1px solid #334155;
+  padding: 0 0 0 8px;
+  margin-left: 3px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.topnav-token-pill__view-btn:hover {
+  color: #93c5fd;
+}
+
+.topnav-token-pill__expired-label {
+  font-size: 12px;
+  color: #f87171;
+  font-weight: 600;
+}
+
+.topnav-token-pill__shimmer {
+  display: inline-block;
+  width: 120px;
+  height: 14px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #334155 25%, #475569 50%, #334155 75%);
+  background-size: 200% 100%;
+  animation: topnav-shimmer 1.4s infinite;
+}
+
+@keyframes topnav-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
