@@ -60,6 +60,7 @@ A developer or architect who runs through the live demo in 5 minutes understands
 | 213 | dev-tools-dashboard-complete-data-wiring-deduplication-and-panel-polish | Complete data wiring, deduplication, and panel polish for Dev Tools Dashboard | In Progress | 2026-04-23 |
 | 214 | fix-fido-registration-and-check-authentication-look-at-curl- | Fix FIDO2 registration and authentication; compare backend and UI to PingOne docs and curl commands; show request/response for FIDO2 on test page | In Progress | 2026-04-23 |
 | 223 | fido2-registration-authentication | FIDO2 registration and authentication parity with PingOne docs; test page visibility | Planned | 2026-04-23 |
+| 279 | skip-token-validation-production-guard | Add startup RuntimeError guard in langchain_agent/src/config/settings.py refusing to start if SKIP_TOKEN_SIGNATURE_VALIDATION=true outside development; verify session→user binding | GUARD-01, GUARD-02, GUARD-03 | 1 plan |
 
 ---
 
@@ -101,6 +102,17 @@ Plans:
 
 Plans:
 - [x] 223-00-CONTEXT.md — Context and requirements
+
+### Phase 279: skip-token-validation-production-guard
+
+**Goal:** Add a startup RuntimeError in langchain_agent/src/config/settings.py (via ConfigManager.validate_environment_config) that refuses to start if SKIP_TOKEN_SIGNATURE_VALIDATION=true is set outside a development environment. Also verify session→user binding is enforced at session creation in session_manager.py and document the finding in REGRESSION_PLAN.md §4.
+
+**Requirements:** GUARD-01, GUARD-02, GUARD-03
+
+**Plans:** 1 plan
+
+Plans:
+- [ ] 279-01-PLAN.md — Production guard + tests + session binding verification
 
 ### Phase 224: token-audit-trail-and-decoder
 
