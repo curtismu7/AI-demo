@@ -6,7 +6,8 @@ langchain-core>=0.3.0,<0.4.0
 # LangGraph — stateful agent runtime with MemorySaver checkpointer
 langgraph>=0.2.0,<1.0.0
 langchain-ollama>=0.2.0,<0.3.0  # Ollama explicit fallback (provider="ollama")
-langchain-openai>=0.2.0,<0.4.0  # LM Studio OpenAI-compatible endpoint (provider="lmstudio")
+langchain-openai>=0.2.0,<0.4.0      # LM Studio OpenAI-compatible endpoint (provider="lmstudio")
+langchain-anthropic>=0.3.0,<0.4.0  # LM Studio Anthropic-compatible endpoint (provider="anthropic-lmstudio")
 pydantic>=2.0.0,<3.0.0
 fastapi>=0.100.0
 uvicorn>=0.20.0

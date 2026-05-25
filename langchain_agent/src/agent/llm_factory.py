@@ -1,11 +1,15 @@
 """
-LLM factory — Helix (default), Ollama, and LM Studio.
+LLM factory — Helix (default), Ollama, LM Studio (OpenAI-compat), and LM Studio (Anthropic-compat).
 
 Provider resolution rules (mirrors demo_api_server/services/llmProviderResolver.js):
-  - "helix"    → ChatHelix; requires HELIX_* config
-  - "ollama"   → ChatOllama; requires ollama_base_url / OLLAMA_BASE_URL
-  - "lmstudio" → ChatOpenAI pointed at LM Studio's OpenAI-compatible endpoint
-                 (default: http://localhost:1234/v1); any model loaded in LM Studio.
+  - "helix"              → ChatHelix; requires HELIX_* config
+  - "ollama"             → ChatOllama; requires ollama_base_url / OLLAMA_BASE_URL
+  - "lmstudio"           → ChatOpenAI pointed at LM Studio's OpenAI-compatible endpoint
+                           (default: http://localhost:1234/v1); any model loaded in LM Studio.
+  - "anthropic-lmstudio" → ChatAnthropic pointed at LM Studio's Anthropic-compatible endpoint
+                           (default: http://localhost:1234); uses the Anthropic SDK wire format
+                           so the LangGraph tooling chain (function calling, tool_use blocks) works
+                           without modification. Dummy API key accepted.
   - no provider / unknown → "helix" (Helix is the project-wide default LLM)
 
 No other module may inline a provider default.
@@ -51,24 +55,43 @@ def get_llm(
     Return a chat model for the given provider.
 
     Args:
-        provider: "helix" (default), "ollama", or "lmstudio".
-        model: Model name hint (used for Ollama/LM Studio; Helix ignores it — agent_id is the model).
-        api_key: Ignored for Helix/Ollama/LM Studio.
-        temperature: Sampling temperature (Ollama/LM Studio only; Helix agents manage this internally).
-        max_tokens: Max tokens (Ollama/LM Studio only).
-        streaming: Enable streaming (Ollama only; LM Studio streaming TBD by model).
+        provider: "helix" (default), "ollama", "lmstudio", or "anthropic-lmstudio".
+        model: Model name hint (Ollama/LM Studio; Helix ignores it).
+        api_key: Anthropic API key for "anthropic-lmstudio" (any non-empty string works).
+        temperature: Sampling temperature (not used by Helix).
+        max_tokens: Max tokens to generate.
+        streaming: Enable streaming (Ollama only).
         ollama_base_url: Base URL for Ollama server.
-        lmstudio_base_url: Base URL for LM Studio's OpenAI-compatible endpoint.
-        helix_base_url: Helix tenant origin URL.
-        helix_api_key: Helix API key (agent-scoped).
-        helix_environment_id: Helix environment UUID.
-        helix_agent_id: Helix agent name (case-sensitive).
-        helix_prompt_field_id: Input field ID inside the AI Task node.
+        lmstudio_base_url: Base URL for LM Studio endpoint (OpenAI or Anthropic compat).
+        helix_*: Helix connection fields.
 
     Returns:
         A BaseChatModel instance.
     """
     resolved = provider.lower() if provider else "helix"
+
+    if resolved == "anthropic-lmstudio":
+        # Use the Anthropic SDK wire format pointing at LM Studio's Anthropic-compatible
+        # endpoint. The base_url must be the origin only (no /v1 path) — the Anthropic
+        # SDK appends /v1/messages itself. LM Studio accepts any non-empty API key.
+        resolved_model = model or "local-model"
+        # Strip trailing /v1 path if the user provided the OpenAI-style URL
+        base = lmstudio_base_url.rstrip("/")
+        if base.endswith("/v1"):
+            base = base[:-3]
+        resolved_api_key = api_key or "lm-studio"
+        logger.info(
+            "Initializing LLM: provider=anthropic-lmstudio model=%s url=%s",
+            resolved_model, base,
+        )
+        from langchain_anthropic import ChatAnthropic
+        return ChatAnthropic(
+            model=resolved_model,
+            anthropic_api_url=base,
+            anthropic_api_key=resolved_api_key,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
 
     if resolved == "lmstudio":
         resolved_model = model or "local-model"

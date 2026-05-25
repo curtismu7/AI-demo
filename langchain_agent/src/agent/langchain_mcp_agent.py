@@ -72,6 +72,7 @@ class LangChainMCPAgent(TracingMixin):
         llm = get_llm(
             provider=provider,
             model=lc.model_name or None,
+            api_key=getattr(lc, "anthropic_api_key", "lm-studio"),
             temperature=lc.temperature,
             max_tokens=lc.max_tokens,
             streaming=bool(getattr(lc, "stream_llm_tokens", True)),

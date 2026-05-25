@@ -161,6 +161,110 @@ class TestGetLlm:
         llm = get_llm(provider="ollama", ollama_base_url="http://localhost:11434")
         assert isinstance(llm, ChatOllama)
 
+    def test_lmstudio_provider_returns_chat_openai(self):
+        from langchain_openai import ChatOpenAI
+        llm = get_llm(provider="lmstudio", lmstudio_base_url="http://localhost:1234/v1")
+        assert isinstance(llm, ChatOpenAI)
+
+    def test_anthropic_lmstudio_provider_returns_chat_anthropic(self):
+        from langchain_anthropic import ChatAnthropic
+        llm = get_llm(
+            provider="anthropic-lmstudio",
+            lmstudio_base_url="http://localhost:1234/v1",
+            model="claude-3-5-sonnet-20241022",
+            api_key="lm-studio",
+        )
+        assert isinstance(llm, ChatAnthropic)
+
+    def test_anthropic_lmstudio_strips_v1_from_base_url(self):
+        """anthropic-lmstudio must strip /v1 so Anthropic SDK can append /v1/messages."""
+        from langchain_anthropic import ChatAnthropic
+        llm = get_llm(
+            provider="anthropic-lmstudio",
+            lmstudio_base_url="http://localhost:1234/v1",
+            api_key="lm-studio",
+        )
+        assert isinstance(llm, ChatAnthropic)
+        # anthropic_api_url should be the bare origin
+        assert llm.anthropic_api_url == "http://localhost:1234"
+
+
+# ---------------------------------------------------------------------------
+# helix_key_loader — auto-load from JSON file
+# ---------------------------------------------------------------------------
+
+class TestHelixKeyLoader:
+    def test_loads_key_from_file(self, tmp_path):
+        import json
+        from src.agent.helix_key_loader import load_agent_key
+        key_file = tmp_path / "TestAgent.json"
+        key_file.write_text(json.dumps({"keyValue": "my-agent-key"}))
+
+        # Patch the search candidates to include tmp_path
+        import src.agent.helix_key_loader as loader
+        original_repo_root = loader._REPO_ROOT
+        loader._REPO_ROOT = tmp_path
+        loader.load_agent_key.cache_clear()
+        try:
+            result = loader.load_agent_key("TestAgent")
+            assert result == "my-agent-key"
+        finally:
+            loader._REPO_ROOT = original_repo_root
+            loader.load_agent_key.cache_clear()
+
+    def test_returns_none_when_no_file(self, tmp_path):
+        import src.agent.helix_key_loader as loader
+        original_repo_root = loader._REPO_ROOT
+        original_home = loader._HOME
+        loader._REPO_ROOT = tmp_path
+        loader._HOME = tmp_path
+        loader.load_agent_key.cache_clear()
+        try:
+            result = loader.load_agent_key("NoSuchAgent")
+            assert result is None
+        finally:
+            loader._REPO_ROOT = original_repo_root
+            loader._HOME = original_home
+            loader.load_agent_key.cache_clear()
+
+    def test_empty_key_value_returns_none(self, tmp_path):
+        import json
+        import src.agent.helix_key_loader as loader
+        key_file = tmp_path / "EmptyAgent.json"
+        key_file.write_text(json.dumps({"keyValue": ""}))
+        original_repo_root = loader._REPO_ROOT
+        loader._REPO_ROOT = tmp_path
+        loader.load_agent_key.cache_clear()
+        try:
+            result = loader.load_agent_key("EmptyAgent")
+            assert result is None
+        finally:
+            loader._REPO_ROOT = original_repo_root
+            loader.load_agent_key.cache_clear()
+
+    def test_chat_helix_raises_when_no_key(self, tmp_path):
+        """ChatHelix._resolve_api_key raises a clear error when no key is available."""
+        import src.agent.helix_key_loader as loader
+        original_repo_root = loader._REPO_ROOT
+        original_home = loader._HOME
+        loader._REPO_ROOT = tmp_path
+        loader._HOME = tmp_path
+        loader.load_agent_key.cache_clear()
+        try:
+            llm = ChatHelix(
+                helix_base_url="https://openam-helix.forgeblocks.com",
+                helix_api_key="",  # blank
+                helix_environment_id="e",
+                helix_agent_id="MissingAgent",
+                helix_prompt_field_id="f",
+            )
+            with pytest.raises(RuntimeError, match="No Helix API key found"):
+                llm._resolve_api_key()
+        finally:
+            loader._REPO_ROOT = original_repo_root
+            loader._HOME = original_home
+            loader.load_agent_key.cache_clear()
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

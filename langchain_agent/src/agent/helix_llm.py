@@ -103,16 +103,13 @@ class ChatHelix(BaseChatModel):
     """
     LangChain BaseChatModel backed by the Helix conversation API.
 
-    Required fields (set at construction or via HELIX_* env vars):
-        helix_base_url
-        helix_api_key
-        helix_environment_id
-        helix_agent_id
-        helix_prompt_field_id
+    helix_api_key is optional at construction — if blank, the loader falls
+    back to <helix_agent_id>.json in repo root / ~/Documents / ~/Downloads
+    (same search order as demo_api_server/services/helixAgentKeyLoader.js).
     """
 
     helix_base_url: str = Field(..., description="Helix tenant origin URL")
-    helix_api_key: str = Field(..., description="Helix API key (agent-scoped)")
+    helix_api_key: str = Field(default="", description="Helix API key (agent-scoped); auto-loaded from <agent_id>.json if blank")
     helix_environment_id: str = Field(..., description="Helix environment UUID")
     helix_agent_id: str = Field(..., description="Helix agent name (case-sensitive)")
     helix_prompt_field_id: str = Field(..., description="Input field ID inside the AI Task node")
@@ -121,14 +118,29 @@ class ChatHelix(BaseChatModel):
     def _llm_type(self) -> str:
         return "helix"
 
+    def _resolve_api_key(self) -> str:
+        """Return the API key — explicit field wins, then auto-load from JSON file."""
+        if self.helix_api_key:
+            return self.helix_api_key
+        from .helix_key_loader import load_agent_key
+        key = load_agent_key(self.helix_agent_id)
+        if not key:
+            raise RuntimeError(
+                f"No Helix API key found for agent '{self.helix_agent_id}'. "
+                f"Set HELIX_API_KEY or drop {self.helix_agent_id}.json in the repo root / ~/Documents / ~/Downloads. "
+                "The key must be agent-scoped (scope='agent') — env_admin keys return null."
+            )
+        return key
+
     # ------------------------------------------------------------------
     # Internal async implementation
     # ------------------------------------------------------------------
 
     async def _call_helix_async(self, messages: List[BaseMessage]) -> str:
         """Call the Helix conversation API and return the agent's text reply."""
+        api_key = self._resolve_api_key()
         base = _api_base(self.helix_base_url)
-        headers_json = {"Content-Type": "application/json", "x-api-key": self.helix_api_key}
+        headers_json = {"Content-Type": "application/json", "x-api-key": api_key}
         prompt = _build_prompt(messages)
 
         async with httpx.AsyncClient(timeout=60.0) as client:
@@ -168,7 +180,7 @@ class ChatHelix(BaseChatModel):
             deadline = asyncio.get_event_loop().time() + POLL_TIMEOUT_SECONDS
             while asyncio.get_event_loop().time() < deadline:
                 await asyncio.sleep(POLL_INTERVAL_SECONDS)
-                poll_resp = await client.get(msg_url, headers={"x-api-key": self.helix_api_key})
+                poll_resp = await client.get(msg_url, headers={"x-api-key": api_key})
                 if not poll_resp.is_success:
                     raise RuntimeError(f"Helix poll failed: {poll_resp.status_code} {poll_resp.text}")
                 data = poll_resp.json()

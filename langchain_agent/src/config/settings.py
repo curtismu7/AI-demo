@@ -62,10 +62,12 @@ class LangChainConfig:
     # WebSocket streaming: MCP tool lifecycle + optional LLM token deltas
     stream_mcp_tool_events: bool = True
     stream_llm_tokens: bool = True
-    # LLM provider — "helix" (default, project-wide), "ollama", or "lmstudio"
+    # LLM provider — "helix" (default), "ollama", "lmstudio", "anthropic-lmstudio"
     provider: str = "helix"
     ollama_base_url: str = "http://localhost:11434"
     lmstudio_base_url: str = "http://localhost:1234/v1"
+    # Anthropic API key — used by "anthropic-lmstudio" (any value works; LM Studio ignores it)
+    anthropic_api_key: str = "lm-studio"
     # Helix configuration (mirrors HELIX_* env vars used by demo_api_server)
     helix_base_url: str = "https://openam-helix.forgeblocks.com"
     helix_api_key: str = ""
@@ -370,6 +372,8 @@ class ConfigManager:
             provider=get_env_value("LANGCHAIN_LLM_PROVIDER", "helix"),
             ollama_base_url=get_env_value("OLLAMA_BASE_URL", "http://localhost:11434"),
             lmstudio_base_url=get_env_value("LMSTUDIO_BASE_URL", "http://localhost:1234/v1"),
+            # Anthropic API key — used by "anthropic-lmstudio"; LM Studio accepts any value
+            anthropic_api_key=get_env_value("ANTHROPIC_API_KEY", "lm-studio"),
             # Helix — mirrors HELIX_* env vars from demo_api_server
             helix_base_url=get_env_value("HELIX_BASE_URL", "https://openam-helix.forgeblocks.com"),
             helix_api_key=get_env_value("HELIX_API_KEY", ""),
