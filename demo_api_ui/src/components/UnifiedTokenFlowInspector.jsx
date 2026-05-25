@@ -7,6 +7,7 @@
  * - Can toggle between floating (draggable) and fixed (inline) modes
  */
 import React, { useState, useEffect, useCallback } from 'react';
+import TokenCard from './TokenCard';
 import bffAxios from '../services/bffAxios';
 import { fetchEnrichedUserInfo } from '../services/userInfoService';
 import { createPortal } from 'react-dom';
@@ -39,24 +40,6 @@ const CLAIM_GLOSSARY = {
   auth_time: 'Authentication Time (OpenID Core §2) — when the user last authenticated. Used to enforce max_age and step-up policies.',
 };
 
-function formatTimestamp(ts) {
-  if (!ts) return '—';
-  try {
-    return new Date(ts * 1000).toLocaleString();
-  } catch {
-    return String(ts);
-  }
-}
-
-function calculateTimeRemaining(expTs) {
-  if (!expTs) return null;
-  const diffMs = expTs * 1000 - Date.now();
-  if (diffMs <= 0) return 'Expired';
-  const minutes = Math.floor(diffMs / 60000);
-  const seconds = Math.floor((diffMs % 60000) / 1000);
-  if (minutes > 0) return `${minutes}m ${seconds}s remaining`;
-  return `${seconds}s remaining`;
-}
 
 function ScopesBadges({ scope, tokenLabel }) {
   if (!scope) return (
@@ -368,7 +351,6 @@ function OAuthInspectorSection({ selectedToken }) {
   const [error, setError] = useState(null);
   const [enrichedInfo, setEnrichedInfo] = useState(null);
   const [enrichedLoading, setEnrichedLoading] = useState(false);
-  const [timeRemaining, setTimeRemaining] = useState(null);
   const [isExpired, setIsExpired] = useState(false);
   const [expandedSections, setExpandedSections] = useState({
     identity: true,
@@ -514,17 +496,10 @@ function OAuthInspectorSection({ selectedToken }) {
   }, []);
 
   const expTs = tokenClaims?.payload?.exp;
-  const updateTimeRemaining = useCallback(() => {
-    setTimeRemaining(calculateTimeRemaining(expTs));
-    setIsExpired(expTs ? (expTs * 1000 < Date.now()) : false);
-  }, [expTs]);
 
   useEffect(() => {
-    if (!expTs) return;
-    updateTimeRemaining();
-    const interval = setInterval(updateTimeRemaining, 30000);
-    return () => clearInterval(interval);
-  }, [expTs, updateTimeRemaining]);
+    setIsExpired(expTs ? (expTs * 1000 < Date.now()) : false);
+  }, [expTs]);
 
   // Capture token exchange events from agent actions
   useEffect(() => {
@@ -635,7 +610,6 @@ function OAuthInspectorSection({ selectedToken }) {
   }
 
   const payload = tokenClaims?.payload || {};
-  const header = tokenClaims?.header || {};
   const user = userStatus?.user;
 
   return (
@@ -659,6 +633,15 @@ function OAuthInspectorSection({ selectedToken }) {
       </div>
 
       <div className="utfi-sections">
+        <TokenCard
+          decoded={tokenClaims}
+          title="OAuth Token"
+          defaultExpanded
+          showHeader
+          showIdentity
+          showScopes
+          showRaw
+        />
         {renderSection('identity', 'Identity & Profile', '👤', (
           <>
             <ClaimRow label="Username" value={user?.username} />
@@ -793,29 +776,6 @@ function OAuthInspectorSection({ selectedToken }) {
           </div>
         ))}
 
-        {(payload.iat || payload.exp || timeRemaining) && renderSection('validity', 'Token Validity', '⏱', (
-          <>
-            <ClaimRow label="Issued At" value={payload.iat ? formatTimestamp(payload.iat) : null} glossary={CLAIM_GLOSSARY.iat} />
-            <ClaimRow label="Expires At" value={payload.exp ? formatTimestamp(payload.exp) : null} glossary={CLAIM_GLOSSARY.exp} />
-            {timeRemaining && (
-              <div className="utfi-claim-row">
-                <span className="utfi-claim-key">Time Remaining</span>
-                <span className={`utfi-claim-value ${isExpired ? 'utfi-expired-text' : 'utfi-active-text'}`}>
-                  {timeRemaining}
-                </span>
-              </div>
-            )}
-          </>
-        ))}
-
-        {(payload.iss || header.alg || payload.env) && renderSection('provider', 'Provider', '🏛', (
-          <>
-            <ClaimRow label="Issuer (iss)" value={payload.iss} glossary={CLAIM_GLOSSARY.iss} />
-            <ClaimRow label="Algorithm" value={header.alg} />
-            <ClaimRow label="Environment" value={payload.env} glossary={CLAIM_GLOSSARY.env} />
-          </>
-        ))}
-
         {(enrichedLoading || enrichedInfo?.error || hasAnyField(enrichedInfo?.data)) && renderSection('account', 'Account Information', '📋', (
           <>
             {enrichedLoading && <div className="utfi-muted">Loading PingOne profile…</div>}
@@ -830,9 +790,6 @@ function OAuthInspectorSection({ selectedToken }) {
           </>
         ))}
 
-        {Object.keys(payload).length > 0 && renderSection('rawJson', 'Raw Claims (JSON)', '{ }', (
-          <pre className="utfi-raw-json">{JSON.stringify(payload, null, 2)}</pre>
-        ))}
       </div>
     </div>
   );
