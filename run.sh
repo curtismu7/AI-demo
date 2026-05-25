@@ -995,13 +995,12 @@ fi
   LMS_BASE="${LMS_BASE%/v1}"  # strip /v1 suffix if present
   LMS_DEFAULT_MODEL="${LMSTUDIO_DEFAULT_MODEL:-google/gemma-4-e2b}"
 
-  # Quick ping — is the server up?
-  if curl -sf --max-time 3 "${LMS_BASE}/api/v1/models" -o /dev/null 2>/dev/null; then
+  # Single fetch — reachability + loaded-model list in one call
+  LMS_MODELS=$(curl -sf --max-time 3 "${LMS_BASE}/api/v1/models" 2>/dev/null)
+  if [ $? -eq 0 ] && [ -n "${LMS_MODELS}" ]; then
     echo "[LMS]  LM Studio server detected at ${LMS_BASE}"
 
-    # Check if default model is already loaded
-    LOADED=$(curl -sf --max-time 3 "${LMS_BASE}/api/v1/models" 2>/dev/null \
-      | python3 -c "
+    LOADED=$(echo "${LMS_MODELS}" | python3 -c "
 import sys, json
 try:
   d = json.load(sys.stdin)
@@ -1026,6 +1025,7 @@ except: pass
   else
     echo "[LMS]  LM Studio server not detected — start it in LM Studio → Developer tab"
   fi
+
 ) &
 
 # Wait for Tier 3 services (UI and LangChain were launched above to run in parallel)

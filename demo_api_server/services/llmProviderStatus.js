@@ -1,15 +1,13 @@
 /**
  * LLM Provider Status Service
  *
- * Checks Ollama provider availability by:
- * 1. Attempting a lightweight health check (≤3 second timeout)
- * 2. Returning status: 'available' | 'unreachable'
+ * Checks provider availability via a lightweight health check (≤3 second timeout).
+ * Returns status: 'available' | 'unreachable' | 'unconfigured'
  */
+const { getLmStudioBase } = require('./lmstudioService');
 
 /**
- * Get provider availability status
- *
- * @param {string} provider - Provider name (only 'ollama' supported)
+ * @param {string} provider
  * @param {object} config - Config object with provider settings
  * @returns {Promise<{status: string, reason: string, hasKey: boolean, isReachable: boolean}>}
  */
@@ -62,11 +60,7 @@ async function getProviderStatus(provider, config = {}) {
 
   // LM Studio (Anthropic-compat) — ping the local server; no API key required
   if (provider === 'anthropic-lmstudio') {
-    const lmstudioBase = config.lmstudio_base_url ||
-      process.env.LMSTUDIO_BASE_URL ||
-      'http://localhost:1234';
-    // Normalise: strip trailing /v1 so we always ping the origin
-    const origin = lmstudioBase.replace(/\/v1\/?$/, '');
+    const origin = getLmStudioBase();
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), HEALTH_CHECK_TIMEOUT);

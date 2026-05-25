@@ -45,7 +45,20 @@ export default function LmStudioPanel() {
 
   useEffect(() => {
     checkStatus();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [checkStatus]);
+
+  const handleLoad = useCallback(async (model) => {
+    setLoading(true);
+    try {
+      await apiClient.post('/api/langchain/lmstudio/load', { model: model || selectedModel });
+      notifySuccess(`${model || selectedModel} loaded`);
+      await checkStatus();
+    } catch (err) {
+      notifyError(`Load failed: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  }, [checkStatus, selectedModel]);
 
   // Poll download progress when a job is running
   useEffect(() => {
@@ -76,7 +89,7 @@ export default function LmStudioPanel() {
       }
     }, 3000);
     return () => clearInterval(interval);
-  }, [downloadJobId, selectedModel]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [downloadJobId, selectedModel, handleLoad, checkStatus]);
 
   const handleDownload = async () => {
     setDownloading(true);
@@ -100,19 +113,6 @@ export default function LmStudioPanel() {
     } catch (err) {
       setDownloading(false);
       notifyError(`Download failed: ${err.message}`);
-    }
-  };
-
-  const handleLoad = async (model) => {
-    setLoading(true);
-    try {
-      await apiClient.post('/api/langchain/lmstudio/load', { model: model || selectedModel });
-      notifySuccess(`${model || selectedModel} loaded`);
-      await checkStatus();
-    } catch (err) {
-      notifyError(`Load failed: ${err.message}`);
-    } finally {
-      setLoading(false);
     }
   };
 

@@ -15,20 +15,11 @@
  * Anthropic-compat endpoint: POST /v1/messages (same origin, no /api/v1 prefix)
  */
 const express = require('express');
-const configStore = require('../services/configStore');
+const { getLmStudioBase } = require('../services/lmstudioService');
 
 const router = express.Router();
 
-// Target model for auto-setup — Gemma 4 E2B (Google, 2B, fast on laptops)
 const DEFAULT_MODEL = 'google/gemma-4-e2b';
-
-function getLmStudioBase() {
-  const raw = configStore.getEffective('lmstudio_base_url') ||
-    process.env.LMSTUDIO_BASE_URL ||
-    'http://localhost:1234';
-  // Strip /v1 suffix — we always talk to the origin; LM Studio appends paths itself
-  return raw.replace(/\/v1\/?$/, '');
-}
 
 async function lmsRequest(path, options = {}) {
   const base = getLmStudioBase();
@@ -49,10 +40,9 @@ async function lmsRequest(path, options = {}) {
   }
 }
 
-// GET /api/langchain/lmstudio/status
-// Returns server reachability + list of models (downloaded + loaded state)
 router.get('/status', async (req, res) => {
   try {
+    const base = getLmStudioBase();
     const response = await lmsRequest('/api/v1/models', { timeout: 5_000 });
     if (!response.ok) {
       return res.json({ server_running: false, reason: `LM Studio returned ${response.status}`, models: [] });
@@ -66,7 +56,6 @@ router.get('/status', async (req, res) => {
       size_bytes: m.size_bytes,
       capabilities: m.capabilities,
     }));
-    const base = getLmStudioBase();
     res.json({
       server_running: true,
       base_url: base,
@@ -79,9 +68,6 @@ router.get('/status', async (req, res) => {
   }
 });
 
-// POST /api/langchain/lmstudio/download
-// Body: { model?: string }  — defaults to DEFAULT_MODEL
-// Starts a download job; returns { job_id, status, total_size_bytes }
 router.post('/download', async (req, res) => {
   const model = req.body?.model || DEFAULT_MODEL;
   try {
@@ -90,19 +76,17 @@ router.post('/download', async (req, res) => {
       body: JSON.stringify({ model }),
       timeout: 15_000,
     });
-    const data = await response.json();
     if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
       return res.status(response.status).json({ ok: false, error: data?.error || 'Download request failed', model });
     }
-    // status: 'downloading' | 'already_downloaded' | 'completed'
+    const data = await response.json();
     res.json({ ok: true, model, ...data });
   } catch (err) {
     res.status(503).json({ ok: false, error: `LM Studio unreachable: ${err.message}`, model });
   }
 });
 
-// GET /api/langchain/lmstudio/download/status?job_id=<id>
-// Polls download job progress. job_id from the /download response.
 router.get('/download/status', async (req, res) => {
   const { job_id } = req.query;
   if (!job_id) {
@@ -110,11 +94,11 @@ router.get('/download/status', async (req, res) => {
   }
   try {
     const response = await lmsRequest(`/api/v1/models/download/status/${encodeURIComponent(job_id)}`, { timeout: 5_000 });
-    const data = await response.json();
     if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
       return res.status(response.status).json({ ok: false, error: data?.error || 'Status check failed' });
     }
-    // Compute progress percentage when bytes are available
+    const data = await response.json();
     const pct = (data.total_size_bytes && data.downloaded_bytes != null)
       ? Math.round((data.downloaded_bytes / data.total_size_bytes) * 100)
       : null;
@@ -124,9 +108,6 @@ router.get('/download/status', async (req, res) => {
   }
 });
 
-// POST /api/langchain/lmstudio/load
-// Body: { model?: string, context_length?: number }
-// Loads a downloaded model into memory via LM Studio's /api/v1/models/load
 router.post('/load', async (req, res) => {
   const model = req.body?.model || DEFAULT_MODEL;
   const body = { model };
@@ -135,20 +116,19 @@ router.post('/load', async (req, res) => {
     const response = await lmsRequest('/api/v1/models/load', {
       method: 'POST',
       body: JSON.stringify(body),
-      timeout: 60_000, // loading can take a while
+      timeout: 60_000,
     });
-    const data = await response.json();
     if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
       return res.status(response.status).json({ ok: false, error: data?.error || 'Load failed', model });
     }
+    const data = await response.json();
     res.json({ ok: true, model, ...data });
   } catch (err) {
     res.status(503).json({ ok: false, error: `LM Studio unreachable: ${err.message}`, model });
   }
 });
 
-// POST /api/langchain/lmstudio/unload
-// Body: { model: string }
 router.post('/unload', async (req, res) => {
   const model = req.body?.model;
   if (!model) return res.status(400).json({ ok: false, error: 'model required' });
@@ -158,10 +138,11 @@ router.post('/unload', async (req, res) => {
       body: JSON.stringify({ model }),
       timeout: 15_000,
     });
-    const data = await response.json();
     if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
       return res.status(response.status).json({ ok: false, error: data?.error || 'Unload failed', model });
     }
+    const data = await response.json();
     res.json({ ok: true, model, ...data });
   } catch (err) {
     res.status(503).json({ ok: false, error: `LM Studio unreachable: ${err.message}`, model });
