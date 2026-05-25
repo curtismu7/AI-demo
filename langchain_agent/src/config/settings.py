@@ -316,6 +316,13 @@ class ConfigManager:
         """Validate configuration for the current environment."""
         env_config = self._environment_configs.get(config.environment)
         if env_config:
+            skip_sig = os.environ.get("SKIP_TOKEN_SIGNATURE_VALIDATION", "").lower() == "true"
+            if skip_sig and config.environment not in {"development", "test"}:
+                raise RuntimeError(
+                    "SKIP_TOKEN_SIGNATURE_VALIDATION=true is not permitted outside development "
+                    f"environments (current environment: {config.environment!r}). "
+                    "Unset this variable before starting in staging or production."
+                )
             env_config.validate_config(config)
     
     def _build_config(self, environment: Optional[str] = None) -> AppConfig:
