@@ -7,10 +7,10 @@ from unittest.mock import Mock, AsyncMock, patch, MagicMock
 from datetime import datetime, timedelta
 import json
 
-from src.mcp.tool_registry import ToolInfo, ToolRegistry, MCPToolExecutor, MCPClientManager
-from src.mcp.connection import MCPConnectionPool, MCPConnection
-from src.models.mcp import MCPServerConfig, AuthRequirements, AuthRequirementType, MCPToolCall
-from src.models.auth import AccessToken, AuthorizationCode
+from mcp.tool_registry import ToolInfo, ToolRegistry, MCPToolExecutor, MCPClientManager
+from mcp.connection import MCPConnectionPool, MCPConnection
+from models.mcp import MCPServerConfig, AuthRequirements, AuthRequirementType, MCPToolCall
+from models.auth import AccessToken, AuthorizationCode
 
 
 @pytest.fixture
@@ -272,7 +272,25 @@ class TestMCPToolExecutor:
     @pytest.fixture
     def tool_executor(self, mock_connection_pool, mock_tool_registry):
         """Tool executor with mocked dependencies"""
-        return MCPToolExecutor(mock_connection_pool, mock_tool_registry)
+        auth_requirements = AuthRequirements(
+            type=AuthRequirementType.AGENT_TOKEN,
+            scopes=["read", "write"]
+        )
+        server_names = ["test_server", "server1", "server2", "server3"]
+        server_configs = {
+            name: MCPServerConfig(
+                name=name,
+                endpoint="ws://localhost:8080/mcp",
+                capabilities=["tool_execution"],
+                auth_requirements=auth_requirements
+            )
+            for name in server_names
+        }
+        return MCPToolExecutor(
+            mock_connection_pool,
+            mock_tool_registry,
+            server_configs=server_configs
+        )
     
     @pytest.mark.asyncio
     async def test_execute_tool_success(self, tool_executor, mock_connection_pool, 
