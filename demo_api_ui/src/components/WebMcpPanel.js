@@ -164,6 +164,9 @@ export default function WebMcpPanel() {
           <div className="webmcp-body">
             <div className="webmcp-tool-list">
               <h4>Available Tools ({tools.length})</h4>
+              {tools.length > 0 && (
+                <p className="webmcp-tool-hint">Select a tool to inspect and call it</p>
+              )}
               {tools.map((tool) => (
                 <button
                   key={tool.name}
@@ -176,6 +179,12 @@ export default function WebMcpPanel() {
                 </button>
               ))}
             </div>
+
+            {!selectedTool && tools.length > 0 && (
+              <div className="webmcp-tool-placeholder">
+                <p>Select a tool from the list to inspect its schema, fill in parameters, and call it live through the MCP pipeline.</p>
+              </div>
+            )}
 
             {selectedTool && (
               <div className="webmcp-tool-detail">
@@ -217,12 +226,20 @@ export default function WebMcpPanel() {
 
                 <button
                   type="button"
-                  className="webmcp-call-btn"
+                  className={`webmcp-call-btn${loading ? " webmcp-call-btn--loading" : ""}`}
                   onClick={callSelectedTool}
                   disabled={loading}
                 >
+                  {loading && <span className="webmcp-btn-spinner" aria-hidden="true" />}
                   {loading ? "Calling…" : "Call Tool"}
                 </button>
+
+                {loading && (
+                  <div className="webmcp-calling-status">
+                    <span className="webmcp-calling-spinner" aria-hidden="true" />
+                    <span>Calling <strong>{selectedTool.name}</strong> — waiting for response…</span>
+                  </div>
+                )}
 
                 {streamEvents.length > 0 && (
                   <div className="webmcp-stream-log" ref={streamLogRef}>

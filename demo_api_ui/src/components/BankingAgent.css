@@ -199,6 +199,12 @@ body > .banking-agent-float-root .banking-agent-panel {
   min-width: 100%;
   order: -1;
 }
+/* Inline: prevent ba-body from wrapping so ba-right-col gets a definite height
+   and banking-agent-messages can scroll instead of expanding to content height.
+   Exception: when the consent-denied banner is present it still needs to wrap. */
+.banking-agent-panel.ba-mode-inline .ba-body {
+  flex-wrap: nowrap;
+}
 .banking-agent-panel.ba-mode-inline .ba-body:has(.ba-consent-denied-banner) {
   flex-wrap: wrap;
 }

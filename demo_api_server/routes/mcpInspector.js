@@ -17,7 +17,6 @@ const {
   mcpCallTool,
 } = require('../services/mcpWebSocketClient');
 const { callToolLocal, listLocalInspectorTools } = require('../services/mcpLocalTools');
-const runtimeSettings = require('../config/runtimeSettings');
 const archEmit = require('../services/archEventEmitter');
 
 const MCP_SESSION_NEEDED_MSG =
@@ -122,10 +121,6 @@ router.get('/context', async (req, res) => {
 
 // GET /api/mcp/inspector/tools — live tools/list from MCP server, or local catalog when no MCP bearer / MCP down
 router.get('/tools', async (req, res) => {
-  // MFA gate: require step-up verification before listing tools.
-  if (runtimeSettings.get('stepUpEnabled') && !(req.session?.stepUpVerified > Date.now())) {
-    return res.json({ tools: [], mfa_required: true, step_up_method: runtimeSettings.get('stepUpMethod') || 'p1mfa', _source: 'mfa_gate' });
-  }
   const effectiveUserId = req.session?.user?.id || req.user?.id || null;
   const mcpUrl = getMcpServerUrl();
   const isLocalDefault = mcpUrl === 'ws://localhost:8080' && !process.env.MCP_SERVER_URL;

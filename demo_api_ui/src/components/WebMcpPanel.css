@@ -35,8 +35,8 @@
 }
 
 .webmcp-tool-list h4 {
-  margin: 0 0 8px;
-  font-size: 13px;
+  margin: 0 0 10px;
+  font-size: 16px;
   color: #8899bb;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -47,38 +47,63 @@
   flex-direction: column;
   align-items: flex-start;
   width: 100%;
-  padding: 8px 10px;
-  margin-bottom: 4px;
-  border: 1px solid transparent;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.04);
   color: #c5d0e6;
   cursor: pointer;
   text-align: left;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
 }
 
 .webmcp-tool-item:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(59, 130, 246, 0.4);
+  transform: translateX(2px);
 }
 
 .webmcp-tool-item.active {
-  background: rgba(59, 130, 246, 0.15);
-  border-color: rgba(59, 130, 246, 0.4);
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.6);
+  border-left: 3px solid #3b82f6;
 }
 
 .webmcp-tool-name {
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 600;
   color: #e0e6f0;
 }
 
 .webmcp-tool-desc {
-  font-size: 11px;
+  font-size: 14px;
   color: #7888a8;
-  margin-top: 2px;
-  line-height: 1.3;
+  margin-top: 4px;
+  line-height: 1.5;
+}
+
+/* Right-panel placeholder when no tool is selected */
+.webmcp-tool-placeholder {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: #5a6a8a;
+  font-size: 15px;
+  text-align: center;
+  line-height: 1.6;
+}
+
+/* Click hint shown below tool list header */
+.webmcp-tool-hint {
+  font-size: 13px;
+  color: #5a6a8a;
+  margin: -4px 0 10px;
+  font-style: italic;
 }
 
 /* Tool detail (right column) */
@@ -88,14 +113,14 @@
 }
 
 .webmcp-tool-detail h4 {
-  margin: 0 0 4px;
-  font-size: 15px;
+  margin: 0 0 6px;
+  font-size: 20px;
   color: #fff;
 }
 
 .webmcp-tool-detail-desc {
-  margin: 0 0 12px;
-  font-size: 13px;
+  margin: 0 0 16px;
+  font-size: 15px;
   color: #8899bb;
 }
 
@@ -105,8 +130,8 @@
 }
 
 .webmcp-params h5 {
-  margin: 0 0 8px;
-  font-size: 12px;
+  margin: 0 0 10px;
+  font-size: 13px;
   color: #8899bb;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -115,8 +140,8 @@
 .webmcp-param-label {
   display: flex;
   flex-direction: column;
-  margin-bottom: 8px;
-  font-size: 13px;
+  margin-bottom: 10px;
+  font-size: 15px;
   color: #c5d0e6;
 }
 
@@ -126,18 +151,18 @@
 }
 
 .webmcp-param-hint {
-  font-size: 11px;
+  font-size: 13px;
   color: #7888a8;
 }
 
 .webmcp-param-input {
-  margin-top: 4px;
-  padding: 6px 10px;
+  margin-top: 6px;
+  padding: 8px 12px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 4px;
   background: rgba(0, 0, 0, 0.2);
   color: #e0e6f0;
-  font-size: 13px;
+  font-size: 15px;
   font-family: inherit;
 }
 
@@ -146,14 +171,22 @@
   border-color: rgba(59, 130, 246, 0.5);
 }
 
+/* Spinner keyframe shared by both spinners */
+@keyframes webmcp-spin {
+  to { transform: rotate(360deg); }
+}
+
 /* Call button */
 .webmcp-call-btn {
-  padding: 8px 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
   border: none;
   border-radius: 6px;
   background: #3b82f6;
   color: #fff;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.15s;
@@ -164,8 +197,50 @@
 }
 
 .webmcp-call-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.7;
   cursor: not-allowed;
+}
+
+/* Spinner inside the button */
+.webmcp-btn-spinner {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: webmcp-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+/* Inline status block below the button */
+.webmcp-calling-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px 16px;
+  border-radius: 6px;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  font-size: 15px;
+  color: #a3b5d6;
+}
+
+.webmcp-calling-status strong {
+  color: #c5d0e6;
+}
+
+/* Larger spinner in the status block */
+.webmcp-calling-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(59, 130, 246, 0.3);
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: webmcp-spin 0.7s linear infinite;
+  flex-shrink: 0;
 }
 
 /* Stream log */
@@ -180,7 +255,7 @@
 
 .webmcp-stream-log h5 {
   margin: 0 0 8px;
-  font-size: 12px;
+  font-size: 13px;
   color: #8899bb;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -188,12 +263,12 @@
 
 .webmcp-stream-event {
   font-family: inherit;
-  font-size: 11px;
+  font-size: 13px;
   color: #a3b5d6;
   white-space: pre-wrap;
   word-break: break-all;
   margin-bottom: 4px;
-  padding: 4px 6px;
+  padding: 6px 8px;
   border-radius: 3px;
   background: rgba(0, 0, 0, 0.2);
 }
@@ -205,7 +280,7 @@
 
 .webmcp-result h5 {
   margin: 0 0 8px;
-  font-size: 12px;
+  font-size: 13px;
   color: #8899bb;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -213,11 +288,11 @@
 
 .webmcp-result pre {
   margin: 0;
-  padding: 10px;
+  padding: 12px;
   background: rgba(0, 0, 0, 0.3);
   border-radius: 6px;
   font-family: inherit;
-  font-size: 12px;
+  font-size: 14px;
   color: #c5d0e6;
   white-space: pre-wrap;
   word-break: break-all;
