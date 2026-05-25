@@ -114,6 +114,18 @@ Plans:
 Plans:
 - [ ] 279-01-PLAN.md — Production guard + tests + session binding verification
 
+### Phase 280: wire-mcp-tool-annotations
+
+**Goal:** Pass annotations from MCP tool metadata (destructive, idempotent flags emitted by demo_mcp_server/src/tools/BankingToolRegistry.ts) through to LangChain BaseTool.metadata dict, then add a system prompt instruction that uses annotation-aware decision making (pause before calling destructive tools).
+
+**Requirements:** ANNO-01, ANNO-02, ANNO-03, ANNO-04
+
+**Plans:** 1 plan
+
+Plans:
+- [ ] 280-01-PLAN.md — Propagate annotations through connection -> ToolInfo -> MCPTool.metadata + system prompt instruction
+
+
 ### Phase 224: token-audit-trail-and-decoder
 
 **Goal:** Add dual-tab "Audit Trail + Token Decoder" panel to the Dev Tools Dashboard. Audit Trail shows a timestamped list of operations (token acquisitions, MCP tool calls, auth events) with colored scope/context badges and click-through detail. Token Decoder shows side-by-side decoded JWT claim columns for each token in the current chain (actor token, subject token, resource server tokens), highlighting key fields like `scope`, `may_act`, `act`, `sub`.
