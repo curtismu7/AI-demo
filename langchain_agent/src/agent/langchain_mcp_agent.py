@@ -219,16 +219,15 @@ Remember to maintain conversation context and provide helpful, accurate response
 
         Args:
             session_id: The chat session ID (used as thread_id for MemorySaver).
-            stream_context: Optional dict with websocket_handler; kept for future use.
+            stream_context: Optional dict with websocket_handler; kept for API symmetry.
             tracer_callback: DetailedTracingCallbackHandler instance to wire into callbacks.
 
         Returns:
             RunnableConfig with configurable thread_id, callbacks, and recursion_limit.
         """
-        callbacks = [tracer_callback]
         return RunnableConfig(
             configurable={"thread_id": session_id},
-            callbacks=callbacks,
+            callbacks=[tracer_callback],
             recursion_limit=getattr(self.config.langchain, "max_iterations", 25),
         )
     

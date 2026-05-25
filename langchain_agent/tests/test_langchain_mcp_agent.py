@@ -85,12 +85,25 @@ def mock_auth_manager():
     return manager
 
 
+async def _fake_astream_events_ok(*args, **kwargs):
+    """Async generator that yields a synthetic on_chain_end event with a mock AIMessage."""
+    yield {
+        "event": "on_chain_end",
+        "data": {"output": {"messages": [AIMessage(content="mock response")]}},
+    }
+
+
 def _make_mock_graph():
-    """Build a mock CompiledStateGraph compatible with graph.ainvoke() interface."""
+    """Build a mock CompiledStateGraph compatible with both ainvoke() and astream_events() interfaces.
+
+    - ainvoke: used by process_message (non-tracing path)
+    - astream_events: used by process_message_with_tracing (Phase 276+)
+    """
     mock_graph = AsyncMock()
     mock_graph.ainvoke = AsyncMock(return_value={
         "messages": [AIMessage(content="mock response")]
     })
+    mock_graph.astream_events = _fake_astream_events_ok
     mock_graph.get_state = Mock(return_value=SimpleNamespace(values={"messages": []}))
     return mock_graph
 
@@ -416,15 +429,25 @@ class TestInitializeTools:
 # ---------------------------------------------------------------------------
 
 class TestProcessMessageWithTracing:
-    """Tests for process_message_with_tracing() using LangGraph graph.ainvoke."""
+    """Tests for process_message_with_tracing() using LangGraph astream_events v2."""
 
     @pytest.mark.asyncio
-    async def test_uses_thread_id_as_session_id(self, agent, mock_tools):
-        """graph.ainvoke must be called with config.configurable.thread_id == session_id."""
+    async def test_uses_astream_events_for_execution(self, agent, mock_tools):
+        """process_message_with_tracing uses astream_events (not ainvoke) on the graph."""
         session_id = "test-session-abc"
         user_message = "What are my accounts?"
 
+        captured_inputs = []
+
+        async def capturing_stream(*args, **kwargs):
+            captured_inputs.append((args, kwargs))
+            yield {
+                "event": "on_chain_end",
+                "data": {"output": {"messages": [AIMessage(content="mock response")]}},
+            }
+
         mock_graph = _make_mock_graph()
+        mock_graph.astream_events = capturing_stream
         agent._graph = mock_graph
         agent._tools = mock_tools
 
@@ -435,26 +458,34 @@ class TestProcessMessageWithTracing:
         # Use real ConversationMemory to set up user identification
         await agent.conversation_memory.set_user_identified(session_id, "user@test.com", "user-1")
 
-        await agent.process_message_with_tracing(user_message, session_id)
+        response = await agent.process_message_with_tracing(user_message, session_id)
 
-        mock_graph.ainvoke.assert_called_once()
-        call_kwargs = mock_graph.ainvoke.call_args
-        config = call_kwargs.kwargs.get("config") or call_kwargs[1].get("config") or call_kwargs[0][1]
-        assert config["configurable"]["thread_id"] == session_id
+        # astream_events was called (not ainvoke)
+        assert len(captured_inputs) == 1, "astream_events must be called exactly once"
+        mock_graph.ainvoke.assert_not_called()
+        assert response == "mock response"
 
     @pytest.mark.asyncio
-    async def test_extracts_response_from_last_message(self, agent, mock_tools):
-        """Response must be result['messages'][-1].content, not result.get('output')."""
+    async def test_extracts_response_from_on_chain_end(self, agent, mock_tools):
+        """Response is extracted from on_chain_end output.messages[-1].content."""
         session_id = "test-session-xyz"
         user_message = "Show my balance"
 
+        async def balance_stream(*args, **kwargs):
+            yield {
+                "event": "on_chain_end",
+                "data": {
+                    "output": {
+                        "messages": [
+                            HumanMessage(content=user_message),
+                            AIMessage(content="Your balance is $1,234.56"),
+                        ]
+                    }
+                },
+            }
+
         mock_graph = _make_mock_graph()
-        mock_graph.ainvoke = AsyncMock(return_value={
-            "messages": [
-                HumanMessage(content=user_message),
-                AIMessage(content="Your balance is $1,234.56"),
-            ]
-        })
+        mock_graph.astream_events = balance_stream
         agent._graph = mock_graph
         agent._tools = mock_tools
 
@@ -474,9 +505,19 @@ class TestProcessMessageWithTracing:
         session_id = "fresh-session-001"
         user_message = "Hello"
 
+        captured_inputs = []
+
+        async def capturing_stream(*args, **kwargs):
+            captured_inputs.append(args[0] if args else kwargs.get("input", {}))
+            yield {
+                "event": "on_chain_end",
+                "data": {"output": {"messages": [AIMessage(content="mock response")]}},
+            }
+
         mock_graph = _make_mock_graph()
         # Simulate empty checkpoint (first turn)
         mock_graph.get_state = Mock(return_value=SimpleNamespace(values={"messages": []}))
+        mock_graph.astream_events = capturing_stream
         agent._graph = mock_graph
         agent._tools = mock_tools
 
@@ -488,8 +529,8 @@ class TestProcessMessageWithTracing:
 
         await agent.process_message_with_tracing(user_message, session_id)
 
-        call_args = mock_graph.ainvoke.call_args
-        messages_arg = call_args[0][0]["messages"]
+        assert len(captured_inputs) == 1
+        messages_arg = captured_inputs[0]["messages"]
         assert isinstance(messages_arg[0], SystemMessage), \
             "First message must be SystemMessage on first turn"
         assert isinstance(messages_arg[-1], HumanMessage)
@@ -500,11 +541,21 @@ class TestProcessMessageWithTracing:
         session_id = "existing-session-002"
         user_message = "What about transfers?"
 
+        captured_inputs = []
+
+        async def capturing_stream(*args, **kwargs):
+            captured_inputs.append(args[0] if args else kwargs.get("input", {}))
+            yield {
+                "event": "on_chain_end",
+                "data": {"output": {"messages": [AIMessage(content="mock response")]}},
+            }
+
         mock_graph = _make_mock_graph()
         # Simulate non-empty checkpoint (subsequent turn)
         mock_graph.get_state = Mock(return_value=SimpleNamespace(values={
             "messages": [HumanMessage(content="prior message")]
         }))
+        mock_graph.astream_events = capturing_stream
         agent._graph = mock_graph
         agent._tools = mock_tools
 
@@ -516,8 +567,8 @@ class TestProcessMessageWithTracing:
 
         await agent.process_message_with_tracing(user_message, session_id)
 
-        call_args = mock_graph.ainvoke.call_args
-        messages_arg = call_args[0][0]["messages"]
+        assert len(captured_inputs) == 1
+        messages_arg = captured_inputs[0]["messages"]
         assert not isinstance(messages_arg[0], SystemMessage), \
             "SystemMessage must NOT be injected on subsequent turns"
         assert isinstance(messages_arg[0], HumanMessage)
