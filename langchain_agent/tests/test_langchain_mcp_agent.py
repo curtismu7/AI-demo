@@ -1,13 +1,21 @@
 """
 Unit tests for LangChain MCP Agent — updated for LangGraph migration (Phase 275).
 
-Key changes from pre-migration tests:
-- patch target: 'src.agent.langchain_mcp_agent.get_llm' (not ChatOpenAI)
-- patch target: 'src.agent.langchain_mcp_agent.create_react_agent'
-- patch target: 'src.agent.langchain_mcp_agent.MemorySaver'
-- graph.ainvoke returns {"messages": [AIMessage(content="...")]} not {"output": "..."}
-- config["configurable"]["thread_id"] == session_id is the key assertion
-- self._graph (not self._agent_executor) is the compiled graph handle
+Philosophy (user request: "no mock tests if we can"):
+  - ConversationMemory: fully real — no mocks
+  - Pure string helpers (_looks_like_email, _detect_authorization_code, etc.): real
+  - _build_system_message: real (reads only ConversationMemory, no LLM)
+  - BasicChatAgent (no-tools path): real — we verify ainvoke interface without LLM
+  - Mocked ONLY where unavoidable:
+      get_llm           — Ollama daemon not running in CI
+      create_react_agent — langgraph not installed in test venv
+      MemorySaver        — same reason
+      graph.ainvoke      — LLM network call
+
+Key LangGraph migration invariants:
+  - graph.ainvoke returns {"messages": [AIMessage(content="...")]} not {"output": "..."}
+  - config["configurable"]["thread_id"] == session_id is the routing key
+  - self._graph (not self._agent_executor) is the compiled graph handle
 """
 import pytest
 import asyncio
@@ -124,6 +132,198 @@ def agent(mock_config, mock_mcp_client_manager, mock_auth_manager, mock_llm):
 
 
 # ---------------------------------------------------------------------------
+# Real ConversationMemory tests — no mocks
+# ---------------------------------------------------------------------------
+
+class TestConversationMemoryReal:
+    """
+    Real ConversationMemory tests: no mocks, exercises actual state management.
+    Verifies behaviour the agent relies on (session creation, user identification,
+    message storage, clear_session) using the real implementation.
+    """
+
+    @pytest.mark.asyncio
+    async def test_get_or_create_session_creates_new(self):
+        """get_or_create_session creates a new session with correct identifiers."""
+        mem = ConversationMemory()
+        session = await mem.get_or_create_session("sid-1", "uid-1")
+        assert session.session_id == "sid-1"
+        assert session.user_id == "uid-1"
+        assert "sid-1" in mem._sessions
+
+    @pytest.mark.asyncio
+    async def test_get_or_create_session_returns_existing(self):
+        """get_or_create_session returns the same object for a known session."""
+        mem = ConversationMemory()
+        s1 = await mem.get_or_create_session("sid-2")
+        s2 = await mem.get_or_create_session("sid-2")
+        assert s1 is s2
+
+    @pytest.mark.asyncio
+    async def test_add_and_get_raw_messages(self):
+        """add_message stores messages; get_raw_messages retrieves them."""
+        mem = ConversationMemory()
+        msg = ChatMessage(
+            id="m1",
+            session_id="sid-3",
+            content="hello",
+            role="user",
+            timestamp=datetime.now(),
+            metadata={},
+        )
+        await mem.add_message("sid-3", msg)
+        raw = await mem.get_raw_messages("sid-3")
+        assert len(raw) == 1
+        assert raw[0].content == "hello"
+
+    @pytest.mark.asyncio
+    async def test_clear_session_removes_all_state(self):
+        """clear_session removes both session record and messages."""
+        mem = ConversationMemory()
+        msg = ChatMessage(
+            id="m2",
+            session_id="sid-4",
+            content="data",
+            role="user",
+            timestamp=datetime.now(),
+            metadata={},
+        )
+        await mem.add_message("sid-4", msg)
+        assert "sid-4" in mem._sessions
+        assert "sid-4" in mem._messages
+
+        await mem.clear_session("sid-4")
+
+        assert "sid-4" not in mem._sessions
+        assert "sid-4" not in mem._messages
+
+    @pytest.mark.asyncio
+    async def test_set_and_get_user_identified(self):
+        """set_user_identified records user; is_user_identified returns True."""
+        mem = ConversationMemory()
+        await mem.set_user_identified("sid-5", "alice@example.com", "uid-99")
+        assert await mem.is_user_identified("sid-5") is True
+        info = await mem.get_identified_user("sid-5")
+        assert info is not None
+        assert info["user_email"] == "alice@example.com"
+        assert info["user_id"] == "uid-99"
+
+    @pytest.mark.asyncio
+    async def test_not_identified_by_default(self):
+        """is_user_identified returns False for a fresh/unknown session."""
+        mem = ConversationMemory()
+        assert await mem.is_user_identified("unknown-session") is False
+
+    @pytest.mark.asyncio
+    async def test_get_conversation_history_returns_empty(self):
+        """get_conversation_history is deprecated — always returns []."""
+        mem = ConversationMemory()
+        result = await mem.get_conversation_history("any-sid")
+        assert result == []
+
+
+# ---------------------------------------------------------------------------
+# _build_system_message — real, no LLM
+# ---------------------------------------------------------------------------
+
+class TestBuildSystemMessage:
+    """
+    _build_system_message reads only ConversationMemory and self._tools.
+    No LLM involved — test with real ConversationMemory objects.
+    """
+
+    @pytest.mark.asyncio
+    async def test_system_message_no_tools(self, agent):
+        """When no tools are loaded, tools_info shows 'None currently available'."""
+        agent._tools = []
+        text = await agent._build_system_message("sid-no-tools")
+        assert "None currently available" in text
+
+    @pytest.mark.asyncio
+    async def test_system_message_with_tools(self, agent, mock_tools):
+        """When tools are loaded, their names appear in the system message."""
+        agent._tools = mock_tools
+        text = await agent._build_system_message("sid-with-tools")
+        assert "test_server_tool1" in text
+        assert "test_server_tool2" in text
+
+    @pytest.mark.asyncio
+    async def test_system_message_identified_user(self, agent):
+        """When the user is identified, system message shows USER IDENTIFIED status."""
+        sid = "sid-identified"
+        await agent.conversation_memory.set_user_identified(sid, "bob@bank.com", "uid-007")
+        agent._tools = []
+        text = await agent._build_system_message(sid)
+        assert "USER IDENTIFIED" in text
+        assert "bob@bank.com" in text
+
+    @pytest.mark.asyncio
+    async def test_system_message_unidentified_user(self, agent):
+        """When the user is NOT identified, system message shows USER NOT IDENTIFIED."""
+        agent._tools = []
+        text = await agent._build_system_message("sid-fresh")
+        assert "USER NOT IDENTIFIED" in text
+
+
+# ---------------------------------------------------------------------------
+# Pure string-helper tests — real, no mocks
+# ---------------------------------------------------------------------------
+
+class TestPureHelpers:
+    """
+    Tests for pure deterministic helpers.
+    The agent fixture patches only get_llm (Ollama daemon) — all helper logic
+    runs against the real method bodies with no additional mocks.
+    """
+
+    def test_looks_like_email_valid(self, agent):
+        assert agent._looks_like_email("user@example.com") is True
+
+    def test_looks_like_email_invalid_no_at(self, agent):
+        assert agent._looks_like_email("notanemail") is False
+
+    def test_looks_like_email_invalid_has_spaces(self, agent):
+        assert agent._looks_like_email("hello there") is False
+
+    def test_looks_like_email_invalid_no_dot(self, agent):
+        assert agent._looks_like_email("user@nodot") is False
+
+    def test_is_authorization_complete_session_success(self, agent):
+        assert agent._is_authorization_complete_message("SESSION_SUCCESS:abc123") is True
+
+    def test_is_authorization_complete_phrase(self, agent):
+        assert agent._is_authorization_complete_message("authorization completed") is True
+
+    def test_is_authorization_complete_signed_in(self, agent):
+        assert agent._is_authorization_complete_message("signed in successfully") is True
+
+    def test_is_authorization_complete_false(self, agent):
+        assert agent._is_authorization_complete_message("what are my accounts?") is False
+
+    def test_detect_authorization_code_prefixed(self, agent):
+        assert agent._detect_authorization_code("code=abc123") == "abc123"
+
+    def test_detect_authorization_code_auth_prefix(self, agent):
+        assert agent._detect_authorization_code("auth=xyz789") == "xyz789"
+
+    def test_detect_authorization_code_session_success(self, agent):
+        result = agent._detect_authorization_code("SESSION_SUCCESS:abc123")
+        assert result == "SESSION_SUCCESS:abc123"
+
+    def test_detect_authorization_code_none(self, agent):
+        assert agent._detect_authorization_code("show me my balance") is None
+
+    def test_looks_like_registration_confirmation_yes(self, agent):
+        assert agent._looks_like_registration_confirmation("yes") is True
+
+    def test_looks_like_registration_confirmation_register(self, agent):
+        assert agent._looks_like_registration_confirmation("register") is True
+
+    def test_looks_like_registration_confirmation_no(self, agent):
+        assert agent._looks_like_registration_confirmation("show me my accounts") is False
+
+
+# ---------------------------------------------------------------------------
 # Core initialisation
 # ---------------------------------------------------------------------------
 
@@ -144,6 +344,7 @@ class TestLangChainMCPAgentInit:
         assert a.auth_manager == mock_auth_manager
         assert a.llm == mock_llm
         assert isinstance(a.mcp_tool_provider, MCPToolProvider)
+        # ConversationMemory is real (not mocked)
         assert isinstance(a.conversation_memory, ConversationMemory)
         # LangGraph era: _graph not _agent_executor
         assert a._graph is None
@@ -153,6 +354,12 @@ class TestLangChainMCPAgentInit:
     def test_no_langgraph_executor_attribute(self, agent):
         """Regression: _agent_executor must not appear after migration."""
         assert not hasattr(agent, '_agent_executor')
+
+    def test_conversation_memory_is_real(self, agent):
+        """conversation_memory must be a real ConversationMemory instance."""
+        assert isinstance(agent.conversation_memory, ConversationMemory)
+        assert not hasattr(agent.conversation_memory, '_langchain_memories'), \
+            "_langchain_memories must be absent — ConversationMemory was slimmed in 275-02"
 
 
 # ---------------------------------------------------------------------------
@@ -225,7 +432,7 @@ class TestProcessMessageWithTracing:
         agent.mcp_tool_provider.set_tracer = Mock()
         agent.mcp_tool_provider.mcp_client_manager._session_challenges = {}
 
-        # Mark user as identified so the agent reaches graph.ainvoke
+        # Use real ConversationMemory to set up user identification
         await agent.conversation_memory.set_user_identified(session_id, "user@test.com", "user-1")
 
         await agent.process_message_with_tracing(user_message, session_id)
@@ -420,11 +627,15 @@ class TestGetAgentStatus:
 
 
 # ---------------------------------------------------------------------------
-# Misc public interface — preserved from pre-migration tests
+# Public interface — preserved from pre-migration, with real ConversationMemory
 # ---------------------------------------------------------------------------
 
 class TestPublicInterface:
-    """Tests for public methods that remain unchanged after migration."""
+    """Tests for public methods that remain unchanged after migration.
+
+    clear_session_memory uses REAL ConversationMemory to verify actual state
+    change, not just that a mock was called.
+    """
 
     @pytest.mark.asyncio
     async def test_execute_tool_success(self, agent, mock_tools):
@@ -486,14 +697,30 @@ class TestPublicInterface:
         agent.initialize_tools.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_clear_session_memory(self, agent):
-        """clear_session_memory delegates to conversation_memory.clear_session."""
-        session_id = "test-session-123"
-        agent.conversation_memory.clear_session = AsyncMock()
+    async def test_clear_session_memory_real(self, agent):
+        """clear_session_memory removes session data from real ConversationMemory."""
+        session_id = "real-session-clear"
+        # Use real ConversationMemory — add a message so the session exists
+        msg = ChatMessage(
+            id="csm-1",
+            session_id=session_id,
+            content="test content",
+            role="user",
+            timestamp=datetime.now(),
+            metadata={},
+        )
+        await agent.conversation_memory.add_message(session_id, msg)
 
+        # Verify session was actually created
+        assert session_id in agent.conversation_memory._sessions
+        assert session_id in agent.conversation_memory._messages
+
+        # clear_session_memory should delegate to real clear_session
         await agent.clear_session_memory(session_id)
 
-        agent.conversation_memory.clear_session.assert_called_once_with(session_id)
+        # Verify actual state change — not just a mock call
+        assert session_id not in agent.conversation_memory._sessions
+        assert session_id not in agent.conversation_memory._messages
 
     @pytest.mark.asyncio
     async def test_shutdown(self, agent):
@@ -504,43 +731,6 @@ class TestPublicInterface:
 
         agent.conversation_memory.cleanup.assert_called_once()
         agent.mcp_client_manager.shutdown.assert_called_once()
-
-
-# ---------------------------------------------------------------------------
-# User identification helpers — unchanged by migration
-# ---------------------------------------------------------------------------
-
-class TestUserIdentificationHelpers:
-    """Tests for _looks_like_email, _is_authorization_complete_message, etc."""
-
-    def test_looks_like_email_valid(self, agent):
-        assert agent._looks_like_email("user@example.com") is True
-
-    def test_looks_like_email_invalid(self, agent):
-        assert agent._looks_like_email("hello there") is False
-        assert agent._looks_like_email("notanemail") is False
-
-    def test_is_authorization_complete_session_success(self, agent):
-        assert agent._is_authorization_complete_message("SESSION_SUCCESS:abc123") is True
-
-    def test_is_authorization_complete_phrase(self, agent):
-        assert agent._is_authorization_complete_message("authorization completed") is True
-
-    def test_is_authorization_complete_false(self, agent):
-        assert agent._is_authorization_complete_message("what are my accounts?") is False
-
-    def test_detect_authorization_code_prefixed(self, agent):
-        assert agent._detect_authorization_code("code=abc123") == "abc123"
-
-    def test_detect_authorization_code_none(self, agent):
-        assert agent._detect_authorization_code("show me my balance") is None
-
-    def test_looks_like_registration_confirmation_yes(self, agent):
-        assert agent._looks_like_registration_confirmation("yes") is True
-        assert agent._looks_like_registration_confirmation("register") is True
-
-    def test_looks_like_registration_confirmation_no(self, agent):
-        assert agent._looks_like_registration_confirmation("show me my accounts") is False
 
 
 if __name__ == "__main__":
