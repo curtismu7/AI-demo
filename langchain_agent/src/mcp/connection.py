@@ -289,12 +289,29 @@ class MCPConnection(MCPClient):
 
                 msg_id = frame.get("id") if isinstance(frame, dict) else None
                 if msg_id is None:
-                    # JSON-RPC notification / id-less frame — nothing in this
-                    # client consumes server-initiated notifications today.
-                    logger.debug(
-                        f"Unsolicited/notification frame from "
-                        f"{self.server_config.name} (no id) — dropped"
-                    )
+                    # JSON-RPC notification / id-less frame.
+                    method = frame.get("method") if isinstance(frame, dict) else None
+                    if method == "notifications/cancelled":
+                        rid = frame.get("params", {}).get("requestId")
+                        if rid is not None and rid in self._pending:
+                            fut = self._pending.pop(rid)
+                            if not fut.done():
+                                fut.set_exception(asyncio.CancelledError())
+                                logger.info(
+                                    f"Received notifications/cancelled for requestId={rid} "
+                                    f"from {self.server_config.name} — cancelling pending future"
+                                )
+                        else:
+                            logger.debug(
+                                f"notifications/cancelled for unknown requestId={rid!r} from "
+                                f"{self.server_config.name} — ignored"
+                            )
+                    else:
+                        logger.debug(
+                            f"Unsolicited/notification frame from "
+                            f"{self.server_config.name} "
+                            f"(no id, method={method!r}) — dropped"
+                        )
                     continue
 
                 fut = self._pending.pop(msg_id, None)

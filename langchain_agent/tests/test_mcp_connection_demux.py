@@ -284,3 +284,126 @@ async def test_per_request_timeout_is_typed_and_leaves_connection_usable():
     assert result == {"ok": True}
 
     await conn.disconnect()
+
+
+@pytest.mark.asyncio
+async def test_cancelled_notification_rejects_matching_pending():
+    """A notifications/cancelled frame with a matching requestId immediately
+    rejects the corresponding pending future with asyncio.CancelledError and
+    removes it from self._pending."""
+    conn = MCPConnection(_server_config())
+    ws = FakeReorderingWebSocket()
+    _connected(conn, ws)
+
+    call = asyncio.create_task(conn.call_tool(_tool_call("cancel-target")))
+
+    # Wait for the request to be sent so we can retrieve its id.
+    for _ in range(200):
+        if len(ws.sent) >= 1:
+            break
+        await asyncio.sleep(0.001)
+    assert len(ws.sent) == 1
+    sent_id = ws.sent[0]["id"]
+
+    # Push a notifications/cancelled frame with the matching requestId.
+    ws.push({
+        "jsonrpc": "2.0",
+        "method": "notifications/cancelled",
+        "params": {"requestId": sent_id, "reason": "server timeout"},
+    })
+
+    results = await asyncio.wait_for(
+        asyncio.gather(call, return_exceptions=True), timeout=5
+    )
+    assert len(results) == 1
+    assert isinstance(results[0], asyncio.CancelledError), (
+        f"Expected asyncio.CancelledError, got {results[0]!r}"
+    )
+    # The pending registry must be empty — no leak.
+    assert conn._pending == {}
+
+    await conn.disconnect()
+
+
+@pytest.mark.asyncio
+async def test_cancelled_notification_for_unknown_id_is_ignored():
+    """A notifications/cancelled with an unknown requestId must not affect any
+    pending futures; the real call still completes successfully once its
+    correlated response arrives."""
+    conn = MCPConnection(_server_config())
+    ws = FakeReorderingWebSocket()
+    _connected(conn, ws)
+
+    call = asyncio.create_task(conn.call_tool(_tool_call("real-call")))
+
+    # Wait for the request to be sent so we can retrieve the real id.
+    for _ in range(200):
+        if len(ws.sent) >= 1:
+            break
+        await asyncio.sleep(0.001)
+    real_id = ws.sent[0]["id"]
+
+    # Push a notifications/cancelled with a fabricated unknown requestId.
+    ws.push({
+        "jsonrpc": "2.0",
+        "method": "notifications/cancelled",
+        "params": {"requestId": "wrong-id-xyz"},
+    })
+
+    # Brief pause — the call must still be pending (not cancelled by the spurious frame).
+    await asyncio.sleep(0.05)
+    assert not call.done(), "call was unexpectedly resolved by wrong-id notifications/cancelled"
+
+    # Now deliver the real correlated response.
+    ws.push({"jsonrpc": "2.0", "id": real_id, "result": {"ok": True}})
+
+    result = await asyncio.wait_for(call, timeout=5)
+    assert result == {"ok": True}
+
+    await conn.disconnect()
+
+
+@pytest.mark.asyncio
+async def test_cancelled_error_does_not_permanently_break_connection():
+    """After a notifications/cancelled resolves one future, the connection
+    remains fully usable for a subsequent call_tool()."""
+    conn = MCPConnection(_server_config())
+    ws = FakeReorderingWebSocket()
+    _connected(conn, ws)
+
+    # First call — will be cancelled by a notifications/cancelled frame.
+    first_call = asyncio.create_task(conn.call_tool(_tool_call("cancel-me")))
+
+    for _ in range(200):
+        if len(ws.sent) >= 1:
+            break
+        await asyncio.sleep(0.001)
+    id1 = ws.sent[0]["id"]
+
+    ws.push({
+        "jsonrpc": "2.0",
+        "method": "notifications/cancelled",
+        "params": {"requestId": id1, "reason": "timeout"},
+    })
+
+    first_results = await asyncio.wait_for(
+        asyncio.gather(first_call, return_exceptions=True), timeout=5
+    )
+    assert isinstance(first_results[0], asyncio.CancelledError)
+
+    # Second call — connection must still work normally.
+    second_call = asyncio.create_task(conn.call_tool(_tool_call("after-cancel")))
+
+    for _ in range(200):
+        if len(ws.sent) >= 2:
+            break
+        await asyncio.sleep(0.001)
+    id2 = ws.sent[-1]["id"]
+
+    ws.push({"jsonrpc": "2.0", "id": id2, "result": {"alive": True}})
+
+    result = await asyncio.wait_for(second_call, timeout=5)
+    assert result == {"alive": True}
+    assert conn._pending == {}
+
+    await conn.disconnect()
