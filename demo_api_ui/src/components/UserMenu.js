@@ -3,7 +3,7 @@ import { MdPerson, MdSettings, MdNotifications, MdLogout, MdLogin, MdArrowDropDo
 import './UserMenu.css';
 import { navigateToCustomerOAuthLogin } from '../utils/authUi';
 
-export default function UserMenu({ user, onLogout }) {
+export default function UserMenu({ user, onLogout, isAdminView = false, onSwitchView }) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -63,8 +63,11 @@ export default function UserMenu({ user, onLogout }) {
                 {user?.firstName} {user?.lastName}
               </div>
               <div className="user-menu-email">{user?.email || ''}</div>
+              {user?.id && (
+                <div className="user-menu-userid" title="User ID">{user.id}</div>
+              )}
               <div className="user-menu-role">
-                {user?.role === 'admin' ? '👑 Admin' : '👤 Customer'}
+                {user?.role === 'admin' ? 'Admin' : 'Customer'}
               </div>
             </div>
           </div>
@@ -86,6 +89,17 @@ export default function UserMenu({ user, onLogout }) {
               <span>Settings</span>
             </button>
           </div>
+
+          {user?.role === 'admin' && onSwitchView && (
+            <button
+              className="user-menu-item"
+              type="button"
+              onClick={() => { setIsOpen(false); onSwitchView(); }}
+            >
+              <span className="user-menu-item-icon">↔</span>
+              <span>{isAdminView ? 'Switch to Customer View' : 'Switch to Admin View'}</span>
+            </button>
+          )}
 
           <div className="user-menu-divider"></div>
 
