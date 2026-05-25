@@ -2642,7 +2642,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
             className="ud-agent-column"
             ref={agentColumnRef}
             aria-label="AI banking assistant"
-            style={{ height: middleHeight, maxHeight: middleHeight }}
             {...(!showBankingInMiddle && {
               id: "main-dashboard-content",
               tabIndex: -1,

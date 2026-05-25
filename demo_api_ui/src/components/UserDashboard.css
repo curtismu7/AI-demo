@@ -307,7 +307,6 @@
   padding: 0;
   box-sizing: border-box;
   overflow: hidden;
-  align-self: start;
 }
 
 .ud-banking-column.ud-center {
@@ -322,6 +321,15 @@
   min-height: 0;
   height: 100%;
   max-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Host div for the portaled BankingAgent — must fill ud-dashboard-inline-agent so
+   banking-agent-float-root's height:100% resolves to the container height, not 0. */
+.ud-dashboard-inline-agent-host {
+  flex: 1 1 0%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
