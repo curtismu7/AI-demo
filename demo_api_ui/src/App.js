@@ -103,6 +103,7 @@ import Users from "./components/Users";
 import UserDetailPage from "./components/UserDetailPage";
 import UserTransactions from "./components/UserTransactions";
 import WebMcpPanel from "./components/WebMcpPanel";
+import AuthorizeRulesPanel from "./components/AuthorizeRulesPanel";
 import {
   AgentUiModeProvider,
   useAgentUiMode,
@@ -911,6 +912,7 @@ function AppWithAuth() {
                       <main className="main-content">
                         <UserDashboard user={null} onLogout={logout} />
                         <WebMcpPanel />
+                        <AuthorizeRulesPanel />
                       </main>
                     </>
                   ) : (
@@ -920,6 +922,7 @@ function AppWithAuth() {
                       <main className="main-content">
                         <UserDashboard user={user} onLogout={logout} />
                         <WebMcpPanel />
+                        <AuthorizeRulesPanel />
                       </main>
                     </>
                   )
