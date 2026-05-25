@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import bffAxios from '../services/bffAxios';
+import { listMcpTools } from '../services/webMcpClient';
+import '../styles/rule-panel.css';
 
 // ---------------------------------------------------------------------------
 // Badge config
@@ -176,6 +178,14 @@ export default function AuthorizeRulesPanel() {
   const [testResult, setTestResult] = useState(null);
   const [testError, setTestError] = useState(null);
 
+  const [mcpTools, setMcpTools] = useState([]);
+
+  useEffect(() => {
+    listMcpTools()
+      .then(data => setMcpTools((data.tools || []).map(t => t.name)))
+      .catch(() => {}); // silent — fallback shows text input
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -243,15 +253,15 @@ export default function AuthorizeRulesPanel() {
   const activeEngine = config?.activeEngine || 'unknown';
 
   return (
-    <div style={{ border: '1px solid #e5e5e5', borderRadius: '8px', overflow: 'hidden', background: '#fff', marginBottom: '24px' }}>
-      <div style={{ padding: '12px 16px', borderBottom: '1px solid #e5e5e5', background: '#fafafa' }}>
-        <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#111' }}>Authorize Rules</h3>
-        <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#666' }}>
+    <div className="rp-container">
+      <div className="rp-header">
+        <h3 className="rp-header__title">Authorize Rules</h3>
+        <p className="rp-header__sub">
           Browse the active authorization policy rules and test transactions against the engine.
         </p>
       </div>
 
-      <div style={{ display: 'flex', minHeight: '400px' }}>
+      <div className="rp-body">
         <RuleList
           loading={configLoading}
           error={configError}
@@ -267,6 +277,7 @@ export default function AuthorizeRulesPanel() {
         <RuleDetail
           rule={selectedRule}
           activeEngine={activeEngine}
+          mcpTools={mcpTools}
           testAmount={testAmount}
           setTestAmount={setTestAmount}
           testType={testType}
@@ -289,28 +300,9 @@ export default function AuthorizeRulesPanel() {
 // RuleList
 // ---------------------------------------------------------------------------
 function RuleList({ loading, error, txRules, mcpRules, selectedRuleId, onSelect }) {
-  const listStyle = {
-    width: '240px',
-    minWidth: '240px',
-    borderRight: '1px solid #e5e5e5',
-    overflowY: 'auto',
-    background: '#fff',
-  };
-
-  const groupHeaderStyle = {
-    padding: '8px 12px 5px',
-    fontSize: '10px',
-    fontWeight: 700,
-    color: '#999',
-    textTransform: 'uppercase',
-    letterSpacing: '.06em',
-    borderBottom: '1px solid #f0f0f0',
-    background: '#fafafa',
-  };
-
   if (loading) {
     return (
-      <div style={listStyle}>
+      <div className="rp-list">
         {[1,2,3,4,5].map(i => (
           <div key={i} style={{ padding: '10px 12px', borderBottom: '1px solid #f3f3f3' }}>
             <div style={{ height: '12px', background: '#f3f3f3', borderRadius: '4px', marginBottom: '6px', width: '70%' }} />
@@ -323,19 +315,19 @@ function RuleList({ loading, error, txRules, mcpRules, selectedRuleId, onSelect 
 
   if (error) {
     return (
-      <div style={{ ...listStyle, padding: '16px 12px' }}>
+      <div className="rp-list" style={{ padding: '16px 12px' }}>
         <p style={{ fontSize: '12px', color: '#dc2626' }}>❌ {error}</p>
       </div>
     );
   }
 
   return (
-    <div style={listStyle}>
-      <div style={groupHeaderStyle}>Transaction Rules</div>
+    <div className="rp-list">
+      <div className="rp-list-group-header">Transaction Rules</div>
       {txRules.map(rule => (
         <RuleCard key={rule.id} rule={rule} selected={rule.id === selectedRuleId} onSelect={onSelect} />
       ))}
-      <div style={{ ...groupHeaderStyle, marginTop: '4px' }}>MCP Tool Rules</div>
+      <div className="rp-list-group-header" style={{ marginTop: '4px' }}>MCP Tool Rules</div>
       {mcpRules.map(rule => (
         <RuleCard key={rule.id} rule={rule} selected={rule.id === selectedRuleId} onSelect={onSelect} />
       ))}
@@ -347,17 +339,10 @@ function RuleCard({ rule, selected, onSelect }) {
   return (
     <div
       onClick={() => onSelect(rule.id)}
-      style={{
-        padding: '10px 12px',
-        cursor: 'pointer',
-        borderBottom: '1px solid #f3f3f3',
-        borderLeft: selected ? '3px solid #4f46e5' : '3px solid transparent',
-        background: selected ? '#eef2ff' : '#fff',
-        transition: 'background .1s',
-      }}
+      className={`rp-list-item${selected ? ' rp-list-item--active' : ''}`}
     >
-      <div style={{ fontSize: '12px', fontWeight: 600, color: '#111', marginBottom: '3px' }}>{rule.name}</div>
-      <div style={{ fontSize: '11px', color: '#777', lineHeight: 1.4, marginBottom: '5px' }}>{rule.chips.value !== NO_VALUE ? rule.chips.value : rule.chips.scope}</div>
+      <div className="rp-list-item__name">{rule.name}</div>
+      <div className="rp-list-item__sub">{rule.chips.value !== NO_VALUE ? rule.chips.value : rule.chips.scope}</div>
       <Badge type={rule.badge} />
     </div>
   );
@@ -368,6 +353,7 @@ function RuleCard({ rule, selected, onSelect }) {
 // ---------------------------------------------------------------------------
 function RuleDetail({
   rule, activeEngine,
+  mcpTools,
   testAmount, setTestAmount, testType, setTestType,
   testAcr, setTestAcr, testTool, setTestTool,
   testRunning, testResult, testError, onRunTest,
@@ -395,15 +381,15 @@ function RuleDetail({
   };
 
   return (
-    <div style={{ flex: 1, padding: '18px 20px', overflowY: 'auto', background: '#fff' }}>
+    <div className="rp-detail">
       {!rule && (
         <p style={{ color: '#999', fontSize: '13px' }}>Select a rule from the list.</p>
       )}
 
       {rule && (
         <>
-          <div style={{ fontSize: '15px', fontWeight: 700, color: '#111', marginBottom: '6px' }}>{rule.name}</div>
-          <div style={{ fontSize: '13px', color: '#444', lineHeight: 1.6, marginBottom: '14px' }}>{rule.desc}</div>
+          <div className="rp-detail__title">{rule.name}</div>
+          <div className="rp-detail__desc">{rule.desc}</div>
 
           <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
             {[
@@ -424,6 +410,7 @@ function RuleDetail({
             return (
               <TestForm
                 isMcp={isMcp}
+                mcpTools={mcpTools}
                 testAmount={testAmount} setTestAmount={setTestAmount}
                 testType={testType} setTestType={setTestType}
                 testAcr={testAcr} setTestAcr={setTestAcr}
@@ -442,47 +429,53 @@ function RuleDetail({
   );
 }
 
-function TestForm({ isMcp, testAmount, setTestAmount, testType, setTestType, testAcr, setTestAcr, testTool, setTestTool, testRunning, onRunTest, resultDisplay }) {
-  const inputStyle = { width: '100%', border: '1px solid #d1d5db', borderRadius: '5px', padding: '6px 10px', fontSize: '12px', color: '#111', background: '#fff', boxSizing: 'border-box' };
-  const labelStyle = { display: 'block', fontSize: '11px', color: '#666', marginBottom: '4px' };
-
+function TestForm({ isMcp, mcpTools, testAmount, setTestAmount, testType, setTestType, testAcr, setTestAcr, testTool, setTestTool, testRunning, onRunTest, resultDisplay }) {
   return (
-    <div style={{ background: '#f8f9fc', border: '1px solid #e5e5e5', borderRadius: '8px', padding: '14px 16px', marginBottom: '12px' }}>
-      <div style={{ fontSize: '11px', fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: '10px' }}>
-        Test this rule
-      </div>
+    <div className="rp-test-form">
+      <div className="rp-test-form__heading">Test this rule</div>
 
       {isMcp ? (
         <div style={{ marginBottom: '10px' }}>
-          <label style={labelStyle}>Tool name</label>
-          <input style={inputStyle} value={testTool} onChange={e => setTestTool(e.target.value)} placeholder="e.g. get_account_balance" />
+          <label className="rp-test-form__label">Tool name</label>
+          {mcpTools.length > 0 ? (
+            <select className="rp-test-form__input" value={testTool} onChange={e => setTestTool(e.target.value)}>
+              <option value="">— select a tool —</option>
+              {mcpTools.map(name => <option key={name} value={name}>{name}</option>)}
+            </select>
+          ) : (
+            <input className="rp-test-form__input" value={testTool} onChange={e => setTestTool(e.target.value)} placeholder="e.g. get_account_balance" />
+          )}
         </div>
       ) : (
-        <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-          <div style={{ flex: 1 }}>
-            <label style={labelStyle}>Amount (USD)</label>
-            <input style={inputStyle} type="number" value={testAmount} onChange={e => setTestAmount(e.target.value)} placeholder="e.g. 300" />
+        <div className="rp-test-form__row">
+          <div className="rp-test-form__field">
+            <label className="rp-test-form__label">Amount (USD)</label>
+            <input className="rp-test-form__input" type="number" value={testAmount} onChange={e => setTestAmount(e.target.value)} placeholder="e.g. 300" />
           </div>
-          <div style={{ flex: 1 }}>
-            <label style={labelStyle}>Transaction type</label>
-            <select style={inputStyle} value={testType} onChange={e => setTestType(e.target.value)}>
+          <div className="rp-test-form__field">
+            <label className="rp-test-form__label">Transaction type</label>
+            <select className="rp-test-form__input" value={testType} onChange={e => setTestType(e.target.value)}>
               <option value="deposit">deposit</option>
               <option value="withdrawal">withdrawal</option>
               <option value="transfer">transfer</option>
             </select>
           </div>
-          <div style={{ flex: 1 }}>
-            <label style={labelStyle}>ACR (optional)</label>
-            <input style={inputStyle} value={testAcr} onChange={e => setTestAcr(e.target.value)} placeholder="e.g. MFA" />
+          <div className="rp-test-form__field">
+            <label className="rp-test-form__label">ACR</label>
+            <select className="rp-test-form__input" value={testAcr} onChange={e => setTestAcr(e.target.value)}>
+              <option value="">(none)</option>
+              <option value="MFA">MFA</option>
+              <option value="Single">Single</option>
+            </select>
           </div>
         </div>
       )}
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+      <div className="rp-test-form__actions">
         <button
+          className="rp-btn-primary"
           onClick={onRunTest}
           disabled={testRunning}
-          style={{ background: testRunning ? '#6366f1' : '#4f46e5', color: '#fff', border: 'none', borderRadius: '6px', padding: '7px 18px', fontSize: '12px', fontWeight: 600, cursor: testRunning ? 'default' : 'pointer', opacity: testRunning ? 0.8 : 1 }}
         >
           {testRunning ? 'Evaluating…' : 'Run evaluation'}
         </button>
