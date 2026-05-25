@@ -23,7 +23,7 @@ const {
 const { runChip, assertAdminPipelineEvents } = require('./helpers/chipPipeline');
 const { heuristicChips, allChips } = require('../../../demo_api_server/scripts/extractChips');
 
-const BASE = process.env.E2E_BASE_URL || 'http://localhost:3000';
+const BASE = process.env.E2E_BASE_URL || 'https://api.ping.demo:3001';
 
 test.describe('all-chips routing + non-skippable pipeline (real)', () => {
   test.skip(!requireRealLoginEnv() || !requireAdminLoginEnv(),
