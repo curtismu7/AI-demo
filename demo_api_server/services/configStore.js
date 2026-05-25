@@ -955,7 +955,7 @@ class ConfigStore {
       gw_introspection_client_id:           ['GW_INTROSPECTION_CLIENT_ID'],
       gw_introspection_client_secret:       ['GW_INTROSPECTION_CLIENT_SECRET'],
 
-      // MCP WebSocket URLs
+      // MCP WebSocket URLs (consumed by demo_mcp_gateway via process.env)
       mcp_olb_ws_url:                       ['MCP_OLB_WS_URL'],
       mcp_invest_ws_url:                    ['MCP_INVEST_WS_URL'],
       upstream_mcp_url:                     ['UPSTREAM_MCP_URL'],
