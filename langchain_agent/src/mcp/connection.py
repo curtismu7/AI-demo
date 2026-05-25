@@ -74,6 +74,10 @@ class MCPRequestTimeoutError(Exception):
     """
 
 
+class MCPServerCancelledError(Exception):
+    """Raised when the MCP server sends notifications/cancelled for an in-flight request."""
+
+
 class MCPConnection(MCPClient):
     """Individual MCP server connection with retry logic"""
     
@@ -296,7 +300,10 @@ class MCPConnection(MCPClient):
                         if rid is not None and rid in self._pending:
                             fut = self._pending.pop(rid)
                             if not fut.done():
-                                fut.set_exception(asyncio.CancelledError())
+                                reason = frame.get("params", {}).get("reason", "")
+                                fut.set_exception(MCPServerCancelledError(
+                                    f"MCP server cancelled requestId={rid}: {reason}"
+                                ))
                                 logger.info(
                                     f"Received notifications/cancelled for requestId={rid} "
                                     f"from {self.server_config.name} — cancelling pending future"
@@ -351,7 +358,7 @@ class MCPConnection(MCPClient):
         pending entry on completion/timeout/error so the registry never leaks.
         """
         msg_id = message["id"]
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         fut: asyncio.Future = loop.create_future()
         self._pending[msg_id] = fut
         try:
