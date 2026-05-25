@@ -6,12 +6,11 @@ import logging
 from typing import Any, Dict, List, Optional, Union
 from datetime import datetime
 
-from langchain.agents import AgentExecutor, create_tool_calling_agent
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, ToolMessage
-from langchain.memory import ConversationBufferMemory
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage, ToolMessage
 from langchain_core.tools import BaseTool
 from langchain_core.language_models.chat_models import BaseChatModel
+from langgraph.prebuilt import create_react_agent
+from langgraph.checkpoint.memory import MemorySaver
 from .llm_factory import get_llm
 
 from mcp.tool_registry import MCPClientManager
@@ -60,8 +59,8 @@ class LangChainMCPAgent(TracingMixin):
         self.conversation_memory = ConversationMemory()
         self.mcp_tool_provider = MCPToolProvider(mcp_client_manager, auth_manager, self.conversation_memory)
         
-        # Agent executor will be initialized when tools are available
-        self._agent_executor: Optional[AgentExecutor] = None
+        # LangGraph compiled graph — initialized once in initialize_tools()
+        self._graph = None
         self._tools: List[BaseTool] = []
         
         logger.info("Initialized LangChain MCP Agent")
@@ -89,28 +88,37 @@ class LangChainMCPAgent(TracingMixin):
             if not self._tools:
                 logger.warning("No MCP tools available for agent, creating basic chat agent")
                 # Create a basic agent without tools for general conversation
-                self._agent_executor = self._create_basic_agent()
+                self._graph = self._create_basic_agent()
                 logger.info("Initialized basic chat agent without MCP tools")
                 return
-            
-            # Don't create agent executor here - create it dynamically per session
-            # This allows us to use session-specific prompts with user identification info
-            self._agent_executor = "dynamic"  # Placeholder to indicate tools are ready
-            
-            logger.info(f"Initialized agent with {len(self._tools)} MCP tools")
+
+            # Build a single compiled LangGraph StateGraph — MemorySaver stores
+            # conversation history keyed by thread_id=session_id across turns.
+            self._graph = create_react_agent(
+                model=self.llm,
+                tools=self._tools,
+                checkpointer=MemorySaver()
+            )
+
+            logger.info(f"Initialized LangGraph agent with {len(self._tools)} MCP tools")
             
         except Exception as e:
             logger.error(f"Failed to initialize agent tools: {e}")
             raise
     
-    async def _create_agent_prompt(self, session_id: str) -> ChatPromptTemplate:
-        """Create the prompt template for the agent."""
-        # Create detailed tool descriptions for the system message
+    async def _build_system_message(self, session_id: str) -> str:
+        """Build the system prompt string for the given session.
+
+        Extracts tool descriptions and user-identification context, then returns
+        a plain string (not a ChatPromptTemplate).  The caller injects this as a
+        SystemMessage into the LangGraph ainvoke messages list on the first turn
+        for the session — subsequent turns rely on MemorySaver's stored state.
+        """
+        # Build tool descriptions
         if self._tools:
             tool_descriptions = []
             for tool in self._tools:
                 tool_desc = f"- {tool.name}: {tool.description}"
-                # Add parameter information if available
                 if hasattr(tool, 'args_schema') and tool.args_schema:
                     try:
                         schema = tool.args_schema.schema()
@@ -118,18 +126,17 @@ class LangChainMCPAgent(TracingMixin):
                             params = list(schema['properties'].keys())
                             if params:
                                 tool_desc += f" (Parameters: {', '.join(params)})"
-                    except:
-                        pass  # Skip if schema extraction fails
+                    except Exception:
+                        pass
                 tool_descriptions.append(tool_desc)
             tools_info = "\n".join(tool_descriptions)
         else:
             tools_info = "None currently available"
-        
-        # Check if user is identified for this session
+
+        # User identification context
         user_identified = await self.conversation_memory.is_user_identified(session_id)
         identified_user = await self.conversation_memory.get_identified_user(session_id) if user_identified else None
-        
-        # Create user identification context
+
         if user_identified and identified_user:
             user_context = f"""
 CURRENT USER STATUS: ✅ USER IDENTIFIED
@@ -146,7 +153,7 @@ CURRENT USER STATUS: ❌ USER NOT IDENTIFIED
 - If the user doesn't exist, offer to help them register a new account
 - Only proceed with banking operations after the user is identified and has an account"""
 
-        system_message = f"""You are a helpful AI banking assistant that can perform actions through various MCP (Model Context Protocol) servers.
+        return f"""You are a helpful AI banking assistant that can perform actions through various MCP (Model Context Protocol) servers.
 
 {user_context}
 
@@ -177,11 +184,11 @@ Key guidelines:
 12. If you need to perform operations on specific accounts but don't have recent account information, first call banking_get_my_accounts to get current account IDs
 13. TRANSFER REVERSALS: When a user asks to reverse or undo a transfer, look at the conversation history for the most recent transfer details. A reversal means transferring the same amount back from the destination account to the source account. For example, if the last transfer was $100 from Account A to Account B, the reversal would be $100 from Account B to Account A.
 14. Pay close attention to the conversation history - recent transfers will show the exact account IDs and amounts that can be used for reversals
-13. Explain what you're doing when using tools
-14. Handle authentication challenges gracefully by informing the user when authorization is needed
-15. Provide clear, helpful responses based on tool results
-16. If a tool fails, explain the error and suggest alternatives when possible
-17. Be conversational and friendly when collecting user information for registration
+15. Explain what you're doing when using tools
+16. Handle authentication challenges gracefully by informing the user when authorization is needed
+17. Provide clear, helpful responses based on tool results
+18. If a tool fails, explain the error and suggest alternatives when possible
+19. Be conversational and friendly when collecting user information for registration
 
 Available tools:
 {tools_info}
@@ -189,142 +196,92 @@ Available tools:
 IMPORTANT: Always review the conversation history before asking for additional information. Recent transfers, account details, and other banking operations are recorded in the chat history and should be referenced when users ask for related actions like reversals or follow-up operations.
 
 Remember to maintain conversation context and provide helpful, accurate responses. Always prioritize user identification before banking operations."""
-        
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", system_message),
-            MessagesPlaceholder(variable_name="chat_history"),
-            ("human", "{input}"),
-            MessagesPlaceholder(variable_name="agent_scratchpad")
-        ])
-        
-        return prompt
-    
-    async def _get_agent_executor_for_session(self, session_id: str) -> AgentExecutor:
-        """Get or create an agent executor for a specific session with user context."""
-        # Create session-specific prompt with user identification info
-        prompt = await self._create_agent_prompt(session_id)
-        
-        # Create agent
-        agent = create_tool_calling_agent(
-            llm=self.llm,
-            tools=self._tools,
-            prompt=prompt
-        )
-        
-        # Create memory and populate it with existing conversation history
-        memory = ConversationBufferMemory(
-            memory_key="chat_history",
-            return_messages=True
-        )
-        
-        # Pre-populate the memory with existing conversation history
-        try:
-            existing_history = await self.conversation_memory.get_conversation_history(session_id)
-            logger.info(f"Pre-populating agent memory with {len(existing_history)} messages")
-            for message in existing_history:
-                memory.chat_memory.add_message(message)
-        except Exception as e:
-            logger.error(f"Error pre-populating memory: {e}")
-        
-        # Create agent executor
-        agent_executor = AgentExecutor(
-            agent=agent,
-            tools=self._tools,
-            memory=memory,
-            verbose=self.config.langchain.verbose,
-            max_iterations=self.config.langchain.max_iterations,
-            max_execution_time=self.config.langchain.max_execution_time
-        )
-        
-        return agent_executor
 
     def _maybe_attach_websocket_streaming(
         self,
-        agent_executor: AgentExecutor,
+        graph,
         session_id: str,
         stream_context: Optional[Dict[str, Any]],
-    ) -> None:
+    ) -> Optional["WebSocketStreamCallbackHandler"]:
         """
-        Attach WebSocket stream callback when stream_context provides websocket_handler.
+        Return a WebSocket stream callback when stream_context provides websocket_handler.
         Emits MCP tool_start/tool_end and optional LLM token deltas during ainvoke.
+        The caller includes the returned handler in config["callbacks"] for ainvoke.
         """
         if not stream_context:
-            return
+            return None
         handler = stream_context.get("websocket_handler")
         if handler is None:
-            return
+            return None
         stream_tools = getattr(self.config.langchain, "stream_mcp_tool_events", True)
         stream_tokens = getattr(self.config.langchain, "stream_llm_tokens", True)
         if not stream_tools and not stream_tokens:
-            return
+            return None
         try:
             loop = asyncio.get_running_loop()
         except RuntimeError:
             logger.warning("No running event loop; WebSocket streaming disabled for this turn")
-            return
-        stream_cb = WebSocketStreamCallbackHandler(
+            return None
+        return WebSocketStreamCallbackHandler(
             session_id=session_id,
             loop=loop,
             websocket_handler=handler,
             stream_mcp_tool_events=stream_tools,
             stream_llm_tokens=stream_tokens,
         )
-        if getattr(agent_executor, "callbacks", None) is None:
-            agent_executor.callbacks = []
-        agent_executor.callbacks.append(stream_cb)
     
     def _create_basic_agent(self):
-        """Create a basic agent without MCP tools for general conversation."""
-        from langchain.agents import AgentExecutor
-        from langchain.memory import ConversationBufferMemory
-        from langchain.schema import BaseMessage
-        
+        """Create a basic agent without MCP tools for general conversation.
+
+        Returns a BasicChatAgent whose ainvoke() interface is compatible with
+        the LangGraph graph.ainvoke() call site: it accepts
+        {"messages": [HumanMessage(...)]} with a config kwarg containing
+        configurable.thread_id, and returns {"messages": [AIMessage(...)]}.
+        """
+        llm = self.llm
+
         class BasicChatAgent:
-            """Basic chat agent that uses LLM directly without tools."""
-            
-            def __init__(self, llm, memory):
+            """Basic chat agent that uses LLM directly without tools.
+
+            Compatible with the graph.ainvoke() interface used in
+            process_message and process_message_with_tracing.
+            """
+
+            def __init__(self, llm):
                 self.llm = llm
-                self.memory = memory
-            
-            async def ainvoke(self, inputs):
-                """Process input and return response."""
-                user_input = inputs.get("input", "")
-                chat_history = inputs.get("chat_history", [])
-                
-                # Create a simple conversation prompt
-                messages = []
-                
-                # Add system message
-                system_msg = "You are a helpful AI assistant. You can have conversations and answer questions, but you don't currently have access to external tools or services."
-                messages.append({"role": "system", "content": system_msg})
-                
-                # Add chat history
-                for msg in chat_history[-10:]:  # Keep last 10 messages for context
+
+            async def ainvoke(self, inputs, config=None):
+                """Process input and return response in messages[-1].content format."""
+                messages = inputs.get("messages", [])
+
+                # Build a plain message list for the LLM
+                llm_messages = []
+                for msg in messages:
                     if hasattr(msg, 'content'):
-                        role = "user" if msg.__class__.__name__ == "HumanMessage" else "assistant"
-                        messages.append({"role": role, "content": msg.content})
-                
-                # Add current user input
-                messages.append({"role": "user", "content": user_input})
-                
-                # Get response from LLM
+                        if msg.__class__.__name__ == "SystemMessage":
+                            llm_messages.append({"role": "system", "content": msg.content})
+                        elif msg.__class__.__name__ == "HumanMessage":
+                            llm_messages.append({"role": "user", "content": msg.content})
+                        else:
+                            llm_messages.append({"role": "assistant", "content": msg.content})
+
+                if not llm_messages:
+                    return {"messages": [AIMessage(content="I'm sorry, I didn't receive a message to process.")]}
+
                 try:
-                    response = await self.llm.ainvoke(messages)
-                    if hasattr(response, 'content'):
-                        return {"output": response.content}
-                    else:
-                        return {"output": str(response)}
+                    response = await self.llm.ainvoke(llm_messages)
+                    content = response.content if hasattr(response, 'content') else str(response)
+                    return {"messages": messages + [AIMessage(content=content)]}
                 except Exception as e:
                     logger.error(f"Error getting LLM response: {e}")
-                    return {"output": "I'm sorry, I encountered an error while processing your message. Please try again."}
-        
-        # Create basic agent
-        memory = ConversationBufferMemory(
-            memory_key="chat_history",
-            return_messages=True
-        )
-        
-        return BasicChatAgent(self.llm, memory)
+                    return {"messages": messages + [AIMessage(content="I'm sorry, I encountered an error while processing your message. Please try again.")]}
+
+            def get_state(self, config):
+                """Stub — BasicChatAgent has no persistent state (no MemorySaver)."""
+                from types import SimpleNamespace
+                return SimpleNamespace(values={"messages": []})
+
+        return BasicChatAgent(llm)
     
     def _is_authorization_complete_message(self, message: str) -> bool:
         """
@@ -801,9 +758,9 @@ For example: 123 Main St, New York, NY, 10001, USA"""
             # Log agent start
             self._log_agent_start(tracer)
             
-            if not self._agent_executor:
+            if not self._graph:
                 await self.initialize_tools()
-                if not self._agent_executor:
+                if not self._graph:
                     tracer.log_step("initialization_error", "LangChain Agent", {
                         "error": "Agent not properly configured with tools"
                     })
@@ -940,74 +897,60 @@ What's your email address?"""
                 
                 return response
             
-            # Main agent processing
-            logger.debug(f"Agent executor type: {type(self._agent_executor)}")
+            # Main agent processing via LangGraph graph
+            logger.debug(f"Graph type: {type(self._graph)}")
             logger.debug(f"Number of available tools: {len(self._tools)}")
-            
-            # Get conversation history for context
-            tracer.log_step("context_preparation", "Conversation Memory", {
-                "action": "get_conversation_history"
-            })
-            
-            logger.info("Getting conversation history...")
-            chat_history = await self.conversation_memory.get_conversation_history(session_id)
-            logger.info(f"Chat history length: {len(chat_history)}")
-            
-            # Prepare input for agent
-            agent_input = {
-                "input": user_message,
-                "chat_history": chat_history
-            }
-            
+
             # Set session context for tools and tracer
             tracer.log_step("mcp_context_setup", "MCP Tool Provider", {
                 "session_id": session_id,
                 "action": "set_session_context"
             })
-            
+
             logger.info(f"Setting session context for tools...")
             await self.mcp_tool_provider.set_session_context(session_id)
-            
+
             # Set tracer for MCP tool execution logging
             self.mcp_tool_provider.set_tracer(tracer)
-            
-            # Get session-specific agent executor with user context
-            tracer.log_step("agent_executor_creation", "LangChain Agent", {
-                "executor_type": "session_specific",
-                "tools_count": len(self._tools) if self._tools else 0
-            })
-            
-            logger.info("Getting session-specific agent executor...")
-            agent_executor = await self._get_agent_executor_for_session(session_id)
-            
-            # Add detailed tracing callback to the agent executor
-            detailed_callback = DetailedTracingCallbackHandler(tracer)
-            if hasattr(agent_executor, 'callbacks'):
-                if agent_executor.callbacks is None:
-                    agent_executor.callbacks = []
-                agent_executor.callbacks.append(detailed_callback)
-            else:
-                # For older versions, try to add to the agent
-                if hasattr(agent_executor, 'agent') and hasattr(agent_executor.agent, 'callbacks'):
-                    if agent_executor.agent.callbacks is None:
-                        agent_executor.agent.callbacks = []
-                    agent_executor.agent.callbacks.append(detailed_callback)
 
-            self._maybe_attach_websocket_streaming(agent_executor, session_id, stream_context)
-            
-            # Execute agent
-            prompt_text = f"User: {user_message}\nContext: {len(chat_history)} previous messages"
-            estimated_input_tokens = len(prompt_text.split()) * 1.3  # Rough estimate
-            self._log_llm_start(tracer, "Processing user request with agent executor", prompt_text, int(estimated_input_tokens))
-            
-            logger.info("Executing agent with prepared input...")
+            # Build messages list — inject SystemMessage only on the first turn
+            # (when MemorySaver has no history for this thread_id) to avoid
+            # accumulating duplicate system messages across turns.
+            try:
+                graph_state = self._graph.get_state({"configurable": {"thread_id": session_id}})
+                has_prior_history = bool(graph_state.values.get("messages"))
+            except Exception:
+                has_prior_history = False
+
+            if has_prior_history:
+                msgs_for_graph = [HumanMessage(content=user_message)]
+            else:
+                system_msg_text = await self._build_system_message(session_id)
+                msgs_for_graph = [SystemMessage(content=system_msg_text), HumanMessage(content=user_message)]
+
+            # Build callbacks
+            detailed_callback = DetailedTracingCallbackHandler(tracer)
+            stream_cb = self._maybe_attach_websocket_streaming(self._graph, session_id, stream_context)
+            callbacks = [detailed_callback]
+            if stream_cb:
+                callbacks.append(stream_cb)
+
+            # Execute graph
+            prompt_text = f"User: {user_message}"
+            estimated_input_tokens = len(prompt_text.split()) * 1.3
+            self._log_llm_start(tracer, "Processing user request with LangGraph", prompt_text, int(estimated_input_tokens))
+
+            logger.info("Executing LangGraph agent...")
             start_time = datetime.now()
-            result = await agent_executor.ainvoke(agent_input)
+            result = await self._graph.ainvoke(
+                {"messages": msgs_for_graph},
+                config={"configurable": {"thread_id": session_id}, "callbacks": callbacks}
+            )
             processing_time = int((datetime.now() - start_time).total_seconds() * 1000)
-            
-            # Extract response
-            response = result.get("output", "I'm sorry, I couldn't process your request.")
-            estimated_output_tokens = len(response.split()) * 1.3  # Rough estimate
+
+            # Extract response from last AIMessage
+            response = result["messages"][-1].content if result.get("messages") else "I'm sorry, I couldn't process your request."
+            estimated_output_tokens = len(response.split()) * 1.3
             self._log_llm_end(tracer, response, processing_time, int(estimated_output_tokens))
             
             logger.info(f"Agent response length: {len(response)} characters")
@@ -1118,9 +1061,9 @@ What's your email address?"""
             RuntimeError: If agent is not properly initialized
             Exception: If message processing fails
         """
-        if not self._agent_executor:
+        if not self._graph:
             await self.initialize_tools()
-            if not self._agent_executor:
+            if not self._graph:
                 return "I'm sorry, but I'm not properly configured with tools right now. Please try again later."
         
         try:
@@ -1206,48 +1149,36 @@ What's your email address?"""
             
 
             
-            logger.debug(f"Agent executor type: {type(self._agent_executor)}")
+            logger.debug(f"Graph type: {type(self._graph)}")
             logger.debug(f"Number of available tools: {len(self._tools)}")
-            
-            # Get conversation history for context
-            logger.info("Getting conversation history...")
-            chat_history = await self.conversation_memory.get_conversation_history(session_id)
-            logger.info(f"Chat history length: {len(chat_history)}")
-            logger.info(f"Chat history preview: {[msg.content[:100] if hasattr(msg, 'content') else str(msg)[:100] for msg in chat_history[-5:]]}")
-            
-            # Also check raw messages for debugging
-            raw_messages = await self.conversation_memory.get_raw_messages(session_id, limit=5)
-            logger.info(f"Raw messages count: {len(raw_messages)}")
-            logger.info(f"Recent raw messages: {[msg.content[:100] for msg in raw_messages[-3:]]}")
-            
-            # Prepare input for agent
-            agent_input = {
-                "input": user_message,
-                "chat_history": chat_history
-            }
-            logger.debug(f"Agent input prepared: {agent_input}")
-            
+
             # Set session context for tools
             logger.info(f"Setting session context for tools...")
             await self.mcp_tool_provider.set_session_context(session_id)
             logger.debug("Session context set for tools")
-            
-            # Get session-specific agent executor with user context
-            logger.info("Getting session-specific agent executor...")
-            agent_executor = await self._get_agent_executor_for_session(session_id)
-            
-            # Execute agent
-            logger.info("Executing agent with prepared input...")
-            logger.debug(f"About to call agent executor with input keys: {list(agent_input.keys())}")
-            result = await agent_executor.ainvoke(agent_input)
-            logger.debug(f"Agent execution result: {result}")
-            logger.debug(f"Result type: {type(result)}")
-            logger.debug(f"Result keys: {list(result.keys()) if isinstance(result, dict) else 'Not a dict'}")
-            
-            # Extract response
-            logger.debug("Extracting response from agent result...")
-            response = result.get("output", "I'm sorry, I couldn't process your request.")
-            logger.debug(f"Extracted response: {response}")
+
+            # Build messages list — inject SystemMessage only on the first turn
+            try:
+                graph_state = self._graph.get_state({"configurable": {"thread_id": session_id}})
+                has_prior_history = bool(graph_state.values.get("messages"))
+            except Exception:
+                has_prior_history = False
+
+            if has_prior_history:
+                msgs_for_graph = [HumanMessage(content=user_message)]
+            else:
+                system_msg_text = await self._build_system_message(session_id)
+                msgs_for_graph = [SystemMessage(content=system_msg_text), HumanMessage(content=user_message)]
+
+            # Execute graph
+            logger.info("Executing LangGraph agent...")
+            result = await self._graph.ainvoke(
+                {"messages": msgs_for_graph},
+                config={"configurable": {"thread_id": session_id}}
+            )
+
+            # Extract response from last AIMessage
+            response = result["messages"][-1].content if result.get("messages") else "I'm sorry, I couldn't process your request."
             logger.info(f"Agent response length: {len(response)} characters")
             
             # Check if we have a pending authorization challenge that needs to be presented to the user
@@ -1401,7 +1332,7 @@ What's your email address?"""
             Dict containing agent status information
         """
         return {
-            "initialized": self._agent_executor is not None,
+            "initialized": self._graph is not None,
             "tools_count": len(self._tools),
             "tools": [tool.name for tool in self._tools],
             "llm_model": getattr(self.llm, "model_name", "unknown"),
