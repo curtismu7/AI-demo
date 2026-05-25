@@ -337,14 +337,15 @@ function RuleList({ loading, error, txRules, mcpRules, selectedRuleId, onSelect 
 
 function RuleCard({ rule, selected, onSelect }) {
   return (
-    <div
+    <button
+      type="button"
       onClick={() => onSelect(rule.id)}
       className={`rp-list-item${selected ? ' rp-list-item--active' : ''}`}
     >
       <div className="rp-list-item__name">{rule.name}</div>
       <div className="rp-list-item__sub">{rule.chips.value !== NO_VALUE ? rule.chips.value : rule.chips.scope}</div>
       <Badge type={rule.badge} />
-    </div>
+    </button>
   );
 }
 
