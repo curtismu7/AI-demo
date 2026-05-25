@@ -91,7 +91,13 @@ export async function reasonOnce(req: ReasonRequest): Promise<ReasonResponse> {
       }
       const textBlock = response.content.find((b): b is Anthropic.TextBlock => b.type === 'text');
       const answer = textBlock?.text ?? '';
-      return { type: 'final', answer, messages: [...req.messages, { role: 'assistant', content: answer }] };
+      return {
+        type: 'final',
+        answer,
+        messages: [...req.messages, { role: 'assistant', content: answer }],
+        inputTokens: response.usage?.input_tokens,
+        outputTokens: response.usage?.output_tokens,
+      };
     } catch (err) {
       teachLog.error('Anthropic reasoning step failed', err, { operation: 'reasonOnce' });
       return { type: 'final', answer: '', messages: req.messages, reasoningUnavailable: true };
