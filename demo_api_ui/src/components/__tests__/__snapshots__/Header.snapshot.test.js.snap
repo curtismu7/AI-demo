@@ -70,14 +70,14 @@ exports[`Header snapshot renders admin nav without change 1`] = `
           data-discover="true"
           href="/config"
         >
-          ⚙️ Config
+          Config
         </a>
         <a
           class="nav-link "
           data-discover="true"
           href="/postman"
         >
-          📮 Postman
+          Postman
         </a>
         <div
           class="app-top-header__user"
@@ -97,7 +97,7 @@ exports[`Header snapshot renders admin nav without change 1`] = `
             class="btn btn-secondary"
             type="button"
           >
-            Logout
+            Log Out
           </button>
         </div>
       </nav>
@@ -154,7 +154,7 @@ exports[`Header snapshot renders user nav without change 1`] = `
             class="btn btn-secondary"
             type="button"
           >
-            Logout
+            Log Out
           </button>
         </div>
       </nav>
