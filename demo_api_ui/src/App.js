@@ -85,7 +85,6 @@ import SecurityCenter from "./components/SecurityCenter";
 import SecuritySettings from "./components/SecuritySettings";
 import SelfServicePage from "./components/SelfServicePage";
 import ServerRestartModal from "./components/ServerRestartModal";
-import SessionExpiryTimer from "./components/SessionExpiryTimer";
 import SessionReauthBanner from "./components/SessionReauthBanner";
 import SetupPage from "./components/SetupPage";
 import SetupWizard from "./components/SetupWizard";
@@ -631,14 +630,6 @@ function AppWithAuth() {
     <DemoTourProvider>
       <EducationUIProvider>
         <TokenChainProvider activePath={pathname}>
-          <SessionExpiryTimer
-            hideOnPaths={[
-              "/configure",
-              "/demo-data",
-              "/self-service",
-              "/onboarding",
-            ]}
-          />
           <div
             className={`App end-user-nano${isOnDashboard ? " App--on-dashboard" : ""}${sessionReauth ? " App--session-reauth" : ""}`}
           >
