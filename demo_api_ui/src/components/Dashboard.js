@@ -20,6 +20,7 @@ import { toastAdminSessionError } from "../utils/dashboardToast";
 import "../styles/appShellPages.css";
 import "./Dashboard.css";
 import { useAgentUiMode } from "../context/AgentUiModeContext";
+import { useSessionToken } from '../context/SessionTokenContext';
 
 import ApiCallsModal from "./ApiCallsModal";
 
@@ -64,6 +65,11 @@ const Dashboard = ({ user, onLogout }) => {
   const [tokenData, setTokenData] = useState(null);
   const [tokenExpiresAt, setTokenExpiresAt] = useState(null);
   const [tokenSecondsLeft, setTokenSecondsLeft] = useState(null);
+  const { publishTokenState } = useSessionToken();
+
+  useEffect(() => {
+    publishTokenState(tokenSecondsLeft, () => setShowTokenModal(true));
+  }, [tokenSecondsLeft, publishTokenState]); // setShowTokenModal is stable
   const [resettingDemo, setResettingDemo] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmWriteSeed, setConfirmWriteSeed] = useState(false);
