@@ -160,7 +160,7 @@ export default function AnthropicPanel() {
               onChange={(e) => setBaseUrl(e.target.value)}
             />
             <p className="cfg-hint">
-              Set to <code style={{ fontFamily: 'monospace' }}>http://localhost:1234</code> to route through LM Studio locally.
+              Set to <code>http://localhost:1234</code> to route through LM Studio locally.
             </p>
           </div>
         </div>
@@ -170,7 +170,7 @@ export default function AnthropicPanel() {
           <strong>Two modes</strong>
           <ul>
             <li><strong>Cloud</strong> — real API key, blank Base URL → calls api.anthropic.com</li>
-            <li><strong>Local proxy</strong> — any key value, Base URL = <code style={{ fontFamily: 'monospace' }}>http://localhost:1234</code> → routes through LM Studio</li>
+            <li><strong>Local proxy</strong> — any key value, Base URL = <code>http://localhost:1234</code> → routes through LM Studio</li>
           </ul>
         </div>
 

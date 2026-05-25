@@ -224,7 +224,7 @@ export default function LmStudioPanel() {
               onChange={(e) => setBaseUrl(e.target.value)}
             />
             <p className="cfg-hint">
-              Default: {DEFAULT_BASE_URL} · Anthropic endpoint: <code style={{ fontFamily: 'monospace' }}>/v1/messages</code>
+              Default: {DEFAULT_BASE_URL} · Anthropic endpoint: <code>/v1/messages</code>
             </p>
           </div>
         </div>
@@ -326,7 +326,7 @@ export default function LmStudioPanel() {
             <p style={{ margin: '0.5rem 0 0', fontSize: '0.75rem', color: '#94a3b8' }}>
               x-api-key: any value accepted — LM Studio does not validate API keys.
               Model field must match the key shown above (e.g.{' '}
-              <code style={{ fontFamily: 'monospace' }}>google/gemma-4-e2b</code>).
+              <code>google/gemma-4-e2b</code>).
             </p>
           </div>
         )}
