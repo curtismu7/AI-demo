@@ -302,6 +302,19 @@ const FLAG_REGISTRY = [
     type:         'boolean',
     defaultValue: false,
   },
+  {
+    id:           'ff_authorize_rules_panel',
+    name:         'Authorize Rules Panel',
+    category:     'UI / Dashboard',
+    description:
+      'When **ON**, an Authorize Rules Panel is shown on the customer dashboard, ' +
+      'letting users browse active authorization policy rules and test transactions ' +
+      'against the engine. Always visible in /configure (Authorize tab) regardless of this flag.',
+    impact:
+      'OFF (default) = panel hidden on /dashboard. ON = panel appears on the dashboard below the main content area.',
+    type:         'boolean',
+    defaultValue: false,
+  },
 
 ];
 
