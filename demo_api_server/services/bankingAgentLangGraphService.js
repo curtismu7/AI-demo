@@ -439,8 +439,12 @@ async function executeBffTool({ name, args, userId, userToken, req = null, token
     session: { oauthTokens: { accessToken: userToken }, id: sessionId },
     sessionID: sessionId,
   };
+  // Pass the actual tool name so resolveMcpAccessTokenWithEvents looks up the right
+  // scope set from MCP_TOOL_SCOPES (e.g. create_transfer → ['write', 'transfer']).
+  // 'banking_agent' is not a tool name and defaults to ['read'], causing write calls
+  // to fail with insufficient_scope at the gateway.
   const { token: agentToken, tokenEvents: exchangeEvents } =
-    await resolveMcpAccessTokenWithEvents(mockReq, 'banking_agent');
+    await resolveMcpAccessTokenWithEvents(mockReq, name);
   if (exchangeEvents && exchangeEvents.length > 0 && Array.isArray(tokenEvents)) {
     tokenEvents.push(...exchangeEvents);
   }

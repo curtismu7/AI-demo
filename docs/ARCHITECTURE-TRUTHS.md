@@ -463,6 +463,63 @@ applies to `grant_type=urn:...:token-exchange`.
 
 ---
 
+## T-11 — Heuristic write operations MUST go through MCP, not the BFF's internal transaction API
+
+Both the LLM path and the heuristic fast-path MUST route ALL banking
+operations — reads AND writes — through the same MCP pipeline:
+
+```
+executeBffTool()
+  → resolveMcpAccessTokenWithEvents(req, toolName)   ← RFC 8693 with correct scopes
+  → callMcpToolInternal()
+  → callToolViaGateway() (HTTP) or mcpCallTool() (WS fallback)
+  → MCP server
+  → PingAuthorize policy enforcement
+```
+
+**Naive reading that is wrong:** "The heuristic is just a keyword shortcut —
+it's faster to call the BFF's internal `/api/transactions` directly; security
+is already checked by `authenticateToken`."
+
+The internal `_callTransactionsApi()` function bypasses every layer that
+matters:
+- No RFC 8693 token exchange (no `act` claim, no delegation scope narrowing)
+- No MCP server execution (no `BankingToolProvider.executeTool()`)
+- No PingAuthorize policy evaluation
+- No HITL consent gates (consent gates are enforced at the MCP level, not the
+  BFF `/api/transactions` level for the agent path)
+- No Token Chain events for the delegated write operation
+
+The heuristic is a ROUTING shortcut (bypass the LLM for common banking
+intents). It is NOT an authorization shortcut. Security controls live in the
+MCP pipeline, not in `authenticateToken` alone.
+
+**The fix (2026-05-25):** All three write branches in `bankingAgentLangGraphService.js`
+now call `executeBffTool({ name: 'create_transfer'|'create_deposit'|'create_withdrawal', ... })`.
+The `_callTransactionsApi` function remains for non-agent BFF-internal paths only.
+Additionally, `callMcpToolInternal` in `mcpToolRegistry.js` routes via HTTP gateway
+(`callToolViaGateway`) when `MCP_GATEWAY_HTTP_URL` is set, instead of WebSocket — the
+WS path was failing with `4001: Bearer token required` because the bearer token was
+in the JSON-RPC body rather than the WS `Authorization` header.
+
+**Scope resolution:** `executeBffTool` MUST pass the actual tool name (e.g.
+`'create_transfer'`) to `resolveMcpAccessTokenWithEvents`, not the string
+`'banking_agent'`. `MCP_TOOL_SCOPES` is keyed by tool name; the wrong key
+returns `undefined` → defaults to `['read']` → RFC 8693 requests read-only
+scope for a write operation → `insufficient_scope` at the gateway.
+
+- Code: `demo_api_server/services/bankingAgentLangGraphService.js` (heuristic
+  write branches call `executeBffTool`; scope-name fix — pass `name`, not
+  `'banking_agent'`), `demo_api_server/utils/mcpToolRegistry.js`
+  (`callMcpToolInternal` — HTTP gateway routing)
+- Related: T-2 (PingAuthorize is the authoritative gate), T-3 (heuristic
+  routing is mode-dependent but security enforcement is mode-independent),
+  T-4 (PingOne performs the RFC 8693 exchange)
+- REGRESSION_PLAN.md §1 row: "BFF LangGraph agent termination + MCP WS slot
+  timing" (WR-07: non-Error throws in heuristic write MUST NOT be swallowed)
+
+---
+
 ## How to extend this file
 
 Add a `T-N` entry only when **all** of these hold:
