@@ -287,6 +287,22 @@ const FLAG_REGISTRY = [
     defaultValue: false,
   },
 
+  // ── UI / Dashboard (continued) ──────────────────────────────────────────────
+  {
+    id:           'ff_agent_results_panel',
+    name:         'Banking Agent — Floating Results Panel',
+    category:     'UI / Dashboard',
+    description:
+      'When **ON**, tool results (accounts, balance, transactions) open in a floating panel ' +
+      'positioned to the left of the agent. When **OFF** (default), results appear inline ' +
+      'in the chat thread only — no floating panel.',
+    impact:
+      'OFF (default) = results shown inline in chat; floating panel never rendered. ' +
+      'ON = floating panel appears alongside the agent, resizable and positioned dynamically.',
+    type:         'boolean',
+    defaultValue: false,
+  },
+
 ];
 
 // ---------------------------------------------------------------------------
