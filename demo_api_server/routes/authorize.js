@@ -304,11 +304,17 @@ router.post('/test-evaluate', async (req, res) => {
         `Authorize [simulated] ${result.decision} — ${type} $${numAmount}`,
         { tag: result.decision === 'PERMIT' ? 'authorize/permit' : 'authorize/deny',
           metadata: { engine: 'simulated', decision: result.decision, type, amount: numAmount, userId, stepUpRequired: result.stepUpRequired, path: result.path } });
+      // F7: both fields always present so the response contract is identical
+      // regardless of which engine is active. consentRequired is the canonical
+      // name (HITL_CONSENT obligation); hitlRequired is kept as an alias for
+      // legacy callers.
+      const simConsent = result.consentRequired || false;
       return res.json({
         ok: true,
         decision: result.decision,
         stepUpRequired: result.stepUpRequired,
-        consentRequired: result.consentRequired || false,
+        consentRequired: simConsent,
+        hitlRequired: simConsent,
         engine: 'simulated',
         path: result.path,
         decisionId: result.decisionId,
@@ -323,11 +329,16 @@ router.post('/test-evaluate', async (req, res) => {
       `Authorize [pingone] ${result.decision} — ${type} $${numAmount}`,
       { tag: result.decision === 'PERMIT' ? 'authorize/permit' : 'authorize/deny',
         metadata: { engine: 'pingone', decision: result.decision, type, amount: numAmount, userId, stepUpRequired: result.stepUpRequired, decisionId: result.decisionId, path: result.path } });
+    // F7: normalize both field names — consentRequired (canonical) and
+    // hitlRequired (alias) always present so callers don't need engine-specific
+    // field name knowledge. Both are identical values.
+    const pingConsent = result.hitlRequired || result.consentRequired || false;
     return res.json({
       ok: true,
       decision: result.decision,
       stepUpRequired: result.stepUpRequired,
-      hitlRequired: result.hitlRequired || false,
+      consentRequired: pingConsent,
+      hitlRequired: pingConsent,
       engine: 'pingone',
       path: result.path,
       decisionId: result.decisionId,
@@ -340,7 +351,50 @@ router.post('/test-evaluate', async (req, res) => {
     console.error('[authorize/test-evaluate] Error:', err.message);
     logEvent('authorize', 'error', `Authorize evaluation error: ${err.message}`,
       { tag: 'authorize/error', metadata: { type, amount: numAmount, userId, error: err.message } });
-    return res.status(502).json({ ok: false, error: err.message });
+
+    // F6: apply failover policy for test-evaluate when PingOne is unreachable.
+    // Legacy ff_authorize_fail_open=true maps to failover_mode=permit.
+    const legacyFailOpen = configStore.getEffective('ff_authorize_fail_open') === 'true';
+    const failoverMode = legacyFailOpen
+      ? 'permit'
+      : (configStore.getEffective('authorize_failover_mode') || 'fallback_simulated');
+
+    if (failoverMode === 'fallback_simulated') {
+      try {
+        const fallback = await evaluateSimulatedTransaction({ userId, amount: numAmount, type, acr: acr || undefined });
+        const fallbackConsent = fallback.consentRequired || false;
+        logEvent('authorize', 'warning',
+          `[Authorize] test-evaluate fell back to simulated (pingone unreachable)`,
+          { tag: 'authorize/fallback-simulated', metadata: { type, amount: numAmount, userId, decision: fallback.decision } });
+        return res.json({
+          ok: true,
+          decision: fallback.decision,
+          stepUpRequired: fallback.stepUpRequired,
+          consentRequired: fallbackConsent,
+          hitlRequired: fallbackConsent,
+          engine: 'fallback_simulated',
+          fallback: { reason: 'pingone_unavailable', originalError: err.message },
+          path: fallback.path,
+          decisionId: fallback.decisionId,
+          parameters: fallback.raw?.parameters || { Amount: numAmount, TransactionType: type, UserId: userId },
+          raw: fallback.raw,
+        });
+      } catch (_fallbackErr) {
+        return res.status(503).json({ ok: false, error: 'Authorization evaluation failed.', failoverMode });
+      }
+    }
+
+    if (failoverMode === 'deny') {
+      return res.status(503).json({
+        ok: false,
+        error: 'authorization_service_unavailable',
+        error_description: 'PingOne Authorize is temporarily unavailable. Transactions are blocked (failover_mode=deny).',
+        failoverMode,
+      });
+    }
+
+    // failoverMode === 'permit': return 502 with clear message for test UI
+    return res.status(502).json({ ok: false, error: err.message, failoverMode });
   }
 });
 

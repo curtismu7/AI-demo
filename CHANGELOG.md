@@ -17,6 +17,12 @@ Versions use calendar dates: `YYYY.MM.DD`.
 ## [Unreleased]
 
 ### Added
+- `authorize_failover_mode` configStore key (default: `fallback_simulated`) — explicit policy for when PingOne Authorize is unreachable; `deny` (503 fail-closed), `permit` (fail-open), or `fallback_simulated` (switch to in-process engine)
+- `authorize.parity.test.js` — parity contract tests asserting simulated ≡ PingOne enforcement flags for same inputs (14 tests)
+
+### Fixed
+- `test-evaluate` API now returns both `consentRequired` and `hitlRequired` fields regardless of active engine (was returning only one per engine)
+- Unrecognised PingOne Authorize obligation types now log a `console.warn` instead of silently being discarded
 
 - **`diagram-components` skill** — codifies shared diagram component contracts: `DiagramControls`, `DiagramLegend`, `PathFilterBar`; CSS namespaces (`.dc-*` / `.dl-*` / `.pfb-*`); canonical colour palette; rules for adding new diagram pages; exemptions (ReactFlow, Mermaid); Architecture Simulation spec pointer.
 - **TraT context binding + gateway↔MCP mTLS** — `X-TraT-Context` header carries simulated transaction-token claims (`reqctx`, `purp`, `azd`, `rctx`) from BFF through gateway to upstream; evaluated by PingAuthorize alongside the JWT (gated by `ff_trat_mode`, default off). mTLS between gateway and MCP servers (self-signed ephemeral cert, pinned by SHA-256) prevents direct MCP access with a valid TX token; gated by `MCP_MTLS_ENABLED=false` default. Token Chain gains `trat-context` and `gw-mtls` events with inline education boxes. New `TransactionTokensPanel` education panel. See REGRESSION_PLAN §4 (2026-05-20).

@@ -649,6 +649,27 @@ function _classifyRawObligations(raw) {
     ...(raw.details?.obligations || []),
     ...(raw.details?.advice || []),
   ];
+
+  // F4: warn on obligation types the classifier doesn't recognise so policy
+  // changes in PingOne Authorize don't silently fall through as PERMIT.
+  // Recognised patterns: HITL_CONSENT, STEP_UP / STEPUP, HITL, HUMAN_APPROVAL.
+  const unrecognised = merged.filter((ob) => {
+    const key = String((ob && (ob.type || ob.id)) || '').toUpperCase();
+    if (!key) return false;
+    return (
+      !key.includes('HITL') &&       // covers HITL, HITL_CONSENT, HUMAN_APPROVAL
+      !key.includes('STEP_UP') &&
+      !key.includes('STEPUP') &&
+      !key.includes('HUMAN_APPROVAL')
+    );
+  });
+  if (unrecognised.length > 0) {
+    console.warn(
+      '[PingOneAuthorize] Unrecognised obligation types — not enforced (check policy config):',
+      unrecognised.map((ob) => ob.type || ob.id),
+    );
+  }
+
   return classifyObligations(merged);
 }
 
