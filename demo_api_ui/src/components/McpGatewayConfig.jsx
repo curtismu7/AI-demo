@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import "./McpGatewayConfig.css";
+import CopyableValue from "./CopyableValue";
+import { useMcpFieldState } from "../hooks/useMcpFieldState";
+import { MCP_FIELD_KEYS } from "../constants/mcpFieldKeys";
 
 const API_BASE = process.env.REACT_APP_API_BASE || "";
 
@@ -14,13 +17,13 @@ function McpModeChip({ usePingOneServer }) {
 	if (usePingOneServer) {
 		return (
 			<span className="mgc-badge mgc-badge--pingone-mode" aria-label="MCP mode: PingOne MCP Server">
-				🔵 PingOne MCP Server
+				PingOne MCP Server
 			</span>
 		);
 	}
 	return (
 		<span className="mgc-badge mgc-badge--custom-mode" aria-label="MCP mode: Custom Gateway">
-			🛡️ Custom Gateway
+			Custom Gateway
 		</span>
 	);
 }
@@ -35,7 +38,7 @@ function CopyButton({ text, label = "Copy" }) {
 	}, [text]);
 	return (
 		<button className="mgc-copy-btn" onClick={copy}>
-			{copied ? "✅ Copied" : "📋 " + label}
+			{copied ? "✅ Copied" : label}
 		</button>
 	);
 }
@@ -63,6 +66,15 @@ export default function McpGatewayConfig() {
 	const [error, setError] = useState(null);
 	const [loading, setLoading] = useState(true);
 	const [activeTab, setActiveTab] = useState("mock");
+
+	// Shared field context setters — used by seed effect and Step 2 onChange handlers.
+	// CopyableValue reads from context directly via fieldKey; no need to read values here.
+	const { setValue: seedPingOneEnvUrl }      = useMcpFieldState(MCP_FIELD_KEYS.PINGONE_ENV_URL);
+	const { setValue: seedIntrospectEndpoint } = useMcpFieldState(MCP_FIELD_KEYS.INTROSPECT_ENDPOINT);
+	const { setValue: seedUpstreamMcpUrl }     = useMcpFieldState(MCP_FIELD_KEYS.UPSTREAM_MCP_URL);
+	const { setValue: setPingOneResourceId }   = useMcpFieldState(MCP_FIELD_KEYS.PINGONE_RESOURCE_ID);
+	const { setValue: setGatewayUrl }          = useMcpFieldState(MCP_FIELD_KEYS.GATEWAY_URL);
+	const { setValue: setMcpScope }            = useMcpFieldState(MCP_FIELD_KEYS.MCP_SCOPE);
 
 	const fetchConfig = useCallback(async () => {
 		setLoading(true);
@@ -111,28 +123,37 @@ export default function McpGatewayConfig() {
 
 
 
-	// Seed push form with live config values on first load
-	useEffect(() => {
-		if (data) {
-			const { config: c, mock: m } = data;
-			setPushForm({
-				gatewayResourceUri: c.gatewayResourceUri || "",
-				mcpOlbWsUrl: c.upstreamMcpUrl || "",
-				mcpOlbResourceUri: c.mcpOlbResourceUri || "",
-				mcpInvestWsUrl: c.mcpInvestWsUrl || "",
-				mcpInvestResourceUri: c.mcpInvestResourceUri || "",
-				pingAuthorizeEndpoint: c.pingAuthorizeEndpoint || "",
-				hitlServiceUrl: c.hitlServiceUrl || "",
-				devBypass: m.devBypass,
-			});
-			setRouteForm({
-				pingOneResourceId: c.pingOneResourceId || "",
-				gatewayUrl: c.gatewayPublicUrl || "",
-				mcpScope: c.mcpScope || "mcp:invoke",
-			});
-		}
+	// Seed push form and shared field context with live config values on first load.
+	// All setValue functions from useMcpFieldState are stable (memoised via useCallback
+	// in McpFieldContext), so including them in deps would cause an infinite loop.
 	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [!!data]);
+	useEffect(() => {
+		if (!data) return;
+		const { config: c, mock: m } = data;
+		setPushForm({
+			gatewayResourceUri: c.gatewayResourceUri || "",
+			mcpOlbWsUrl: c.upstreamMcpUrl || "",
+			mcpOlbResourceUri: c.mcpOlbResourceUri || "",
+			mcpInvestWsUrl: c.mcpInvestWsUrl || "",
+			mcpInvestResourceUri: c.mcpInvestResourceUri || "",
+			pingAuthorizeEndpoint: c.pingAuthorizeEndpoint || "",
+			hitlServiceUrl: c.hitlServiceUrl || "",
+			devBypass: m.devBypass,
+		});
+		setRouteForm({
+			pingOneResourceId: c.pingOneResourceId || "",
+			gatewayUrl: c.gatewayPublicUrl || "",
+			mcpScope: c.mcpScope || "mcp:invoke",
+		});
+		// Seed shared context: auto-filled (readonly) fields get source chip
+		if (c.pingOneEnvUrl)      seedPingOneEnvUrl(c.pingOneEnvUrl, 'auto-filled');
+		if (c.introspectEndpoint) seedIntrospectEndpoint(c.introspectEndpoint, 'auto-filled');
+		if (c.upstreamMcpUrl)     seedUpstreamMcpUrl(c.upstreamMcpUrl, 'auto-filled');
+		// Seed editable fields from saved config (no source — user can override freely)
+		if (c.pingOneResourceId)  setPingOneResourceId(c.pingOneResourceId);
+		if (c.gatewayPublicUrl)   setGatewayUrl(c.gatewayPublicUrl);
+		setMcpScope(c.mcpScope || 'mcp:invoke');
+	}, [data]); // eslint-disable-line react-hooks/exhaustive-deps
 
 	if (loading) return <div className="mgc-loading">Loading gateway config…</div>;
 	if (error) return <div className="mgc-error">Error: {error} <button onClick={fetchConfig}>Retry</button></div>;
@@ -207,7 +228,7 @@ export default function McpGatewayConfig() {
 				<div className="mgc-header-badge">
 					<StatusBadge running={mock.running} devBypass={mock.devBypass} enabled={mock.enabled} />
 					{data && <McpModeChip usePingOneServer={data.mcpMode === 'pingone'} />}
-					<button className="mgc-refresh-btn" onClick={fetchConfig}>↻ Refresh</button>
+					<button className="mgc-refresh-btn" onClick={fetchConfig}>Refresh</button>
 				</div>
 			</div>
 
@@ -216,25 +237,25 @@ export default function McpGatewayConfig() {
 					className={`mgc-tab ${activeTab === "mock" ? "mgc-tab--active" : ""}`}
 					onClick={() => setActiveTab("mock")}
 				>
-					🛡️ Mock Gateway (Dev)
+					Mock Gateway (Dev)
 				</button>
 				<button
 					className={`mgc-tab ${activeTab === "real" ? "mgc-tab--active" : ""}`}
 					onClick={() => setActiveTab("real")}
 				>
-					🔐 Real PingGateway (Prod)
+					Real PingGateway (Prod)
 				</button>
 				<button
 					className={`mgc-tab ${activeTab === "env" ? "mgc-tab--active" : ""}`}
 					onClick={() => setActiveTab("env")}
 				>
-					⚙️ Env Vars
+					Env Vars
 				</button>
 				<button
 					className={`mgc-tab ${activeTab === "docs" ? "mgc-tab--active" : ""}`}
 					onClick={() => setActiveTab("docs")}
 				>
-					📖 Docs & Setup
+					Docs & Setup
 				</button>
 			</div>
 
@@ -295,7 +316,7 @@ MCP_INVEST_RESOURCE_URI=https://mcp-invest.ping.demo
 						</ol>
 						{mock.devBypass && (
 							<div className="mgc-alert mgc-alert--info">
-								ℹ️ <strong>Dev bypass active</strong> — steps 2–5 are skipped. Original bearer token is forwarded directly.
+								<strong>Dev bypass active</strong> — steps 2–5 are skipped. Original bearer token is forwarded directly.
 							</div>
 						)}
 					</div>
@@ -338,7 +359,7 @@ MCP_INVEST_RESOURCE_URI=https://mcp-invest.ping.demo
 							onClick={handlePush}
 							disabled={pushing}
 						>
-							{pushing ? "Pushing…" : "⬆ Push to Gateway"}
+							{pushing ? "Pushing…" : "Push to Gateway"}
 						</button>
 						{pushResult && (
 							<div className={`mgc-alert ${pushResult.ok ? "mgc-alert--success" : "mgc-alert--error"}`}>
@@ -353,7 +374,7 @@ MCP_INVEST_RESOURCE_URI=https://mcp-invest.ping.demo
 			{activeTab === "real" && (
 				<div className="mgc-panel">
 					<div className="mgc-compliance-note">
-						ℹ️ This config page generates files compatible with PingGateway (Identity Gateway) 2025.11.1 and 2026. Install PingGateway and drop in the generated files — no manual JSON editing needed.
+						This config page generates files compatible with PingGateway (Identity Gateway) 2025.11.1 and 2026. Install PingGateway and drop in the generated files — no manual JSON editing needed.
 					</div>
 
 					<div className="mgc-wizard">
@@ -395,77 +416,69 @@ MCP_INVEST_RESOURCE_URI=https://mcp-invest.ping.demo
 							</div>
 							<div className="mgc-wizard-step-body">
 								<div className="mgc-push-form">
-									<label className="mgc-field">
-										<span className="mgc-field-label">
-											PingOne Environment URL
-											<span className="mgc-chip--derived">🔗 From PingOne config</span>
-										</span>
-										<input type="text" className="mgc-input mgc-input--readonly" value={data.config.pingOneEnvUrl || ""} readOnly />
-										<span className="mgc-field-hint">maps to <code>properties.pingOneEnvID</code> in mcp.json</span>
-									</label>
+									<CopyableValue
+										label="PingOne Environment URL"
+										fieldKey={MCP_FIELD_KEYS.PINGONE_ENV_URL}
+										readOnly
+										monospace
+										hint="Maps to properties.pingOneEnvID in mcp.json"
+									/>
 
-									<label className="mgc-field">
-										<span className="mgc-field-label">
-											PingOne Resource ID
-											{!routeForm.pingOneResourceId && <span className="mgc-badge mgc-badge--required">Required</span>}
-										</span>
-										<input
-											type="text"
-											className="mgc-input"
-											placeholder="e.g., a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-											value={routeForm.pingOneResourceId ?? ""}
-											onChange={(e) => setRouteForm((f) => ({ ...f, pingOneResourceId: e.target.value }))}
-										/>
-										<span className="mgc-field-hint">Used as <code>username</code> in OAuth2ResourceServerFilter for introspection. Maps to <code>properties.pingOneResourceID</code>.</span>
-									</label>
+									<CopyableValue
+										label="PingOne Resource ID"
+										fieldKey={MCP_FIELD_KEYS.PINGONE_RESOURCE_ID}
+										required
+										monospace
+										placeholder="e.g., a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+										hint="Used as username in OAuth2ResourceServerFilter for introspection. Maps to properties.pingOneResourceID."
+										onChange={(v) => {
+											setRouteForm((f) => ({ ...f, pingOneResourceId: v }));
+											setPingOneResourceId(v, 'Step 2');
+										}}
+									/>
 
-									<label className="mgc-field">
-										<span className="mgc-field-label">
-											PingGateway Public URL
-											{!routeForm.gatewayUrl && <span className="mgc-badge mgc-badge--required">Required</span>}
-										</span>
-										<input
-											type="text"
-											className="mgc-input"
-											placeholder="https://ig.example.com:8443"
-											value={routeForm.gatewayUrl ?? ""}
-											onChange={(e) => setRouteForm((f) => ({ ...f, gatewayUrl: e.target.value }))}
-										/>
-										<span className="mgc-field-hint">The public HTTPS URL of your PingGateway instance. Maps to <code>properties.gatewayUrl</code>.</span>
-									</label>
+									<CopyableValue
+										label="PingGateway Public URL"
+										fieldKey={MCP_FIELD_KEYS.GATEWAY_URL}
+										required
+										monospace
+										placeholder="https://ig.example.com:8443"
+										hint="The public HTTPS URL of your PingGateway instance. Maps to properties.gatewayUrl."
+										onChange={(v) => {
+											setRouteForm((f) => ({ ...f, gatewayUrl: v }));
+											setGatewayUrl(v, 'Step 2');
+										}}
+									/>
 
-									<label className="mgc-field">
-										<span className="mgc-field-label">
-											Upstream MCP Server URL
-											<span className="mgc-chip--derived">🔗 From PingOne config</span>
-										</span>
-										<input type="text" className="mgc-input mgc-input--readonly" value={data.config.upstreamMcpUrl || ""} readOnly />
-										<span className="mgc-field-hint">Maps to <code>properties.mcpServerUrl</code> and <code>baseURI</code>.</span>
-									</label>
+									<CopyableValue
+										label="Upstream MCP Server URL"
+										fieldKey={MCP_FIELD_KEYS.UPSTREAM_MCP_URL}
+										readOnly
+										monospace
+										hint="Maps to properties.mcpServerUrl and baseURI."
+									/>
 
-									<label className="mgc-field">
-										<span className="mgc-field-label">MCP Scope</span>
-										<input
-											type="text"
-											className="mgc-input"
-											placeholder="mcp:invoke"
-											value={routeForm.mcpScope ?? "mcp:invoke"}
-											onChange={(e) => setRouteForm((f) => ({ ...f, mcpScope: e.target.value }))}
-										/>
-										<span className="mgc-field-hint">OAuth 2.0 scope required for token exchange.</span>
-									</label>
+									<CopyableValue
+										label="MCP Scope"
+										fieldKey={MCP_FIELD_KEYS.MCP_SCOPE}
+										placeholder="mcp:invoke"
+										hint="OAuth 2.0 scope required for token exchange."
+										onChange={(v) => {
+											setRouteForm((f) => ({ ...f, mcpScope: v }));
+											setMcpScope(v);
+										}}
+									/>
 
-									<label className="mgc-field">
-										<span className="mgc-field-label">
-											Token Introspection Endpoint
-											<span className="mgc-chip--derived">🔗 From PingOne config</span>
-										</span>
-										<input type="text" className="mgc-input mgc-input--readonly" value={data.config.introspectEndpoint || ""} readOnly />
-										<span className="mgc-field-hint">Auto-computed: PingOne Auth URL + <code>/as/introspect</code></span>
-									</label>
+									<CopyableValue
+										label="Token Introspection Endpoint"
+										fieldKey={MCP_FIELD_KEYS.INTROSPECT_ENDPOINT}
+										readOnly
+										monospace
+										hint="Auto-computed: PingOne Auth URL + /as/introspect"
+									/>
 
 									<button type="button" className="mgc-push-btn" onClick={handleRouteSave} disabled={routeSaving}>
-										{routeSaving ? "Saving…" : "⬆ Save to Config"}
+										{routeSaving ? "Saving…" : "Save to Config"}
 									</button>
 									{routeSaveResult && (
 										<div className={`mgc-alert ${routeSaveResult.ok ? "mgc-alert--success" : "mgc-alert--error"}`}>
@@ -477,7 +490,7 @@ MCP_INVEST_RESOURCE_URI=https://mcp-invest.ping.demo
 								<div style={{ marginTop: '20px' }}>
 									<h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '8px', color: '#1a1a2e' }}>Live mcp.json Preview</h4>
 									<div className="mgc-code-block">
-										<button type="button" className="mgc-download-btn" onClick={handleDownloadMcpJson}>⬇ Download mcp.json</button>
+										<button type="button" className="mgc-download-btn" onClick={handleDownloadMcpJson}>Download mcp.json</button>
 										<CopyButton text={liveMcpJsonStr} label="Copy mcp.json" />
 										<pre className="mgc-pre mgc-pre--code">{liveMcpJsonStr}</pre>
 									</div>
@@ -493,11 +506,26 @@ MCP_INVEST_RESOURCE_URI=https://mcp-invest.ping.demo
 								<span className="mgc-wizard-step-status">○ pending</span>
 							</div>
 							<div className="mgc-wizard-step-body">
-								<p style={{ fontSize: '14px', color: '#444', margin: '0 0 10px' }}>
+								<p style={{ fontSize: '14px', color: '#444', margin: '0 0 12px' }}>
 									Drop into <code>$HOME/.openig/config/routes/mcp.json</code> (Linux) or <code>%appdata%\OpenIG\config\routes\mcp.json</code> (Windows).
 								</p>
+								<div className="mgc-step3-carried" style={{ marginBottom: 16 }}>
+									<div style={{ fontSize: 12, fontWeight: 600, color: '#4a6080', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>Values from Step 2</div>
+									<CopyableValue
+										label="PingOne Resource ID"
+										fieldKey={MCP_FIELD_KEYS.PINGONE_RESOURCE_ID}
+										readOnly
+										monospace
+									/>
+									<CopyableValue
+										label="PingGateway Public URL"
+										fieldKey={MCP_FIELD_KEYS.GATEWAY_URL}
+										readOnly
+										monospace
+									/>
+								</div>
 								<div className="mgc-code-block">
-									<button className="mgc-download-btn" onClick={handleDownloadMcpJson}>⬇ Download mcp.json</button>
+									<button className="mgc-download-btn" onClick={handleDownloadMcpJson}>Download mcp.json</button>
 									<CopyButton text={pingGwJsonStr} label="Copy mcp.json" />
 									<pre className="mgc-pre mgc-pre--code">{pingGwJsonStr}</pre>
 								</div>
@@ -549,7 +577,7 @@ MCP_INVEST_RESOURCE_URI=https://mcp-invest.ping.demo
 					<EnvVarTable vars={envVars.required} title="Required (gateway service)" />
 					<EnvVarTable vars={envVars.optional} title="Optional / defaults" />
 					<div className="mgc-alert mgc-alert--info">
-						ℹ️ Secrets are masked. Set vars in{" "}
+						Secrets are masked. Set vars in{" "}
 						<code>banking_mcp_gateway/.env.development</code> for local dev,
 						or in your deployment environment for production.
 					</div>
@@ -566,21 +594,21 @@ MCP_INVEST_RESOURCE_URI=https://mcp-invest.ping.demo
 						<p className="mgc-doc-card-title">Securing AI Agents with PingOne</p>
 						<p className="mgc-doc-card-desc">PingOne identity patterns for AI agents — authentication, scopes, delegation</p>
 						<a className="mgc-doc-card-link" href="https://developer.pingidentity.com/identity-for-ai/identity/idai-securing-agents-pingone.html" target="_blank" rel="noopener noreferrer">
-							🔗 developer.pingidentity.com — Securing AI Agents
+							developer.pingidentity.com — Securing AI Agents
 						</a>
 					</div>
 					<div className="mgc-doc-card">
 						<p className="mgc-doc-card-title">PingGateway + PingOne Authorize (AAM)</p>
 						<p className="mgc-doc-card-desc">How PingGateway integrates with PingOne Authorize for policy-driven agent authorization</p>
 						<a className="mgc-doc-card-link" href="https://docs.pingidentity.com/pinggateway/2026/pingone/aam.html" target="_blank" rel="noopener noreferrer">
-							🔗 docs.pingidentity.com — PingGateway AAM
+							docs.pingidentity.com — PingGateway AAM
 						</a>
 					</div>
 					<div className="mgc-doc-card">
 						<p className="mgc-doc-card-title">PingGateway Documentation</p>
 						<p className="mgc-doc-card-desc">Full installation, configuration, and deployment guide for Identity Gateway 2025.11 and 2026</p>
 						<a className="mgc-doc-card-link" href="https://docs.pingidentity.com/pinggateway/2026/" target="_blank" rel="noopener noreferrer">
-							🔗 docs.pingidentity.com — PingGateway Docs
+							docs.pingidentity.com — PingGateway Docs
 						</a>
 					</div>
 				</div>

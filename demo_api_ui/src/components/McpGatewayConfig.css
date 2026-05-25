@@ -165,6 +165,8 @@
 }
 .mgc-pre--code {
   margin-top: 8px;
+  font-size: 12.5px;
+  line-height: 1.6;
 }
 
 /* Chain */
@@ -282,17 +284,20 @@
   gap: 8px;
 }
 .mgc-field-label {
-  font-size: 0.78rem;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary, #374151);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.01em;
+  line-height: 1.5;
 }
 .mgc-input {
   padding: 6px 10px;
   border: 1px solid var(--border, #d1d5db);
   border-radius: 6px;
-  font-size: 0.85rem;
+  font-size: 13px;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
   font-family: inherit;
   background: var(--background, #fff);
   color: var(--text, #111827);
@@ -305,9 +310,9 @@
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
 }
 .mgc-field-hint {
-  font-size: 0.75rem;
+  font-size: 11px;
   color: var(--text-secondary, #374151);
-  line-height: 1.4;
+  line-height: 1.6;
   margin-top: 2px;
 }
 .mgc-push-btn {
@@ -474,6 +479,8 @@
   background: #f8f9fa;
   color: #999;
   cursor: default;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, 'Courier New', monospace;
+  letter-spacing: 0.03em;
 }
 
 /* Phase 264 — download button */
