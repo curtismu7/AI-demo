@@ -47,6 +47,17 @@ class ConversationMemory:
         self.session_timeout = timedelta(hours=session_timeout_hours)
         self.cleanup_interval = timedelta(minutes=cleanup_interval_minutes)
 
+        # WR-01: Warn if Stage-1 token trim can never fire.
+        # Stage 2 keeps the count at ≤ max_messages_per_session, so Stage 1's
+        # guard (len > max_context_tokens) is dead code whenever
+        # max_context_tokens >= max_messages_per_session.
+        if max_context_tokens >= max_messages_per_session:
+            logger.warning(
+                f"max_context_tokens ({max_context_tokens}) >= max_messages_per_session "
+                f"({max_messages_per_session}): Stage-1 token trim will never fire. "
+                "Set LANGCHAIN_MAX_CONTEXT_TOKENS below max_messages_per_session to activate it."
+            )
+
         # In-memory storage (in production, this could be Redis or database)
         self._sessions: Dict[str, ChatSession] = {}
         self._messages: Dict[str, List[ChatMessage]] = defaultdict(list)
@@ -357,12 +368,19 @@ class ConversationMemory:
                 # Slice the original ChatMessage list to the same count from the end,
                 # accounting for a retained leading SystemMessage if present.
                 n_trimmed = len(trimmed_base)
-                if trimmed_base and isinstance(trimmed_base[0], SystemMessage) and \
+                if n_trimmed == 0:
+                    # trim_messages returned empty (e.g. max_context_tokens=0).
+                    # Guard: messages[-0:] == messages[:] (all), so handle explicitly.
+                    kept = []
+                elif trimmed_base and isinstance(trimmed_base[0], SystemMessage) and \
                         messages and messages[0].role == "system":
                     # System message was retained at position 0; keep it plus the last
                     # (n_trimmed - 1) non-system messages.
+                    # Guard: tail_count=0 means only the system message fits; using
+                    # non_system[-0:] would return the full list, so handle explicitly.
                     non_system = [m for m in messages[1:]]
-                    kept = [messages[0]] + non_system[-(n_trimmed - 1):]
+                    tail_count = n_trimmed - 1
+                    kept = [messages[0]] + (non_system[-tail_count:] if tail_count > 0 else [])
                 else:
                     kept = messages[-n_trimmed:]
                 self._messages[session_id] = kept

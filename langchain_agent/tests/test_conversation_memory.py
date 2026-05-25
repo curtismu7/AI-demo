@@ -542,6 +542,50 @@ class TestTokenAwareTrimming:
             await memory.add_message(session_id, self._make_msg(session_id, i, f"Message {i}"))
         assert len(memory._messages.get(session_id, [])) <= 2
 
+    @pytest.mark.asyncio
+    async def test_system_message_only_kept_when_budget_is_one(self):
+        """CR-02 regression: when max_context_tokens=1 with a leading system message,
+        trim_messages returns [SystemMessage] only; tail_count=0 must NOT expand to
+        non_system[-0:] (the full list). Only the system message should remain."""
+        session_id = "sys-only-trim"
+        memory = ConversationMemory(max_messages_per_session=50, max_context_tokens=1)
+        sys_msg = ChatMessage(
+            id="0", session_id=session_id, content="You are a helpful assistant.",
+            role="system", timestamp=datetime.now(timezone.utc), metadata={},
+        )
+        await memory.add_message(session_id, sys_msg)
+        for i in range(3):
+            await memory.add_message(
+                session_id,
+                self._make_msg(session_id, i + 1, f"Human message {i}"),
+            )
+        msgs = memory._messages.get(session_id, [])
+        # Budget=1 fits only the system message; no human messages should survive.
+        assert len(msgs) == 1, f"Expected 1 message (system only), got {len(msgs)}: {[m.content for m in msgs]}"
+        assert msgs[0].role == "system"
+
+    @pytest.mark.asyncio
+    async def test_zero_trimmed_results_in_empty_session(self):
+        """CR-01 regression: when trim_messages() returns [] (n_trimmed=0),
+        the result must be an empty list, not messages[-0:] == the full list."""
+        session_id = "empty-trim"
+        # max_context_tokens=0 causes trim_messages to return []; guard must yield [].
+        # ConversationMemory will log a WR-01 warning (max_context_tokens < max_messages)
+        # but should not raise — the actual ValueError guard is in settings.py for env vars.
+        memory = ConversationMemory(max_messages_per_session=50, max_context_tokens=0)
+        for i in range(5):
+            # Bypass the normal add_message flow and seed messages directly so
+            # we can call _trim_session_messages with a known starting state.
+            memory._messages[session_id].append(
+                self._make_msg(session_id, i, f"Message {i}")
+            )
+        # Manually invoke trim to test the zero-case in isolation.
+        await memory._trim_session_messages(session_id)
+        remaining = memory._messages.get(session_id, [])
+        assert len(remaining) == 0, (
+            f"CR-01: messages[-0:] expands to all messages; expected 0, got {len(remaining)}"
+        )
+
 
 if __name__ == "__main__":
     pytest.main([__file__])
