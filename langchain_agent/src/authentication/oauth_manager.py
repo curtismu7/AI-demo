@@ -270,23 +270,36 @@ class TokenManager:
         self.session: Optional[aiohttp.ClientSession] = None
         self._current_token: Optional[AccessToken] = None
         self._current_credentials: Optional[ClientCredentials] = None
+        # Track the scope key that was used when the token was fetched.
+        # Cache hit comparison must use the requested scope key, not the
+        # server-returned scope string (which may differ, e.g. "openid profile"
+        # vs an empty requested set), to avoid spurious cache misses.
+        self._current_scope_key: Optional[str] = None
         # HI-02: serialize concurrent get_valid_token() callers so two
         # parallel tool calls don't both miss the cache and double-fetch
         # against the token endpoint (which then rate-limits at 429).
-        self._refresh_lock = asyncio.Lock()
+        # Deferred to __aenter__ so that constructing TokenManager outside a
+        # running event loop (e.g. in sync test setup) does not raise on
+        # Python 3.9, which requires an active loop when asyncio.Lock() is
+        # called in __init__.
+        self._refresh_lock: Optional[asyncio.Lock] = None
     
     async def __aenter__(self):
         """Async context manager entry."""
         self.session = aiohttp.ClientSession()
+        # Create the lock here (inside a running event loop) so that
+        # constructing TokenManager synchronously (e.g. in test setUp) works
+        # on Python 3.9, which requires an active loop for asyncio.Lock().
+        self._refresh_lock = asyncio.Lock()
         return self
-    
+
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit."""
         if self.session:
             await self.session.close()
-    
-    async def get_client_credentials_token(self, client_credentials: ClientCredentials, 
-                                         additional_scopes: Optional[List[str]] = None) -> AccessToken:
+
+    async def get_client_credentials_token(self, client_credentials: ClientCredentials,
+                                           additional_scopes: Optional[List[str]] = None) -> AccessToken:
         """
         Obtain an access token using client credentials flow.
         
@@ -453,11 +466,15 @@ class TokenManager:
         async with self._refresh_lock:
             # Re-check inside the lock — a second caller racing the first
             # should find the token already cached on second look.
+            # Compare against _current_scope_key (the scope key used at fetch
+            # time) rather than token.scope (the server-returned scope string),
+            # so the cache hit is stable regardless of how the IdP normalises
+            # the scope in its response.
             if (self._current_token and
                 self._current_credentials and
                 self._current_credentials.client_id == client_credentials.client_id and
                 not self._is_token_near_expiry(self._current_token) and
-                self._current_token.scope == scope_key):
+                self._current_scope_key == scope_key):
                 logger.debug("Using cached access token")
                 return self._current_token
 
@@ -465,9 +482,10 @@ class TokenManager:
             logger.info("Acquiring new access token")
             token = await self.get_client_credentials_token(client_credentials, additional_scopes)
 
-            # Cache the token and credentials
+            # Cache the token, credentials, and the scope key used to fetch it.
             self._current_token = token
             self._current_credentials = client_credentials
+            self._current_scope_key = scope_key
 
             return token
     
@@ -488,6 +506,7 @@ class TokenManager:
         """Clear any cached token and credentials."""
         self._current_token = None
         self._current_credentials = None
+        self._current_scope_key = None
         logger.debug("Cleared cached access token")
 
 

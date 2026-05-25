@@ -679,7 +679,22 @@ class TestUserAuthorizationFacilitator:
 
 class TestOAuthAuthenticationManager:
     """Test cases for the comprehensive OAuthAuthenticationManager class."""
-    
+
+    @pytest.fixture(autouse=True)
+    def _use_dcr(self, monkeypatch):
+        """Force DCR path in all OAuthAuthenticationManager tests.
+
+        register_client() normally reads PINGONE_USER_CLIENT_ID / AGENT_CLIENT_ID
+        from the environment when AGENT_DCR_ENABLED is not 'true'.  These tests
+        mock the DCR HTTP endpoint, so we need the DCR code-path active and any
+        real pre-provisioned credentials cleared to avoid the env-var short-circuit.
+        """
+        monkeypatch.setenv("AGENT_DCR_ENABLED", "true")
+        monkeypatch.delenv("PINGONE_USER_CLIENT_ID", raising=False)
+        monkeypatch.delenv("PINGONE_USER_CLIENT_SECRET", raising=False)
+        monkeypatch.delenv("AGENT_CLIENT_ID", raising=False)
+        monkeypatch.delenv("AGENT_CLIENT_SECRET", raising=False)
+
     @pytest.mark.asyncio
     async def test_full_oauth_flow_integration(self, mock_config):
         """Test complete OAuth flow from registration to token acquisition."""
@@ -715,14 +730,14 @@ class TestOAuthAuthenticationManager:
             )
             
             async with OAuthAuthenticationManager(mock_config) as oauth_mgr:
-                # Register client
-                credentials = await oauth_mgr.register_client()
+                # auto_register=True (default) already registered during __aenter__.
+                credentials = oauth_mgr.registered_credentials
                 assert credentials.client_id == "test-client-id-123"
-                
+
                 # Get access token
                 token = await oauth_mgr.get_client_credentials_token()
                 assert token.token == "test-access-token-123"
-                
+
                 # Verify cached credentials
                 assert oauth_mgr.registered_credentials == credentials
     
@@ -744,9 +759,7 @@ class TestOAuthAuthenticationManager:
             )
             
             async with OAuthAuthenticationManager(mock_config) as oauth_mgr:
-                # Register client first
-                await oauth_mgr.register_client()
-                
+                # auto_register=True (default) already registered during __aenter__.
                 # Generate user authorization URL for MCP server
                 auth_url = oauth_mgr.generate_user_authorization_url(
                     scope="openid profile",
@@ -765,8 +778,10 @@ class TestOAuthAuthenticationManager:
                 query_params = parse_qs(parsed_url.query)
                 state = query_params["state"][0]
                 
-                # Handle authorization callback
-                auth_data = oauth_mgr.handle_user_authorization_callback("test-auth-code", state)
+                # Handle authorization callback (IN-06: session_id is mandatory)
+                auth_data = oauth_mgr.handle_user_authorization_callback(
+                    "test-auth-code", state, session_id="session-123"
+                )
                 assert auth_data["authorization_code"] == "test-auth-code"
                 assert auth_data["session_id"] == "session-123"
                 assert auth_data["mcp_server_id"] == "mcp-server-1"
@@ -804,20 +819,20 @@ class TestOAuthAuthenticationManager:
             )
             
             async with OAuthAuthenticationManager(mock_config) as oauth_mgr:
-                # Register client
-                await oauth_mgr.register_client()
-                
+                # auto_register=True (default) already registered during __aenter__.
                 # Get token twice - should use cache for second call
                 token1 = await oauth_mgr.get_client_credentials_token()
                 token2 = await oauth_mgr.get_client_credentials_token()
-                
+
                 assert token1.token == token2.token
                 assert token1 is token2  # Should be same cached object
     
     @pytest.mark.asyncio
     async def test_error_handling_without_registration(self, mock_config):
         """Test error handling when trying to get token without client registration."""
-        async with OAuthAuthenticationManager(mock_config) as oauth_mgr:
+        # auto_register=False skips the __aenter__ registration so we can test
+        # the no-credentials error path explicitly.
+        async with OAuthAuthenticationManager(mock_config, auto_register=False) as oauth_mgr:
             with pytest.raises(ValueError, match="No client credentials available"):
                 await oauth_mgr.get_client_credentials_token()
     
@@ -839,9 +854,7 @@ class TestOAuthAuthenticationManager:
             )
             
             async with OAuthAuthenticationManager(mock_config) as oauth_mgr:
-                # Register client
-                await oauth_mgr.register_client()
-                
+                # auto_register=True (default) already registered during __aenter__.
                 # Generate authorization URL to create valid state
                 auth_url = oauth_mgr.generate_user_authorization_url(
                     scope="openid profile",
@@ -897,9 +910,7 @@ class TestOAuthAuthenticationManager:
             )
             
             async with OAuthAuthenticationManager(mock_config) as oauth_mgr:
-                # Register client
-                await oauth_mgr.register_client()
-                
+                # auto_register=True (default) already registered during __aenter__.
                 # Refresh token (should get new token via client credentials)
                 token = await oauth_mgr.refresh_token("unused-refresh-token")
                 assert token.token == "test-access-token-123"
