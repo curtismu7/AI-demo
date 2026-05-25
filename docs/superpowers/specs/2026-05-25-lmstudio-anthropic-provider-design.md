@@ -1,4 +1,4 @@
-# LM Studio Anthropic Provider — Design Spec
+# LM Studio Anthropic Provider + Gemma Auto-Load — Design Spec
 **Date:** 2026-05-25  
 **Status:** Approved
 
@@ -7,6 +7,8 @@
 ## Goal
 
 Add "LM Studio" as a selectable LLM provider in the demo. When selected, the agent uses `ChatAnthropic` (langchain-anthropic SDK) pointed at LM Studio's Anthropic-compatible local endpoint (`http://localhost:1234`). The UI button says "LM Studio". This lets the demo present a locally-running model as if Anthropic's API is in use, without needing a real Anthropic API key.
+
+Additionally: when the LM Studio panel is shown, it auto-downloads and loads **Gemma 3 12B IT** (Google's latest instruction-tuned model) via LM Studio's CLI (`lms get`) and REST API (`POST /api/v0/models/load`), so the demo is correctly configured on first selection with no manual steps.
 
 ---
 
@@ -110,12 +112,53 @@ Add "LM Studio" as a third button. New prop: `lmstudioStatus`.
 - When `anthropic-lmstudio` is active: show a simple `LmStudioPanel` (or inline message) explaining LM Studio is active and showing the base URL.
 - `handleSelect` accepts `'anthropic-lmstudio'` and posts it to BFF.
 
-### 10. UI — New `LmStudioPanel` component (or inline in LlmConfigPage)
-Simple read-only panel:
-- Shows: "LM Studio (Anthropic API) — Connected at `http://localhost:1234`"
-- Shows status pill (available / unreachable)
-- No API key field (not needed)
-- Optional: field to override base URL (nice-to-have, not required for v1)
+### 10. UI — New `LmStudioPanel.jsx` component
+
+The panel handles the full Gemma auto-setup lifecycle:
+
+**States:**
+1. **Idle / server not started** — "LM Studio server is not running. Start it from the LM Studio app (Local Server tab), then click Refresh."
+2. **Server running, checking model** — spinner, "Checking for Gemma 3 12B..."
+3. **Model not downloaded** — "Gemma 3 12B IT is not downloaded. [Download & Load Gemma] button"
+4. **Downloading** — progress indicator (polling `/api/langchain/lmstudio/download-status`), shows percentage or animated spinner with "Downloading gemma-3-12b-it… (this may take several minutes)"
+5. **Downloaded, not loaded** — "[Load Gemma] button" — calls load endpoint
+6. **Loading** — "Loading model into memory…" spinner
+7. **Ready** — "✅ Gemma 3 12B IT is active. LM Studio is ready." 
+
+**Interaction flow:**
+```
+Panel mounts
+  → GET /api/langchain/lmstudio/model-status
+      → BFF hits GET http://localhost:{lmstudio_port}/api/v0/models/downloaded
+      → returns { server_running, downloaded, loaded, model_id }
+  → If not downloaded: show [Download & Load Gemma] button
+      → POST /api/langchain/lmstudio/download → BFF spawns `lms get <model>` subprocess
+      → UI polls GET /api/langchain/lmstudio/download-status every 3s
+      → On complete: automatically trigger load
+  → If downloaded but not loaded: show [Load Gemma] button
+      → POST /api/langchain/lmstudio/load → BFF calls POST http://localhost:{port}/api/v0/models/load
+  → If loaded: show ready state
+```
+
+**Port handling:** LM Studio's server port is configurable (currently 41343 on this machine, not 1234). The panel should let the user see/override the port. Default remains 1234 (standard). BFF reads from `configStore` key `lmstudio_server_port`.
+
+### 11. BFF — New routes under `/api/langchain/lmstudio/`
+
+| Route | Method | Purpose |
+|---|---|---|
+| `/api/langchain/lmstudio/model-status` | GET | Check if server running, model downloaded, model loaded |
+| `/api/langchain/lmstudio/download` | POST | Spawn `lms get google/gemma-3-12b-it-qat-q4_k_m` subprocess |
+| `/api/langchain/lmstudio/download-status` | GET | Return download progress from subprocess stdout |
+| `/api/langchain/lmstudio/load` | POST | Call `POST /api/v0/models/load` on LM Studio server |
+
+**Download subprocess management:**
+- BFF keeps one global download subprocess reference (one download at a time)
+- `lms get` streams progress to stdout — BFF captures and caches last N lines
+- `/download-status` returns `{ running, progress_lines, done, error }`
+- On completion, `done: true` triggers the UI to call `/load`
+
+**Target model identifier:** `google/gemma-3-12b-it-qat-q4_k_m` (GGUF quantised, ~7GB)  
+The model ID for loading may differ from the download path — use `lms ls` output or `GET /api/v0/models/downloaded` to find the exact loaded model identifier after download.
 
 ---
 
@@ -133,10 +176,12 @@ Simple read-only panel:
 
 `GET /api/langchain/provider/anthropic-lmstudio/status`
 
-- Pings LM Studio at the configured base URL (`http://localhost:1234`)
-- Tries `GET /v1/models` or just root `/` — whichever responds
+- Pings LM Studio at the configured base URL + port (`http://localhost:{lmstudio_server_port}`)
+- Tries `GET /api/v0/models` — returns `available` if responds, `unreachable` if connection refused
 - Returns: `{ status: 'available' | 'unreachable', reason, configured: true }`
 - Always `configured: true` (no API key to check)
+
+The provider selector pill reflects this: ✅ Active (server + model ready) / ❌ Unreachable (server not started).
 
 ---
 
@@ -144,18 +189,22 @@ Simple read-only panel:
 
 | Scenario | Handling |
 |---|---|
-| LM Studio not running | Status pill shows "❌ Unreachable"; agent call fails fast with clear error |
-| Model not loaded in LM Studio | LM Studio returns error; BFF surfaces it to UI via existing error path |
+| LM Studio app not open | Status pill shows "❌ Unreachable"; panel shows "Open LM Studio app first" |
+| LM Studio server not started | Same as above — the local server must be started in LM Studio's UI |
+| `lms` CLI not installed | `/download` route returns `{ error: "lms CLI not found. Install it from LM Studio → ☰ → Install CLI" }` |
+| Download fails mid-way | `/download-status` returns `{ error: <stderr> }`; UI shows error message |
+| Model load fails | BFF surfaces LM Studio error response to UI |
 | `langchain-anthropic` not installed | Python startup fails with `ImportError`; `requirements.txt` prevents this |
-| Streaming not supported | `ChatAnthropic` streaming may need verification; fallback gracefully |
+| Wrong port | Panel shows port field; user can adjust; BFF uses `lmstudio_server_port` from configStore |
 
 ---
 
 ## Out of scope (v1)
 
 - Real Anthropic cloud API key support (use real `anthropic` provider for that)
-- Model selection UI within the LM Studio panel (LM Studio manages its own loaded model)
-- Auto-discovery of which model is loaded in LM Studio
+- Multiple concurrent downloads
+- Download progress percentage (LM Studio CLI may not emit parseable %; show spinner instead)
+- Auto-selection of other Gemma sizes (12B is the only target)
 
 ---
 
@@ -163,11 +212,13 @@ Simple read-only panel:
 
 1. "LM Studio" button appears in the provider selector alongside Helix and Ollama
 2. Selecting it saves `provider: "anthropic-lmstudio"` to session and BFF
-3. The langchain agent initializes `ChatAnthropic` pointing at `http://localhost:1234`
-4. With a Claude-compatible model loaded in LM Studio, the agent responds correctly
-5. Status pill shows ✅ Active when LM Studio is reachable, ❌ Unreachable when not
-6. `npm run build` in `demo_api_ui/` exits 0 after UI changes
-7. No regression to existing Helix or Ollama provider paths
+3. The langchain agent initializes `ChatAnthropic` pointing at `http://localhost:{port}`
+4. `LmStudioPanel` shows the correct state (not downloaded / downloading / loading / ready)
+5. Clicking "Download & Load Gemma" triggers `lms get google/gemma-3-12b-it-qat-q4_k_m`, UI shows spinner
+6. After download completes, model auto-loads via `POST /api/v0/models/load`; panel shows ✅ ready
+7. Status pill shows ✅ Active when LM Studio server is reachable, ❌ Unreachable when not
+8. `npm run build` in `demo_api_ui/` exits 0 after UI changes
+9. No regression to existing Helix or Ollama provider paths
 
 ---
 
@@ -177,11 +228,13 @@ Simple read-only panel:
 |---|---|
 | `langchain_agent/requirements.txt` | Already updated — `langchain-anthropic` added |
 | `langchain_agent/src/config/settings.py` | Add `anthropic_lmstudio_base_url` field |
-| `langchain_agent/src/agent/llm_factory.py` | Add `anthropic-lmstudio` branch |
-| `langchain_agent/src/agent/langchain_mcp_agent.py` | Pass new param to factory |
+| `langchain_agent/src/agent/llm_factory.py` | Add `anthropic-lmstudio` branch using `ChatAnthropic` |
+| `langchain_agent/src/agent/langchain_mcp_agent.py` | Pass `anthropic_lmstudio_base_url` to factory |
 | `demo_api_server/services/llmProviderResolver.js` | Add pass-through for `anthropic-lmstudio` |
 | `demo_api_server/routes/langchainConfig.js` | Add to `PROVIDER_MODELS`, `DEFAULT_MODELS`, `key_set` |
+| `demo_api_server/routes/lmstudio.js` | New: model-status, download, download-status, load routes |
+| `demo_api_server/server.js` (or app.js) | Register new lmstudio router |
 | `demo_api_server/services/llmProviderStatus.js` | Handle `anthropic-lmstudio` status ping |
-| `demo_api_ui/src/components/ProviderSelector.jsx` | Add "LM Studio" button |
-| `demo_api_ui/src/components/LlmConfigPage.jsx` | Handle `anthropic-lmstudio` provider state |
-| `demo_api_ui/src/components/LmStudioPanel.jsx` | New panel component |
+| `demo_api_ui/src/components/ProviderSelector.jsx` | Add "LM Studio" third button |
+| `demo_api_ui/src/components/LlmConfigPage.jsx` | Handle `anthropic-lmstudio` provider state + fetch lmstudio status |
+| `demo_api_ui/src/components/LmStudioPanel.jsx` | New: full panel with download/load lifecycle UI |
