@@ -491,5 +491,57 @@ class TestConversationMemory:
         assert conversation_memory._cleanup_task.done()
 
 
+class TestTokenAwareTrimming:
+    """Tests for token-aware trimming via trim_messages() (Phase 278)."""
+
+    def _make_msg(self, session_id: str, idx: int, content: str) -> ChatMessage:
+        return ChatMessage(
+            id=str(idx),
+            session_id=session_id,
+            content=content,
+            role="user",
+            timestamp=datetime.now(timezone.utc),
+            metadata={},
+        )
+
+    def test_initialization_includes_max_context_tokens(self):
+        """ConversationMemory stores max_context_tokens from constructor."""
+        memory = ConversationMemory(max_context_tokens=2048)
+        assert memory.max_context_tokens == 2048
+
+    @pytest.mark.asyncio
+    async def test_trim_messages_by_token_count(self):
+        """After adding 5 messages with max_context_tokens=3, at most 3 are kept."""
+        session_id = "token-trim-session-1"
+        memory = ConversationMemory(max_messages_per_session=50, max_context_tokens=3)
+        await memory.get_or_create_session(session_id)
+        for i in range(5):
+            await memory.add_message(session_id, self._make_msg(session_id, i, f"Msg {i}"))
+        assert len(memory._messages.get(session_id, [])) <= 3
+
+    @pytest.mark.asyncio
+    async def test_token_trim_keeps_newest_messages(self):
+        """strategy='last' keeps the most recent messages after trim."""
+        session_id = "token-trim-session-2"
+        memory = ConversationMemory(max_messages_per_session=50, max_context_tokens=2)
+        await memory.get_or_create_session(session_id)
+        for content in ["Alpha", "Beta", "Gamma", "Delta"]:
+            idx = ["Alpha", "Beta", "Gamma", "Delta"].index(content)
+            await memory.add_message(session_id, self._make_msg(session_id, idx, content))
+        msgs = memory._messages.get(session_id, [])
+        assert len(msgs) <= 2
+        assert msgs[-1].content == "Delta"
+
+    @pytest.mark.asyncio
+    async def test_token_trim_does_not_exceed_limit(self):
+        """With max_context_tokens=2 and 10 messages added, at most 2 are kept."""
+        session_id = "token-trim-session-3"
+        memory = ConversationMemory(max_messages_per_session=50, max_context_tokens=2)
+        await memory.get_or_create_session(session_id)
+        for i in range(10):
+            await memory.add_message(session_id, self._make_msg(session_id, i, f"Message {i}"))
+        assert len(memory._messages.get(session_id, [])) <= 2
+
+
 if __name__ == "__main__":
     pytest.main([__file__])
