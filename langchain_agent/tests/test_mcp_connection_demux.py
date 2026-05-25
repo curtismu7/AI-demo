@@ -408,3 +408,35 @@ async def test_cancelled_error_does_not_permanently_break_connection():
     assert conn._pending == {}
 
     await conn.disconnect()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("bad_frame", [
+    {"jsonrpc": "2.0", "method": "notifications/cancelled"},                       # no params key
+    {"jsonrpc": "2.0", "method": "notifications/cancelled", "params": {}},         # params but no requestId
+    {"jsonrpc": "2.0", "method": "notifications/cancelled", "params": None},       # params=None
+])
+async def test_cancelled_notification_missing_request_id_is_ignored(bad_frame):
+    """A malformed notifications/cancelled frame (missing params or requestId)
+    must not affect any pending future; the real call still completes."""
+    conn = MCPConnection(_server_config())
+    ws = FakeReorderingWebSocket()
+    _connected(conn, ws)
+
+    call = asyncio.create_task(conn.call_tool(_tool_call("safe")))
+
+    for _ in range(200):
+        if len(ws.sent) >= 1:
+            break
+        await asyncio.sleep(0.001)
+    real_id = ws.sent[0]["id"]
+
+    ws.push(bad_frame)
+    await asyncio.sleep(0.05)
+    assert not call.done(), "call was unexpectedly resolved by malformed notifications/cancelled"
+
+    ws.push({"jsonrpc": "2.0", "id": real_id, "result": {"ok": True}})
+    result = await asyncio.wait_for(call, timeout=5)
+    assert result == {"ok": True}
+
+    await conn.disconnect()

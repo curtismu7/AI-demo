@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 from enum import Enum
 import json
 import inspect
+import traceback
 import httpx
 import websockets
 from websockets.exceptions import ConnectionClosed, WebSocketException
@@ -226,6 +227,7 @@ class MCPConnection(MCPClient):
                     self._state = ConnectionState.DISCONNECTED
                     self._available_tools = []
                     self._tool_schemas = {}
+                    self._auth_challenge_states = {}
             # CR-06: tear down the reader task and reject any stragglers so no
             # orphaned task survives and no caller hangs across a reconnect.
             await self._stop_reader()
@@ -296,7 +298,7 @@ class MCPConnection(MCPClient):
                     # JSON-RPC notification / id-less frame.
                     method = frame.get("method") if isinstance(frame, dict) else None
                     if method == "notifications/cancelled":
-                        rid = frame.get("params", {}).get("requestId")
+                        rid = (frame.get("params") or {}).get("requestId")
                         if rid is not None and rid in self._pending:
                             fut = self._pending.pop(rid)
                             if not fut.done():
@@ -507,10 +509,9 @@ class MCPConnection(MCPClient):
         except Exception as e:
             logger.error(f"Error executing tool call on {self.server_config.name}: {e}")
             logger.error(f"Exception type: {type(e)}")
-            import traceback
             logger.error(f"Full traceback: {traceback.format_exc()}")
             raise
-    
+
     async def list_tools(self) -> List[str]:
         """List available tools on the MCP server"""
         if not self.is_connected:

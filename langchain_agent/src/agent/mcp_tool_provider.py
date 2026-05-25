@@ -5,6 +5,7 @@ import asyncio
 import contextvars
 import json
 import logging
+import traceback
 from typing import Dict, Any, List, Optional, Type
 from datetime import datetime
 
@@ -29,8 +30,15 @@ logger = logging.getLogger(__name__)
 # Setter ordering is verified safe — set_tracer() runs BEFORE the tool
 # execution (agent_executor.ainvoke / tool.arun) that reads it, so the value
 # is captured into any child tasks the executor spawns (copy-on-create).
+# The same pattern applies to _current_session_id_var and _current_agent_token_var — see Phase 273.
 _current_tracer: contextvars.ContextVar[Optional[Any]] = contextvars.ContextVar(
     "mcp_current_tracer", default=None
+)
+_current_session_id_var: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar(
+    "mcp_current_session_id", default=None
+)
+_current_agent_token_var: contextvars.ContextVar[Optional[Any]] = contextvars.ContextVar(
+    "mcp_current_agent_token", default=None
 )
 
 
@@ -220,8 +228,6 @@ class MCPTool(BaseTool):
     tool_info: Optional[ToolInfo] = None
     mcp_client_manager: Optional[MCPClientManager] = None
     auth_manager: Optional[OAuthAuthenticationManager] = None
-    _current_session_id: Optional[str] = PrivateAttr(default=None)
-    _current_agent_token: Optional[AccessToken] = PrivateAttr(default=None)
     _conversation_memory: Optional[Any] = PrivateAttr(default=None)  # Will be set by MCPToolProvider
     
     def __init__(self, 
@@ -284,9 +290,7 @@ class MCPTool(BaseTool):
         self.tool_info = tool_info
         self.mcp_client_manager = mcp_client_manager
         self.auth_manager = auth_manager
-        self._current_session_id = None
-        self._current_agent_token = None
-        
+
         logger.debug(f"Initialized MCP tool wrapper: {self.name}")
         logger.debug(f"Using schema: {dynamic_schema.__name__}")
         if hasattr(dynamic_schema, '__annotations__'):
@@ -322,9 +326,9 @@ class MCPTool(BaseTool):
         logger.debug(f"MCPTool._arun called with kwargs: {kwargs}")
         logger.debug(f"Extracted parameters: {parameters}")
         logger.debug(f"Tool info: {self.tool_info}")
-        logger.debug(f"Current session ID: {self._current_session_id}")
-        
-        if not self._current_session_id:
+        logger.debug(f"Current session ID: {_current_session_id_var.get()}")
+
+        if not _current_session_id_var.get():
             logger.error("Session context not set for MCP tool execution")
             raise RuntimeError("Session context not set for MCP tool execution")
         
@@ -333,19 +337,19 @@ class MCPTool(BaseTool):
             # Always delegate to get_client_credentials_token — it has internal caching
             # with a 5-minute expiry buffer. Using is_expired() directly bypasses the buffer
             # and can pass a near-expired token that AIC rejects during introspection.
-            self._current_agent_token = await self.auth_manager.get_client_credentials_token(
+            _current_agent_token_var.set(await self.auth_manager.get_client_credentials_token(
                 additional_scopes=["ai_agent"]
-            )
+            ))
             # BL-01: never log the raw AccessToken — mask via fingerprint helper.
             # AccessToken.__repr__ also masks, but logging the fingerprint is the
             # form callers should imitate when debugging token flow.
             logger.debug(
-                f"Agent token ready: {self._current_agent_token.masked_fingerprint() if self._current_agent_token else 'none'}"
+                f"Agent token ready: {_current_agent_token_var.get().masked_fingerprint() if _current_agent_token_var.get() else 'none'}"
             )
             
             logger.info(f"Executing MCP tool {self.tool_info.full_name} with parameters: {parameters}")
-            logger.debug(f"Tool execution details - Server: {self.tool_info.server_name}, Tool: {self.tool_info.name}, Session: {self._current_session_id}")
-            
+            logger.debug(f"Tool execution details - Server: {self.tool_info.server_name}, Tool: {self.tool_info.name}, Session: {_current_session_id_var.get()}")
+
             # Log MCP tool execution start with detailed payload
             tracer = _current_tracer.get()
             if tracer:
@@ -353,8 +357,8 @@ class MCPTool(BaseTool):
                     "tool_name": self.tool_info.name,
                     "server_name": self.tool_info.server_name,
                     "input_parameters": parameters,
-                    "session_id": self._current_session_id,
-                    "agent_token_present": bool(self._current_agent_token),
+                    "session_id": _current_session_id_var.get(),
+                    "agent_token_present": bool(_current_agent_token_var.get()),
                     "tool_description": self.tool_info.description,
                     "request_timestamp": datetime.now().isoformat()
                 })
@@ -365,8 +369,8 @@ class MCPTool(BaseTool):
                 server_name=self.tool_info.server_name,
                 tool_name=self.tool_info.name,
                 parameters=parameters,
-                agent_token=self._current_agent_token,
-                session_id=self._current_session_id
+                agent_token=_current_agent_token_var.get(),
+                session_id=_current_session_id_var.get()
             )
             execution_time_ms = int((datetime.now() - start_time).total_seconds() * 1000)
             
@@ -384,7 +388,7 @@ class MCPTool(BaseTool):
                     "result": result,
                     "result_type": type(result).__name__,
                     "execution_time_ms": execution_time_ms,
-                    "session_id": self._current_session_id,
+                    "session_id": _current_session_id_var.get(),
                     "success": True,
                     "response_timestamp": datetime.now().isoformat(),
                     "has_auth_challenge": isinstance(result, dict) and "authChallenge" in result
@@ -516,9 +520,8 @@ Once you provide the authorization code, I'll automatically retrieve your accoun
             logger.error(f"Error executing MCP tool {self.tool_info.full_name}: {e}")
             logger.error(f"Exception type: {type(e)}")
             logger.error(f"Exception args: {e.args}")
-            import traceback
             logger.error(f"Full traceback: {traceback.format_exc()}")
-            
+
             # Log MCP tool execution error with detailed information
             tracer = _current_tracer.get()
             if tracer:
@@ -530,7 +533,7 @@ Once you provide the authorization code, I'll automatically retrieve your accoun
                     "error_type": type(e).__name__,
                     "error_args": str(e.args),
                     "execution_time_ms": execution_time_ms,
-                    "session_id": self._current_session_id,
+                    "session_id": _current_session_id_var.get(),
                     "success": False,
                     "traceback": traceback.format_exc()[:1000],  # Truncate long tracebacks
                     "error_timestamp": datetime.now().isoformat()
@@ -561,7 +564,7 @@ Once you provide the authorization code, I'll automatically retrieve your accoun
             # Generate authorization URL for user
             auth_url = self.auth_manager.generate_user_authorization_url(
                 scope=challenge.scope,
-                session_id=self._current_session_id,
+                session_id=_current_session_id_var.get(),
                 mcp_server_id=self.tool_info.server_name
             )
             
@@ -582,12 +585,12 @@ Once you provide the authorization code, I'll automatically retrieve your accoun
             auth_challenge: The authentication challenge from MCP server
             original_parameters: The original tool parameters
         """
-        logger.info(f"Storing auth challenge for session {self._current_session_id}")
+        logger.info(f"Storing auth challenge for session {_current_session_id_var.get()}")
         logger.debug(f"Auth challenge: {auth_challenge}")
-        
+
         # Store challenge info in the tool provider (this could be enhanced to use a proper session store)
         if hasattr(self.mcp_client_manager, '_session_challenges'):
-            self.mcp_client_manager._session_challenges[self._current_session_id] = {
+            self.mcp_client_manager._session_challenges[_current_session_id_var.get()] = {
                 'tool_name': self.tool_info.name,
                 'server_name': self.tool_info.server_name,
                 'parameters': original_parameters,
@@ -597,7 +600,7 @@ Once you provide the authorization code, I'll automatically retrieve your accoun
         else:
             # Initialize the session challenges dict if it doesn't exist
             self.mcp_client_manager._session_challenges = {
-                self._current_session_id: {
+                _current_session_id_var.get(): {
                     'tool_name': self.tool_info.name,
                     'server_name': self.tool_info.server_name,
                     'parameters': original_parameters,
@@ -605,8 +608,8 @@ Once you provide the authorization code, I'll automatically retrieve your accoun
                     'timestamp': datetime.now()
                 }
             }
-        
-        logger.debug(f"Stored challenge for session {self._current_session_id}")
+
+        logger.debug(f"Stored challenge for session {_current_session_id_var.get()}")
 
     def set_session_context(self, session_id: str, agent_token: Optional[AccessToken] = None) -> None:
         """
@@ -617,16 +620,16 @@ Once you provide the authorization code, I'll automatically retrieve your accoun
             agent_token: Optional agent token (will be obtained if not provided)
         """
         logger.debug(f"Setting session context for tool {self.name}")
-        logger.debug(f"Previous session ID: {self._current_session_id}")
+        logger.debug(f"Previous session ID: {_current_session_id_var.get()}")
         logger.debug(f"New session ID: {session_id}")
-        logger.debug(f"Previous agent token: {self._current_agent_token.masked_fingerprint() if self._current_agent_token else 'none'}")
+        logger.debug(f"Previous agent token: {_current_agent_token_var.get().masked_fingerprint() if _current_agent_token_var.get() else 'none'}")
         logger.debug(f"New agent token: {agent_token.masked_fingerprint() if agent_token else 'none'}")
-        
-        self._current_session_id = session_id
-        self._current_agent_token = agent_token
-        
+
+        _current_session_id_var.set(session_id)
+        _current_agent_token_var.set(agent_token)
+
         logger.info(f"Set session context for tool {self.name}: session={session_id}, token_provided={agent_token is not None}")
-        logger.debug(f"Tool {self.name} now has session_id={self._current_session_id}, token={self._current_agent_token.masked_fingerprint() if self._current_agent_token else 'none'}")
+        logger.debug(f"Tool {self.name} now has session_id={_current_session_id_var.get()}, token={_current_agent_token_var.get().masked_fingerprint() if _current_agent_token_var.get() else 'none'}")
 
     def _format_json_response(self, content: str) -> str:
         """
@@ -639,12 +642,10 @@ Once you provide the authorization code, I'll automatically retrieve your accoun
             str: Formatted content for better user experience
         """
         try:
-            import json
-            
             # Try to parse as JSON
             if content.strip().startswith('{') and content.strip().endswith('}'):
                 data = json.loads(content)
-                
+
                 # Format based on tool type and data structure
                 if self.tool_info.name == "get_my_accounts" and "accounts" in data:
                     return self._format_accounts_response(data)
@@ -675,9 +676,9 @@ Once you provide the authorization code, I'll automatically retrieve your accoun
         total_balance = sum(acc.get("balance", 0) for acc in accounts)
         
         # Log account information for debugging - the LLM will see the IDs in the formatted response
-        if self._current_session_id:
+        if _current_session_id_var.get():
             account_ids = [acc.get("id") for acc in accounts if acc.get("id")]
-            logger.info(f"Retrieved {len(accounts)} accounts with IDs {account_ids} for session {self._current_session_id}")
+            logger.info(f"Retrieved {len(accounts)} accounts with IDs {account_ids} for session {_current_session_id_var.get()}")
             logger.info("Account IDs are now visible to the LLM for future banking operations")
         
         response = f"**Your Bank Accounts** ({len(accounts)} accounts)\n\n"
@@ -767,7 +768,7 @@ Once you provide the authorization code, I'll automatically retrieve your accoun
         deposit_id = deposit_txn.get("id", "N/A")
         
         # Store the last transfer details for potential reversal
-        if self._current_session_id and self._conversation_memory:
+        if _current_session_id_var.get() and self._conversation_memory:
             from datetime import datetime
             last_transfer = {
                 "amount": amount,
@@ -992,7 +993,6 @@ class MCPToolProvider:
         except Exception as e:
             logger.error(f"Failed to get agent token for session {session_id}: {e}")
             logger.error(f"Exception type: {type(e)}")
-            import traceback
             logger.error(f"Full traceback: {traceback.format_exc()}")
             self._current_agent_token = None
         
@@ -1022,12 +1022,10 @@ class MCPToolProvider:
             str: Formatted content for better user experience
         """
         try:
-            import json
-            
             # Try to parse as JSON
             if content.strip().startswith('{') and content.strip().endswith('}'):
                 data = json.loads(content)
-                
+
                 # Format based on tool type and data structure
                 if tool_name == "get_my_accounts" and "accounts" in data:
                     return self._format_accounts_response_static(data)
