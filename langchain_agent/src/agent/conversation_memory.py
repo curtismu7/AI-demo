@@ -7,8 +7,7 @@ from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta, timezone
 from collections import defaultdict
 
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
-from langchain.memory import ConversationBufferMemory
+from langchain_core.messages import BaseMessage
 
 from models.chat import ChatMessage, ChatSession
 
@@ -46,7 +45,6 @@ class ConversationMemory:
         # In-memory storage (in production, this could be Redis or database)
         self._sessions: Dict[str, ChatSession] = {}
         self._messages: Dict[str, List[ChatMessage]] = defaultdict(list)
-        self._langchain_memories: Dict[str, ConversationBufferMemory] = {}
         
         # Cleanup task
         self._cleanup_task: Optional[asyncio.Task] = None
@@ -112,13 +110,7 @@ class ConversationMemory:
         )
         
         self._sessions[session_id] = session
-        
-        # Initialize LangChain memory for this session
-        self._langchain_memories[session_id] = ConversationBufferMemory(
-            memory_key="chat_history",
-            return_messages=True
-        )
-        
+
         logger.info(f"Created new chat session: {session_id}")
         return session
     
@@ -135,22 +127,7 @@ class ConversationMemory:
         
         # Add message to history
         self._messages[session_id].append(message)
-        
-        # Add to LangChain memory
-        if session_id in self._langchain_memories:
-            langchain_memory = self._langchain_memories[session_id]
-            
-            if message.role == "user":
-                langchain_message = HumanMessage(content=message.content)
-            elif message.role == "assistant":
-                langchain_message = AIMessage(content=message.content)
-            else:
-                # For other roles, use HumanMessage as fallback
-                langchain_message = HumanMessage(content=f"[{message.role}] {message.content}")
-            
-            # Add to memory
-            langchain_memory.chat_memory.add_message(langchain_message)
-        
+
         # Trim messages if we exceed the limit
         await self._trim_session_messages(session_id)
         
@@ -158,25 +135,18 @@ class ConversationMemory:
     
     async def get_conversation_history(self, session_id: str, limit: Optional[int] = None) -> List[BaseMessage]:
         """
-        Get conversation history as LangChain messages.
-        
-        Args:
-            session_id: The session identifier
-            limit: Optional limit on number of messages to return
-            
-        Returns:
-            List of LangChain BaseMessage objects
+        DEPRECATED — returns empty list.
+
+        Chat history is now managed by the LangGraph MemorySaver checkpointer,
+        keyed by thread_id=session_id.  All former callers in
+        langchain_mcp_agent.py were removed in Phase 275 Plan 01.
         """
-        if session_id not in self._langchain_memories:
-            return []
-        
-        langchain_memory = self._langchain_memories[session_id]
-        messages = langchain_memory.chat_memory.messages
-        
-        if limit:
-            messages = messages[-limit:]
-        
-        return messages
+        logger.warning(
+            "ConversationMemory.get_conversation_history() is deprecated — "
+            "chat history is managed by LangGraph MemorySaver keyed on thread_id. "
+            "Returning empty list."
+        )
+        return []
     
     async def get_raw_messages(self, session_id: str, limit: Optional[int] = None) -> List[ChatMessage]:
         """
@@ -283,13 +253,10 @@ class ConversationMemory:
         # Remove from all storage
         if session_id in self._sessions:
             del self._sessions[session_id]
-        
+
         if session_id in self._messages:
             del self._messages[session_id]
-        
-        if session_id in self._langchain_memories:
-            del self._langchain_memories[session_id]
-        
+
         logger.info(f"Cleared session data: {session_id}")
     
     async def get_active_sessions(self) -> List[str]:
@@ -361,27 +328,7 @@ class ConversationMemory:
             # Keep the most recent messages
             messages_to_keep = messages[-self.max_messages_per_session:]
             self._messages[session_id] = messages_to_keep
-            
-            # Also trim LangChain memory
-            if session_id in self._langchain_memories:
-                langchain_memory = self._langchain_memories[session_id]
-                langchain_messages = langchain_memory.chat_memory.messages
-                
-                if len(langchain_messages) > self.max_messages_per_session:
-                    # Clear and rebuild with trimmed messages
-                    langchain_memory.chat_memory.clear()
-                    
-                    # Add back the kept messages
-                    for message in messages_to_keep:
-                        if message.role == "user":
-                            langchain_message = HumanMessage(content=message.content)
-                        elif message.role == "assistant":
-                            langchain_message = AIMessage(content=message.content)
-                        else:
-                            langchain_message = HumanMessage(content=f"[{message.role}] {message.content}")
-                        
-                        langchain_memory.chat_memory.add_message(langchain_message)
-            
+
             logger.info(f"Trimmed session {session_id} to {len(messages_to_keep)} messages")
     
     async def _cleanup_expired_sessions(self) -> None:
@@ -425,6 +372,5 @@ class ConversationMemory:
         # Clear all data
         self._sessions.clear()
         self._messages.clear()
-        self._langchain_memories.clear()
-        
+
         logger.info("Conversation memory cleanup complete")
