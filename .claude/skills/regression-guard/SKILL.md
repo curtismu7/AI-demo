@@ -14,7 +14,7 @@ argument-hint: 'Name the file(s) you are about to edit, or the bug you are about
 > |---|---|---|
 > | `3001` | Banking API Server (BFF) | `https://api.ping.demo:3001` |
 > | `4000` | Banking UI (React, CRA) — **public origin, OAuth callbacks land here** | `https://api.ping.demo:4000` |
-> | `3005` | MCP Gateway | `http://localhost:3005` |
+> | `3005` | MCP Gateway | `https://api.ping.demo:3005` |
 > | `3006` | Agent Service | `http://localhost:3006` |
 > | `3009` | HITL Service | `http://localhost:3009` |
 > | `8080` | Banking MCP Server | `ws://localhost:8080` |

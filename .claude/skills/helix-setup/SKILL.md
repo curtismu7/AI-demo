@@ -62,6 +62,12 @@ cat LLM2.json | python3 -c \
 
 Set in `demo_api_server/.env` — `configStore` resolves them automatically via `getEffective('helix_*')`.
 
+> **Also needed by the Python LangChain agent.** The same 5 env vars are read by
+> `langchain_agent/src/config/settings.py` via `os.environ` (not configStore). Set them
+> in `langchain_agent/.env` as well when running the Python agent. The Python agent reads
+> them as `LANGCHAIN_LLM_PROVIDER=helix` (selects Helix) plus the same `HELIX_*` vars.
+> See the `langchain-agent` skill for the full Python config reference.
+
 ---
 
 ## Import via Admin UI

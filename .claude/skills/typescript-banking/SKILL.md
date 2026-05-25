@@ -1,6 +1,6 @@
 ---
 name: typescript-banking
-description: 'TypeScript and JavaScript coding standards for Super Banking banking demo. USE FOR: strict TypeScript, eliminate any types, type errors, ESLint rules, CJS vs ESM modules, async/await patterns, React JSX components, React hooks, jest unit tests, ts-jest, interface vs type alias, generics, null safety, module imports, bffAxios usage instead of raw fetch, banking_mcp_server TypeScript, banking_api_server JavaScript, banking_api_ui React. DO NOT USE FOR: OAuth flows (use oauth-pingone); MCP tool registration patterns (use mcp-server); session/cookie/token custody (use bff-sessions); PingOne Management API calls (use pingone-api-calls); HITL/consent state (use hitl-consent); pre-edit regression discipline (use regression-guard).'
+description: 'TypeScript and JavaScript coding standards for Super Banking banking demo. USE FOR: strict TypeScript, eliminate any types, type errors, ESLint rules, CJS vs ESM modules, async/await patterns, React JSX components, React hooks, jest unit tests, ts-jest, interface vs type alias, generics, null safety, module imports, bffAxios usage instead of raw fetch, demo_mcp_server TypeScript, demo_api_server JavaScript, demo_api_ui React. DO NOT USE FOR: OAuth flows (use oauth-pingone); MCP tool registration patterns (use mcp-server); session/cookie/token custody (use bff-sessions); PingOne Management API calls (use pingone-api-calls); HITL/consent state (use hitl-consent); pre-edit regression discipline (use regression-guard).'
 argument-hint: 'Describe the code you are writing or the type/pattern question you have'
 ---
 
@@ -12,9 +12,9 @@ Root `package.json` requires **Node 20+** (`engines.node = ">=20"`). Node 20, 22
 
 | Package | Language | Runtime | Entry |
 |---------|----------|---------|-------|
-| `banking_mcp_server` | **TypeScript** (strict) | Node 20+ / ts-node | `src/index.ts` → `dist/index.js` |
-| `banking_api_server` | **JavaScript** (ES2020, CommonJS) | Node 20+ | `server.js` |
-| `banking_api_ui` | **JavaScript + JSX** (React, CRA) | Browser | `src/index.js` |
+| `demo_mcp_server` | **TypeScript** (strict) | Node 20+ / ts-node | `src/index.ts` → `dist/index.js` |
+| `demo_api_server` | **JavaScript** (ES2020, CommonJS) | Node 20+ | `server.js` |
+| `demo_api_ui` | **JavaScript + JSX** (React, CRA) | Browser | `src/index.js` |
 
 ---
 

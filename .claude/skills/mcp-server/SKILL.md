@@ -45,9 +45,15 @@ All three are owned by **`demo_api_server/services/configStore.js`**. Values sur
 | BFF API Server | `3001` | ✅ `port` (default `'3001'`) | `configStore.getEffective('port')` |
 | UI (React CRA) | `4000` | No — hardcoded in `run.sh` | n/a |
 | MCP Server | `8080` | Partial — embedded in `mcp_server_url` | `configStore.getEffective('mcp_server_url')` |
+| MCP Invest Server | `8081` | No — run.sh only | n/a |
 | MCP Gateway | `3005` | ✅ embedded in `mcp_gateway_http_url` | `configStore.getEffective('mcp_gateway_http_url')` |
 | HITL Service | `3009` | No — run.sh only | n/a |
 | Agent Service | `3006` | No — run.sh only | n/a |
+| Python LangChain Agent (uvicorn) | `8888` | No — `PORT` env var | n/a — separate process |
+| Python LangChain Agent (chat WS) | `8889` | No — `WEBSOCKET_PORT` env var | n/a — separate process |
+| Python LangChain Agent (health) | `8890` | No — `HEALTH_HTTP_PORT` env var | n/a — separate process |
+
+> The Python LangChain agent (`langchain_agent/`) is a **separate uvicorn process** with its own MCP connections (WebSocket or Streamable HTTP to port 8080). It is not the same as the BFF's inline Node.js agent. For Python agent details use the `langchain-agent` skill.
 
 ### HTTP vs HTTPS Scheme
 
