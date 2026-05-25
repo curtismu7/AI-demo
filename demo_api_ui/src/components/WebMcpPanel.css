@@ -1,89 +1,10 @@
 /* banking_api_ui/src/components/WebMcpPanel.css */
-
-/* Design tokens for this panel: white bg, dark navy text */
-.webmcp-panel {
-  border: 1px solid #d0d9e8;
-  border-radius: 8px;
-  padding: 16px;
-  margin: 16px 0;
-  background: #ffffff;
-  color: #0f2044;
-}
+/* MCP-specific styles for WebMcpPanel — layout and panel structure covered by rule-panel.css */
 
 .webmcp-loading {
   color: #4a6080;
   padding: 12px 0;
   font-size: 15px;
-}
-
-.webmcp-body {
-  display: flex;
-  gap: 16px;
-  min-height: 300px;
-}
-
-/* ── Left column: tool list ─────────────────────────────────────────────── */
-
-.webmcp-tool-list {
-  flex: 0 0 260px;
-  max-height: 600px;
-  overflow-y: auto;
-}
-
-.webmcp-tool-list h4 {
-  margin: 0 0 4px;
-  font-size: 16px;
-  color: #4a6080;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.webmcp-tool-hint {
-  font-size: 13px;
-  color: #7a90ac;
-  margin: 0 0 10px;
-  font-style: italic;
-}
-
-.webmcp-tool-item {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  width: 100%;
-  padding: 10px 12px;
-  margin-bottom: 6px;
-  border: 1px solid #d0d9e8;
-  border-radius: 6px;
-  background: #f4f7fb;
-  color: #0f2044;
-  cursor: pointer;
-  text-align: left;
-  transition: background 0.15s, border-color 0.15s, transform 0.1s;
-}
-
-.webmcp-tool-item:hover {
-  background: #e8eef8;
-  border-color: #3b82f6;
-  transform: translateX(2px);
-}
-
-.webmcp-tool-item.active {
-  background: #dbeafe;
-  border-color: #3b82f6;
-  border-left: 3px solid #3b82f6;
-}
-
-.webmcp-tool-name {
-  font-size: 15px;
-  font-weight: 600;
-  color: #0f2044;
-}
-
-.webmcp-tool-desc {
-  font-size: 13px;
-  color: #4a6080;
-  margin-top: 3px;
-  line-height: 1.4;
 }
 
 /* Badge: consent / step-up */
@@ -109,8 +30,6 @@
   border: 1px solid #38bdf8;
 }
 
-/* ── Right column ───────────────────────────────────────────────────────── */
-
 .webmcp-tool-placeholder {
   flex: 1;
   display: flex;
@@ -123,24 +42,6 @@
   font-size: 15px;
   text-align: center;
   line-height: 1.6;
-}
-
-.webmcp-tool-detail {
-  flex: 1;
-  min-width: 0;
-}
-
-.webmcp-tool-detail h4 {
-  margin: 0 0 6px;
-  font-size: 20px;
-  color: #0f2044;
-}
-
-.webmcp-tool-detail-desc {
-  margin: 0 0 14px;
-  font-size: 15px;
-  color: #4a6080;
-  line-height: 1.5;
 }
 
 /* Upfront gate notice (shown before calling) */
@@ -185,32 +86,7 @@
   font-size: 13px;
 }
 
-/* ── Parameter form ─────────────────────────────────────────────────────── */
-
-.webmcp-params {
-  margin-bottom: 14px;
-}
-
-.webmcp-params h5 {
-  margin: 0 0 10px;
-  font-size: 12px;
-  color: #4a6080;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.webmcp-param-label {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 4px;
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.5;
-  letter-spacing: 0.01em;
-  color: #1a1a2e;
-}
+/* ── Required indicator and hint text ──────────────────────────────────── */
 
 .webmcp-required {
   color: #dc2626;
@@ -224,60 +100,10 @@
   margin-bottom: 4px;
 }
 
-.webmcp-param-input {
-  margin-top: 4px;
-  padding: 8px 12px;
-  border: 1px solid #c0ccd8;
-  border-radius: 4px;
-  background: #f4f7fb;
-  color: #0f2044;
-  font-size: 14px;
-  line-height: 1.5;
-  letter-spacing: 0.01em;
-  font-family: inherit;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.webmcp-param-input--mono {
-  font-family: ui-monospace, 'SFMono-Regular', Menlo, 'Courier New', monospace;
-  letter-spacing: 0.03em;
-}
-
-.webmcp-param-input:focus {
-  outline: none;
-  border-color: #3b82f6;
-  background: #fff;
-}
-
 /* ── Spinner / call button ──────────────────────────────────────────────── */
 
 @keyframes webmcp-spin {
   to { transform: rotate(360deg); }
-}
-
-.webmcp-call-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 24px;
-  border: none;
-  border-radius: 6px;
-  background: #3b82f6;
-  color: #fff;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.webmcp-call-btn:hover:not(:disabled) {
-  background: #2563eb;
-}
-
-.webmcp-call-btn:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
 }
 
 .webmcp-btn-spinner {

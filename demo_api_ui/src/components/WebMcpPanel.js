@@ -15,14 +15,13 @@ import "../styles/rule-panel.css";
 import "./WebMcpPanel.css";
 import {
   ACCOUNT_ID_KEYS,
-  USER_ID_KEYS,
-  ADMIN_ACCOUNT_ID_KEYS,
   DESCRIPTION_SUGGESTIONS,
   QUERY_SUGGESTIONS,
 } from '../constants/mcpFieldKeys';
 import McpParamSelect from './McpParamSelect';
 import McpParamToggle from './McpParamToggle';
 import McpParamSuggest from './McpParamSuggest';
+import McpParamText from './McpParamText';
 
 const TRANSFER_TOOL = "create_transfer";
 // Tools that always require HITL browser consent (can't execute inline)
@@ -484,27 +483,16 @@ export default function WebMcpPanel() {
 
                       // Default: plain text input with label + hint
                       return (
-                        <div key={key} className="webmcp-params">
-                          <label className="webmcp-param-label" htmlFor={`param-${key}`}>
-                            {key}
-                            {isRequired && (
-                              <span style={{
-                                marginLeft: 6, fontSize: 10, fontWeight: 700, padding: '1px 7px',
-                                borderRadius: 9, border: '1px solid #fbbf24', background: '#fef3c7',
-                                color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.04em',
-                              }}>required</span>
-                            )}
-                          </label>
-                          {hint && <span className="webmcp-param-hint">{hint}</span>}
-                          <input
-                            id={`param-${key}`}
-                            type="text"
-                            className="webmcp-param-input"
-                            value={params[key] || ''}
-                            onChange={(e) => handleParamChange(key, e.target.value)}
-                            placeholder={schema.type || ''}
-                          />
-                        </div>
+                        <McpParamText
+                          key={key}
+                          paramKey={key}
+                          label={key}
+                          value={params[key] || ''}
+                          onChange={(v) => handleParamChange(key, v)}
+                          placeholder={schema.type || ''}
+                          hint={hint}
+                          required={isRequired}
+                        />
                       );
                     })}
                   </div>
