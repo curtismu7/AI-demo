@@ -512,10 +512,6 @@ Once you provide the authorization code, I'll automatically retrieve your accoun
             logger.debug(f"Final content to return: {content}")
             return content
             
-        except asyncio.CancelledError:
-            logger.warning(f"MCPTool._arun cancelled for tool {self.tool_info.full_name}")
-            raise
-
         except Exception as e:
             logger.error(f"Error executing MCP tool {self.tool_info.full_name}: {e}")
             logger.error(f"Exception type: {type(e)}")

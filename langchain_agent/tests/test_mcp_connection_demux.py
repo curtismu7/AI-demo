@@ -22,6 +22,7 @@ from src.mcp.connection import (
     MCPConnection,
     MCPConnectionClosedError,
     MCPRequestTimeoutError,
+    MCPServerCancelledError,
     ConnectionState,
 )
 from src.models.mcp import (
@@ -289,7 +290,7 @@ async def test_per_request_timeout_is_typed_and_leaves_connection_usable():
 @pytest.mark.asyncio
 async def test_cancelled_notification_rejects_matching_pending():
     """A notifications/cancelled frame with a matching requestId immediately
-    rejects the corresponding pending future with asyncio.CancelledError and
+    rejects the corresponding pending future with MCPServerCancelledError and
     removes it from self._pending."""
     conn = MCPConnection(_server_config())
     ws = FakeReorderingWebSocket()
@@ -316,8 +317,8 @@ async def test_cancelled_notification_rejects_matching_pending():
         asyncio.gather(call, return_exceptions=True), timeout=5
     )
     assert len(results) == 1
-    assert isinstance(results[0], asyncio.CancelledError), (
-        f"Expected asyncio.CancelledError, got {results[0]!r}"
+    assert isinstance(results[0], MCPServerCancelledError), (
+        f"Expected MCPServerCancelledError, got {results[0]!r}"
     )
     # The pending registry must be empty — no leak.
     assert conn._pending == {}
@@ -389,7 +390,7 @@ async def test_cancelled_error_does_not_permanently_break_connection():
     first_results = await asyncio.wait_for(
         asyncio.gather(first_call, return_exceptions=True), timeout=5
     )
-    assert isinstance(first_results[0], asyncio.CancelledError)
+    assert isinstance(first_results[0], MCPServerCancelledError)
 
     # Second call — connection must still work normally.
     second_call = asyncio.create_task(conn.call_tool(_tool_call("after-cancel")))
