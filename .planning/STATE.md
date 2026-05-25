@@ -3,29 +3,75 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-05-25T10:57:54.381Z"
+last_updated: "2026-05-25T16:00:00.000Z"
 progress:
   total_phases: 160
-  completed_phases: 127
-  total_plans: 294
-  completed_plans: 276
-  percent: 79
+  completed_phases: 132
+  total_plans: 296
+  completed_plans: 280
+  percent: 82
 ---
 
 # State — Super Banking AI Banking Demo
 
 **Milestone:** v1.0 — Complete Demo + Educational Content
-**Updated:** 2026-04-18
+**Updated:** 2026-05-25
 
 ---
 
 ## Current Position
 
-Phase: 265 (demo-data-page-create-demo-user-with-may-act-p1mfa-registrat) — EXECUTING
-Plan: 1 of 2
+Phase: 281 (handle-mcp-notifications-cancelled) — COMPLETE
+Plan: 1 of 1
 Next phase: Available for execution or verification workflow
 
 ## Recent Progress
+
+✅ **Phase 281 COMPLETE** (2026-05-25)
+
+- Plan 281-01: Handle MCP spec `notifications/cancelled` messages and add explicit `asyncio.CancelledError` guard
+- `connection.py` `_read_loop`: added `notifications/cancelled` branch in the `msg_id is None` handler — extracts `params.requestId`, pops and resolves matching `_pending` future with `asyncio.CancelledError()`; unknown requestId silently ignored; all other id-less frames fall through to existing "dropped" DEBUG log; `_fail_all_pending` call count unchanged (3)
+- `mcp_tool_provider.py` `MCPTool._arun`: added `except asyncio.CancelledError: raise` immediately before bare `except Exception` at line 519 — prevents `CancelledError` from being swallowed
+- `tests/test_mcp_connection_demux.py`: 3 new cancellation tests added; 8/8 tests pass (5 existing + 3 new): `test_cancelled_notification_rejects_matching_pending`, `test_cancelled_notification_for_unknown_id_is_ignored`, `test_cancelled_error_does_not_permanently_break_connection`
+- Commits: 574786a9
+
+✅ **Phase 280 COMPLETE** (2026-05-25)
+
+- Plan 280-01: Wire MCP tool annotations (destructive, idempotent, readable flags) through Python pipeline to BaseTool.metadata + annotation-aware system prompt instruction
+- `connection.py` `_refresh_tools()`: added `"annotations": tool.get("annotations", {})` as 4th key in `_tool_schemas` dict literal
+- `tool_registry.py` `ToolInfo`: added `annotations: Optional[Dict[str, Any]] = None` field; `register_server_tools()` extracts annotations from tool_schema and passes to ToolInfo constructor
+- `mcp_tool_provider.py` `MCPTool.__init__`: extracts `user_facing` from `tool_info.annotations`, builds `tool_metadata = {"destructive": bool(...), "idempotent": bool(...), "readable": bool(...)}`, passes `metadata=tool_metadata` to `super().__init__()`; defaults to safe (destructive=False) when annotations absent
+- `langchain_mcp_agent.py`: added item 20 to Key guidelines in system prompt — references "destructive" and names all 4 destructive tools
+- `tests/test_mcp_annotations.py` (new): 4 TDD tests, all pass: `test_toolinfo_carries_annotations`, `test_mcptool_metadata_populated`, `test_destructive_tools_flagged`, `test_annotations_default_to_safe`
+- Commits: 8b95814c, d1d1ffc9
+
+✅ **Phase 278 COMPLETE** (2026-05-25)
+
+- Plan 278-01: Added token-aware message trimming to ConversationMemory using `langchain_core.messages.trim_messages()`
+- `settings.py` ChatConfig: added `max_context_tokens: int = 4096`; wired from `LANGCHAIN_MAX_CONTEXT_TOKENS` env var in `_build_config()`
+- `conversation_memory.py`: added `from langchain_core.messages import trim_messages`; added `max_context_tokens: int = 4096` constructor parameter; `_trim_session_messages()` now runs two-stage trim: Stage 1 token-aware via `trim_messages(strategy="last", include_system=True, token_counter=len, max_tokens=self.max_context_tokens)` before Stage 2 count cap
+- `.env.example`: added `LANGCHAIN_MAX_CONTEXT_TOKENS=4096` with explanatory comment block
+- `tests/test_conversation_memory.py`: added `TestTokenAwareTrimming` class with 4 new tests; 33 tests total, all passing
+- Commits: 2ff767c9, c35c197b
+
+✅ **Phase 277 COMPLETE** (2026-05-25)
+
+- Plan 277-01: Added `mcp_transport: str = "websocket"` to MCPConfig dataclass with doc comment; wired MCP_TRANSPORT env var via get_env_value(); added ValueError validation for invalid transport values
+- langchain_agent/src/mcp/connection.py: added import httpx + import os; added module-level transport selection comment block; implemented StreamableHttpMCPConnection class (connect(), call_tool(), list_tools(), get_tool_schema(), _refresh_tools(), _post_rpc(), disconnect()); routed MCPConnectionPool.get_connection() to StreamableHttpMCPConnection when MCP_TRANSPORT=streamable_http and endpoint is http(s)://
+- langchain_agent/tests/test_mcp_streamable_http.py: 8 unit tests (3 config + 5 connection) all pass
+- All 5 pre-existing test_mcp_connection_demux.py tests continue to pass
+- No new packages added (httpx>=0.24.0 was already in requirements.txt)
+- TS server HttpMCPTransport.ts confirmed emitting mcp-session-id header (no TS changes required)
+
+✅ **Phase 276 COMPLETE** (2026-05-25)
+
+- Plan 276-01: Replaced WebSocketStreamCallbackHandler callback class with native LangGraph astream_events(version="v2") streaming loop
+- langchain_mcp_agent.py: removed AgentExecutor import; added create_react_agent from langgraph.prebuilt; replaced _get_agent_executor_for_session with graph-based construction via create_react_agent(model, tools, checkpointer=MemorySaver()); replaced _maybe_attach_websocket_streaming with _make_stream_config returning RunnableConfig(callbacks=[tracer_callback])
+- process_message_with_tracing drives streaming via async for loop over self._graph.astream_events(agent_input, config=config, version="v2"); routes on_tool_start, on_tool_end, on_chat_model_stream to WebSocket; extracts final response from on_chain_end
+- websocket_stream_callback.py replaced with tombstone raising ImportError on import
+- DetailedTracingCallbackHandler intact, wired via RunnableConfig
+- 72 tests pass (test_langchain_mcp_agent.py + test_helix_llm.py); pre-existing failures in unrelated test files confirmed pre-Phase 276
+- Commits: 0f51611f, e63e9f37
 
 ✅ **Phase 235 PLANNED** (2026-05-03) — Documentation only; implementation complete in commit 6115d884
 
