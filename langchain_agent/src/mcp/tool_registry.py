@@ -22,6 +22,7 @@ class ToolInfo:
     server_name: str
     description: Optional[str] = None
     parameters: Optional[Dict[str, Any]] = None
+    annotations: Optional[Dict[str, Any]] = None
     
     def __post_init__(self):
         """Validate tool info after initialization"""
@@ -71,6 +72,7 @@ class ToolRegistry:
                 description = tool_descriptions.get(tool_name) if tool_descriptions else None
                 
                 # Extract description and parameters from schema
+                annotations = None
                 if tool_schema and isinstance(tool_schema, dict):
                     if not description:
                         description = tool_schema.get("description", "")
@@ -83,12 +85,15 @@ class ToolRegistry:
                         parameters = tool_schema
                     else:
                         parameters = {}
-                
+
+                    annotations = tool_schema.get("annotations")
+
                 tool_info = ToolInfo(
                     name=tool_name,
                     server_name=server_name,
                     description=description,
-                    parameters=parameters
+                    parameters=parameters,
+                    annotations=annotations
                 )
                 
                 full_name = tool_info.full_name

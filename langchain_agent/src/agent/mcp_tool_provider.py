@@ -262,12 +262,21 @@ class MCPTool(BaseTool):
         # Create dynamic input schema based on tool parameters
         dynamic_schema = create_tool_input_schema(tool_info)
         
+        # Build metadata from tool annotations for annotation-aware agent behaviour
+        user_facing = (tool_info.annotations or {}).get("userFacing", {})
+        tool_metadata = {
+            "destructive": bool(user_facing.get("destructive", False)),
+            "idempotent": bool(user_facing.get("idempotent", True)),
+            "readable": bool(user_facing.get("readable", True)),
+        }
+
         # Initialize parent class properly
         super().__init__(
             name=name,
             description=description,
             args_schema=dynamic_schema,
             return_direct=False,
+            metadata=tool_metadata,
             **kwargs
         )
         

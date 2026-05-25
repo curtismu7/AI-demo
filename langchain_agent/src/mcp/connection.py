@@ -607,7 +607,8 @@ class MCPConnection(MCPClient):
                             self._tool_schemas[tool_name] = {
                                 "name": tool_name,
                                 "description": tool.get("description", ""),
-                                "inputSchema": tool.get("inputSchema", {})
+                                "inputSchema": tool.get("inputSchema", {}),
+                                "annotations": tool.get("annotations", {})
                             }
                     
                     logger.info(f"Successfully refreshed {len(self._available_tools)} tools for {self.server_config.name}: {self._available_tools}")
