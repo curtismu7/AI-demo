@@ -11,6 +11,7 @@ from langchain_core.tools import BaseTool
 from langchain_core.language_models.chat_models import BaseChatModel
 from langgraph.prebuilt import create_react_agent
 from langgraph.checkpoint.memory import MemorySaver
+from langchain_core.runnables import RunnableConfig
 from .llm_factory import get_llm
 
 from mcp.tool_registry import MCPClientManager
@@ -22,7 +23,6 @@ from .mcp_tool_provider import MCPToolProvider, build_auth_popup_message
 from .conversation_memory import ConversationMemory
 from .execution_tracer import AgentExecutionTracer, TracingMixin
 from .tracing_callback import DetailedTracingCallbackHandler
-from .websocket_stream_callback import WebSocketStreamCallbackHandler
 
 
 logger = logging.getLogger(__name__)
@@ -205,37 +205,31 @@ IMPORTANT: Always review the conversation history before asking for additional i
 
 Remember to maintain conversation context and provide helpful, accurate responses. Always prioritize user identification before banking operations."""
 
-    def _maybe_attach_websocket_streaming(
+    def _make_stream_config(
         self,
-        graph,
         session_id: str,
         stream_context: Optional[Dict[str, Any]],
-    ) -> Optional["WebSocketStreamCallbackHandler"]:
+        tracer_callback,
+    ) -> RunnableConfig:
         """
-        Return a WebSocket stream callback when stream_context provides websocket_handler.
-        Emits MCP tool_start/tool_end and optional LLM token deltas during ainvoke.
-        The caller includes the returned handler in config["callbacks"] for ainvoke.
+        Build a RunnableConfig for graph invocation.
+
+        Streaming is handled by the astream_events loop in process_message_with_tracing
+        — not via callbacks — so this method only wires the DetailedTracingCallbackHandler.
+
+        Args:
+            session_id: The chat session ID (used as thread_id for MemorySaver).
+            stream_context: Optional dict with websocket_handler; kept for future use.
+            tracer_callback: DetailedTracingCallbackHandler instance to wire into callbacks.
+
+        Returns:
+            RunnableConfig with configurable thread_id, callbacks, and recursion_limit.
         """
-        if not stream_context:
-            return None
-        handler = stream_context.get("websocket_handler")
-        if handler is None:
-            return None
-        stream_tools = getattr(self.config.langchain, "stream_mcp_tool_events", True)
-        stream_tokens = getattr(self.config.langchain, "stream_llm_tokens", True)
-        if not stream_tools and not stream_tokens:
-            return None
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            logger.warning("No running event loop; WebSocket streaming disabled for this turn")
-            return None
-        return WebSocketStreamCallbackHandler(
-            session_id=session_id,
-            loop=loop,
-            websocket_handler=handler,
-            stream_mcp_tool_events=stream_tools,
-            stream_llm_tokens=stream_tokens,
+        callbacks = [tracer_callback]
+        return RunnableConfig(
+            configurable={"thread_id": session_id},
+            callbacks=callbacks,
+            recursion_limit=getattr(self.config.langchain, "max_iterations", 25),
         )
     
     def _create_basic_agent(self):
@@ -936,28 +930,78 @@ What's your email address?"""
                 system_msg_text = await self._build_system_message(session_id)
                 msgs_for_graph = [SystemMessage(content=system_msg_text), HumanMessage(content=user_message)]
 
-            # Build callbacks
+            # Build RunnableConfig — DetailedTracingCallbackHandler wired via config;
+            # WebSocket streaming is handled inline by the astream_events loop below.
             detailed_callback = DetailedTracingCallbackHandler(tracer)
-            stream_cb = self._maybe_attach_websocket_streaming(self._graph, session_id, stream_context)
-            callbacks = [detailed_callback]
-            if stream_cb:
-                callbacks.append(stream_cb)
+            config = self._make_stream_config(session_id, stream_context, detailed_callback)
+            agent_input = {"messages": msgs_for_graph}
 
-            # Execute graph
+            # Execute graph via astream_events v2 — provides typed StreamEvent dicts
+            # (on_tool_start, on_tool_end, on_chat_model_stream, on_chain_end) with
+            # automatic parent/child run tracking; no manual run_id correlation needed.
             prompt_text = f"User: {user_message}"
             estimated_input_tokens = len(prompt_text.split()) * 1.3
             self._log_llm_start(tracer, "Processing user request with LangGraph", prompt_text, int(estimated_input_tokens))
 
-            logger.info("Executing LangGraph agent...")
-            start_time = datetime.now()
-            result = await self._graph.ainvoke(
-                {"messages": msgs_for_graph},
-                config={"configurable": {"thread_id": session_id}, "callbacks": callbacks}
-            )
-            processing_time = int((datetime.now() - start_time).total_seconds() * 1000)
+            ws_handler = stream_context.get("websocket_handler") if stream_context else None
+            stream_tools = getattr(self.config.langchain, "stream_mcp_tool_events", True)
+            stream_tokens = getattr(self.config.langchain, "stream_llm_tokens", True)
 
-            # Extract response from last AIMessage
-            response = result["messages"][-1].content if result.get("messages") else "I'm sorry, I couldn't process your request."
+            logger.info("Executing LangGraph agent via astream_events...")
+            start_time = datetime.now()
+            response_parts: List[str] = []
+
+            async for event in self._graph.astream_events(agent_input, config=config, version="v2"):
+                event_name = event.get("event")
+
+                if event_name == "on_tool_start" and stream_tools and ws_handler:
+                    tool_name = event.get("name", "unknown_tool")
+                    envelope = {
+                        "type": "stream_event",
+                        "session_id": session_id,
+                        "event": "tool_start",
+                        "tool": tool_name,
+                        "input": event.get("data", {}).get("input"),
+                    }
+                    await ws_handler.send_message_to_session(session_id, envelope)
+
+                elif event_name == "on_tool_end" and stream_tools and ws_handler:
+                    output = event.get("data", {}).get("output", "")
+                    output_str = str(output) if not isinstance(output, str) else output
+                    preview = output_str[:400] + "..." if len(output_str) > 400 else output_str
+                    envelope = {
+                        "type": "stream_event",
+                        "session_id": session_id,
+                        "event": "tool_end",
+                        "output_preview": preview,
+                    }
+                    await ws_handler.send_message_to_session(session_id, envelope)
+
+                elif event_name == "on_chat_model_stream" and stream_tokens and ws_handler:
+                    chunk = event.get("data", {}).get("chunk")
+                    token = getattr(chunk, "content", "") if chunk is not None else ""
+                    if token:
+                        envelope = {
+                            "type": "stream_event",
+                            "session_id": session_id,
+                            "event": "llm_token",
+                            "token": token,
+                        }
+                        await ws_handler.send_message_to_session(session_id, envelope)
+
+                elif event_name == "on_chain_end":
+                    # Capture final output from the root chain end event
+                    output = event.get("data", {}).get("output")
+                    if isinstance(output, dict) and "messages" in output:
+                        msgs = output.get("messages", [])
+                        if msgs:
+                            last = msgs[-1]
+                            content = getattr(last, "content", "")
+                            if isinstance(content, str) and content:
+                                response_parts.append(content)
+
+            processing_time = int((datetime.now() - start_time).total_seconds() * 1000)
+            response = response_parts[-1] if response_parts else "I'm sorry, I couldn't process your request."
             estimated_output_tokens = len(response.split()) * 1.3
             self._log_llm_end(tracer, response, processing_time, int(estimated_output_tokens))
             

@@ -302,9 +302,21 @@
 .dm-body .tcd-root {
   flex: 1;
   min-height: 0;
+  overflow: visible; /* override tcd-root { overflow:hidden } so children can scroll */
   border-radius: 0;
   border: none;
   box-shadow: none;
+  display: flex;
+  flex-direction: column;
+}
+
+/* tcd-events owns the scroll — lift the 600px cap and let it fill the modal height */
+.dm-body .tcd-events {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* ── Pop-out window root layout ─────────────────────────────────────────── */
