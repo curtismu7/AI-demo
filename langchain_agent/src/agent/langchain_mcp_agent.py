@@ -929,78 +929,69 @@ What's your email address?"""
                 system_msg_text = await self._build_system_message(session_id)
                 msgs_for_graph = [SystemMessage(content=system_msg_text), HumanMessage(content=user_message)]
 
-            # Build RunnableConfig — DetailedTracingCallbackHandler wired via config;
-            # WebSocket streaming is handled inline by the astream_events loop below.
             detailed_callback = DetailedTracingCallbackHandler(tracer)
             config = self._make_stream_config(session_id, stream_context, detailed_callback)
             agent_input = {"messages": msgs_for_graph}
 
-            # Execute graph via astream_events v2 — provides typed StreamEvent dicts
-            # (on_tool_start, on_tool_end, on_chat_model_stream, on_chain_end) with
-            # automatic parent/child run tracking; no manual run_id correlation needed.
             prompt_text = f"User: {user_message}"
             estimated_input_tokens = len(prompt_text.split()) * 1.3
             self._log_llm_start(tracer, "Processing user request with LangGraph", prompt_text, int(estimated_input_tokens))
 
+            # Hoist loop-invariant WS flags so they are not re-evaluated per event.
             ws_handler = stream_context.get("websocket_handler") if stream_context else None
-            stream_tools = getattr(self.config.langchain, "stream_mcp_tool_events", True)
-            stream_tokens = getattr(self.config.langchain, "stream_llm_tokens", True)
+            stream_tools = ws_handler and getattr(self.config.langchain, "stream_mcp_tool_events", True)
+            stream_tokens = ws_handler and getattr(self.config.langchain, "stream_llm_tokens", True)
 
             logger.info("Executing LangGraph agent via astream_events...")
             start_time = datetime.now()
-            response_parts: List[str] = []
+            last_response = ""
 
             async for event in self._graph.astream_events(agent_input, config=config, version="v2"):
                 event_name = event.get("event")
 
-                if event_name == "on_tool_start" and stream_tools and ws_handler:
-                    tool_name = event.get("name", "unknown_tool")
-                    envelope = {
+                if event_name == "on_tool_start" and stream_tools:
+                    await ws_handler.send_message_to_session(session_id, {
                         "type": "stream_event",
                         "session_id": session_id,
                         "event": "tool_start",
-                        "tool": tool_name,
+                        "tool": event.get("name", "unknown_tool"),
                         "input": event.get("data", {}).get("input"),
-                    }
-                    await ws_handler.send_message_to_session(session_id, envelope)
+                    })
 
-                elif event_name == "on_tool_end" and stream_tools and ws_handler:
+                elif event_name == "on_tool_end" and stream_tools:
                     output = event.get("data", {}).get("output", "")
                     output_str = str(output) if not isinstance(output, str) else output
+                    # len check is load-bearing: ellipsis suffix only added when truncation occurs
                     preview = output_str[:400] + "..." if len(output_str) > 400 else output_str
-                    envelope = {
+                    await ws_handler.send_message_to_session(session_id, {
                         "type": "stream_event",
                         "session_id": session_id,
                         "event": "tool_end",
                         "output_preview": preview,
-                    }
-                    await ws_handler.send_message_to_session(session_id, envelope)
+                    })
 
-                elif event_name == "on_chat_model_stream" and stream_tokens and ws_handler:
+                elif event_name == "on_chat_model_stream" and stream_tokens:
                     chunk = event.get("data", {}).get("chunk")
                     token = getattr(chunk, "content", "") if chunk is not None else ""
                     if token:
-                        envelope = {
+                        await ws_handler.send_message_to_session(session_id, {
                             "type": "stream_event",
                             "session_id": session_id,
                             "event": "llm_token",
                             "token": token,
-                        }
-                        await ws_handler.send_message_to_session(session_id, envelope)
+                        })
 
                 elif event_name == "on_chain_end":
-                    # Capture final output from the root chain end event
                     output = event.get("data", {}).get("output")
                     if isinstance(output, dict) and "messages" in output:
                         msgs = output.get("messages", [])
                         if msgs:
-                            last = msgs[-1]
-                            content = getattr(last, "content", "")
+                            content = getattr(msgs[-1], "content", "")
                             if isinstance(content, str) and content:
-                                response_parts.append(content)
+                                last_response = content
 
             processing_time = int((datetime.now() - start_time).total_seconds() * 1000)
-            response = response_parts[-1] if response_parts else "I'm sorry, I couldn't process your request."
+            response = last_response or "I'm sorry, I couldn't process your request."
             estimated_output_tokens = len(response.split()) * 1.3
             self._log_llm_end(tracer, response, processing_time, int(estimated_output_tokens))
             
