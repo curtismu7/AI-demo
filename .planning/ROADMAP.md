@@ -2324,3 +2324,16 @@ Plans:
 - [ ] 999.1-04-PLAN.md — D-06 UI surfacing: Token Chain transport pill + read-only admin h2 inspector
 
 **Approach:** Promoted from backlog 2026-05-15. The authoritative design is in `.planning/phases/999.1-mcp-server-enable-h2-transport-so-bridge-actually-multiplexe/999.1-CONTEXT.md` (locked decisions D-01..D-06: WS stays on 8080 unchanged, new opt-in h2c listener on 8083 via `MCP_HTTP2_PORT` / `MCP_SERVER_HTTP2_URL`, WS remains the default transport) and the four 999.1-0X-PLAN.md files. The original backlog capture proposed a same-port flip + `MCP_SERVER_URL` default change; that approach was rejected during planning and is intentionally not carried forward.
+
+---
+
+### Phase 273: Fix MCPTool _current_session_id race condition
+
+**Goal:** Eliminate the concurrent-session data hazard in `langchain_agent/src/agent/mcp_tool_provider.py` where `MCPTool._current_session_id` (a mutable `PrivateAttr`) can be overwritten by a concurrent session mid-invocation, causing one user's banking tool calls to execute under another user's session context. Replace mutable instance state with Python `contextvars.ContextVar` (matching the existing pattern for `_current_tracer` / WR-06) so session ID is task-local and race-free.
+
+**Requirements:** RACE-01
+**Depends on:** none
+**Plans:** 1 plan
+
+Plans:
+- [ ] 273-01-PLAN.md — Replace MCPTool PrivateAttr session state with ContextVars; add concurrent-isolation tests; REGRESSION_PLAN §4 entry
