@@ -51,10 +51,14 @@ export default function CopyableValue({
   );
 
   const handleCopy = useCallback(() => {
-    navigator.clipboard.writeText(value).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    });
+    navigator.clipboard.writeText(value)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      })
+      .catch(() => {
+        // clipboard write failed — no visual change, button stays idle
+      });
   }, [value]);
 
   // Determine visual state
