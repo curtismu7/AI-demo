@@ -154,8 +154,9 @@ const FIELD_DEFS = {
   ff_authorize_fail_open:  { public: true, default: 'false' }, // fail closed by default; enable to allow transactions when auth service is unavailable
   ff_authorize_deposits:   { public: true, default: 'false' }, // apply Authorize to deposits too
   // When true with authorize_enabled: run in-process simulated Authorize (education); no PingOne call
-  ff_authorize_simulated:  { public: true, default: 'true' },
-  ff_hitl_enabled:         { public: true, default: 'true'  }, // require human approval for agent-initiated high-value transactions
+  ff_authorize_simulated:      { public: true, default: 'true'  },
+  ff_authorize_rules_panel:    { public: true, default: 'false' },
+  ff_hitl_enabled:             { public: true, default: 'true'  }, // require human approval for agent-initiated high-value transactions
   ff_inject_may_act:       { public: true, default: 'false' }, // BFF-synthesise may_act when absent from user token (demo/dev — no PingOne change needed)
   // DEPRECATED: ff_inject_may_act. Use enableMayActSupport instead (RFC 8693 configuration-based approach).
   enableMayActSupport:     { public: true, default: 'true'  }, // Enable validation of RFC 8693 may_act claims from PingOne token policies (not synthetic injection)
@@ -173,7 +174,6 @@ ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic 
   ff_id_token_exchange:            { public: true, default: 'false' }, // RFC 8693 with ID token as subject_token (agent never holds access token)
   mcp_use_pingone_server:          { public: true, default: 'false' }, // Spawn pingidentity/pingone-mcp-server stdio binary; bypass custom gateway
   ff_show_banking_in_middle_agent: { public: true, default: 'false' }, // Show banking column alongside centered agent (legacy dashboard layout)
-  ff_agent_results_panel:          { public: true, default: 'false' }, // Show floating results panel alongside agent (off by default; results still appear inline in chat)
   step_up_enabled:                 { public: true, default: 'true'  }, // Step-up MFA gate; mirrored into runtimeSettings.stepUpEnabled (runtimeKey)
   ff_trat_mode:                    { public: true, default: 'false' }, // Enrich RFC 8693 exchange with Transaction Token (TraT) claims — draft-oauth-transaction-tokens-for-agents-00
   ff_agent_restrictions:           { public: true, default: 'false' }, // P1AZ resource server gate + AgentRestrictions attribute
@@ -954,11 +954,6 @@ class ConfigStore {
       // MCP Gateway token introspection (consumed by demo_mcp_gateway via process.env)
       gw_introspection_client_id:           ['GW_INTROSPECTION_CLIENT_ID'],
       gw_introspection_client_secret:       ['GW_INTROSPECTION_CLIENT_SECRET'],
-
-      // MCP WebSocket URLs (consumed by demo_mcp_gateway via process.env)
-      mcp_olb_ws_url:                       ['MCP_OLB_WS_URL'],
-      mcp_invest_ws_url:                    ['MCP_INVEST_WS_URL'],
-      upstream_mcp_url:                     ['UPSTREAM_MCP_URL'],
     };
 
     const envVars = envFallbackMap[key] || [];
