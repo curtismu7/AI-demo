@@ -290,7 +290,7 @@ export default function McpGatewayConfig() {
 
 					<div className="mgc-section">
 						<h4>How to enable mock gateway</h4>
-						<p>The gateway starts automatically with <code>./run-bank.sh</code>. Ensure these files exist:</p>
+						<p>The gateway starts automatically with <code>./run.sh</code>. Ensure these files exist:</p>
 						<pre className="mgc-pre">{`# banking_mcp_gateway/.env.development
 MCP_GW_DEV_BYPASS=true
 MCP_GW_RESOURCE_URI=https://mcpgateway.ping.demo
@@ -300,7 +300,7 @@ MCP_INVEST_RESOURCE_URI=https://mcp-invest.ping.demo
 						<p>
 							BFF routes through gateway when{" "}
 							<code>MCP_GATEWAY_HTTP_URL=http://localhost:3005</code> is set — done automatically by{" "}
-							<code>run-bank.sh</code>.
+							<code>run.sh</code>.
 						</p>
 					</div>
 
@@ -509,7 +509,7 @@ MCP_INVEST_RESOURCE_URI=https://mcp-invest.ping.demo
 								<p style={{ fontSize: '14px', color: '#444', margin: '0 0 12px' }}>
 									Drop into <code>$HOME/.openig/config/routes/mcp.json</code> (Linux) or <code>%appdata%\OpenIG\config\routes\mcp.json</code> (Windows).
 								</p>
-								<div className="mgc-step3-carried" style={{ marginBottom: 16 }}>
+								<div style={{ marginBottom: 16 }}>
 									<div style={{ fontSize: 12, fontWeight: 600, color: '#4a6080', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>Values from Step 2</div>
 									<CopyableValue
 										label="PingOne Resource ID"

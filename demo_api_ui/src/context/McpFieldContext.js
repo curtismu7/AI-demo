@@ -1,10 +1,13 @@
 // demo_api_ui/src/context/McpFieldContext.js
-import React, { createContext, useContext, useReducer, useCallback } from 'react';
+import React, { createContext, useContext, useReducer, useCallback, useMemo } from 'react';
 
 /**
  * State shape: { [fieldKey]: { value: string, source: string|null } }
  */
-const McpFieldContext = createContext(null);
+
+// Split into two contexts so consumers of only `dispatch` don't re-render when state changes.
+const McpFieldStateContext    = createContext(null);
+const McpFieldDispatchContext = createContext(null);
 
 function reducer(state, action) {
   switch (action.type) {
@@ -22,30 +25,39 @@ function reducer(state, action) {
 
 export function McpFieldProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, {});
+  // Memoize so dispatch consumers don't re-render on every state change
+  const stableDispatch = useMemo(() => dispatch, []); // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <McpFieldContext.Provider value={{ state, dispatch }}>
-      {children}
-    </McpFieldContext.Provider>
+    <McpFieldDispatchContext.Provider value={stableDispatch}>
+      <McpFieldStateContext.Provider value={state}>
+        {children}
+      </McpFieldStateContext.Provider>
+    </McpFieldDispatchContext.Provider>
   );
 }
 
 /**
- * Low-level hook — returns raw context. Prefer useMcpFieldState for components.
+ * Low-level hook — returns field value/source and stable setValue/clear.
+ * Prefer useMcpFieldState for components.
  */
 export function useMcpField(fieldKey) {
-  const ctx = useContext(McpFieldContext);
-  if (!ctx) throw new Error('useMcpField must be used inside McpFieldProvider');
+  const state    = useContext(McpFieldStateContext);
+  const dispatch = useContext(McpFieldDispatchContext);
+  if (state === null || dispatch === null) {
+    throw new Error('useMcpField must be used inside McpFieldProvider');
+  }
 
-  const entry = ctx.state[fieldKey] || { value: '', source: null };
+  const entry = state[fieldKey] || { value: '', source: null };
 
+  // dispatch is stable (memoised in provider); fieldKey is a string constant from MCP_FIELD_KEYS.
   const setValue = useCallback(
-    (value, source) => ctx.dispatch({ type: 'SET_FIELD', key: fieldKey, value, source }),
-    [ctx, fieldKey]
+    (value, source) => dispatch({ type: 'SET_FIELD', key: fieldKey, value, source }),
+    [dispatch, fieldKey]
   );
 
   const clear = useCallback(
-    () => ctx.dispatch({ type: 'CLEAR_FIELD', key: fieldKey }),
-    [ctx, fieldKey]
+    () => dispatch({ type: 'CLEAR_FIELD', key: fieldKey }),
+    [dispatch, fieldKey]
   );
 
   return { value: entry.value, source: entry.source, setValue, clear };

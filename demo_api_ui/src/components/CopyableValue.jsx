@@ -61,12 +61,14 @@ export default function CopyableValue({
       });
   }, [value]);
 
-  // Determine visual state
+  // Determine visual state.
+  // isAutofill drives STYLING only (green border/tint).
+  // Whether the input is actually read-only is controlled by the readOnly prop alone.
   const isEmpty = !value;
-  const isAutofill = !isEmpty && (source === 'auto-filled' || readOnly);
+  const isAutofillStyle = !isEmpty && (source === 'auto-filled' || readOnly);
   const fieldStateClass = isEmpty
     ? 'copyable-value-field--required'
-    : isAutofill
+    : isAutofillStyle
     ? 'copyable-value-field--autofill'
     : 'copyable-value-field--filled';
 
@@ -92,8 +94,8 @@ export default function CopyableValue({
           type="text"
           className={`copyable-value-input${monospace ? ' copyable-value-input--mono' : ''}`}
           value={value}
-          readOnly={readOnly || isAutofill}
-          onChange={readOnly || isAutofill ? undefined : handleChange}
+          readOnly={readOnly}
+          onChange={readOnly ? undefined : handleChange}
           placeholder={isEmpty ? (placeholder || '') : ''}
           aria-label={label}
         />

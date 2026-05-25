@@ -466,14 +466,6 @@
   vertical-align: middle;
 }
 
-/* Phase 264 — Read-only chip */
-.mgc-chip--derived {
-  display: inline-block;
-  font-size: 11px;
-  color: #0070f3;
-  margin-left: 6px;
-}
-
 /* Phase 264 — read-only input */
 .mgc-input--readonly {
   background: #f8f9fa;
