@@ -124,13 +124,17 @@ router.post('/message', async (req, res) => {
     console.log('[banking-agent/message] Message present:', !!req.body?.message);
 
     const { message } = req.body;
-    if (!message) {
-      console.log('[banking-agent/message] ERROR: Message required');
-      return res.status(400).json({ error: 'Message required' });
+    // CR-05 fix: validate message is a non-empty string. express.json() may
+    // deliver arrays or objects for keys that are truthy but not strings.
+    if (!message || typeof message !== 'string') {
+      console.log('[banking-agent/message] ERROR: Message must be a non-empty string');
+      return res.status(400).json({ error: 'Message must be a non-empty string' });
+    }
+    if (message.length > 4000) {
+      return res.status(400).json({ error: 'Message too long (max 4000 characters)' });
     }
 
-    console.log('[banking-agent/message] Message length:', message?.length || 0);
-    console.log('[banking-agent/message] Message preview:', message?.substring(0, 100));
+    console.log('[banking-agent/message] Message length:', message.length);
     console.log('[banking-agent/message] agentContext present:', !!req.agentContext);
     console.log('[banking-agent/message] agentContext keys:', req.agentContext ? Object.keys(req.agentContext) : 'none');
 
@@ -355,8 +359,23 @@ router.post('/message', async (req, res) => {
 router.post('/consent', async (req, res) => {
   try {
     const { consentId, approved } = req.body;
-    if (!consentId || approved === undefined) {
-      return res.status(400).json({ error: 'consentId and approved required' });
+
+    // Validate consentId format (UUID v4) to block prototype-pollution keys.
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!consentId || !UUID_RE.test(consentId) || approved === undefined) {
+      return res.status(400).json({ error: 'consentId (UUID) and approved required' });
+    }
+
+    // CR-01 fix: enforce session ownership before recording decision.
+    // The consent record was stored with sessionId = req.session.id at creation
+    // time; any other session must not be able to approve or reject it.
+    const pendingRecord = global.pendingConsents?.[consentId];
+    if (!pendingRecord) {
+      return res.status(404).json({ error: 'Consent request not found or expired' });
+    }
+    if (pendingRecord.sessionId !== req.session.id) {
+      console.error('[banking-agent/consent] Session mismatch — consentId does not belong to this session');
+      return res.status(403).json({ error: 'Consent request does not belong to this session' });
     }
 
     // Phase 2 CR-02: recordConsentDecision signature is (consentId, decision).
@@ -367,8 +386,8 @@ router.post('/consent', async (req, res) => {
     await recordConsentDecision(consentId, approved ? 'approve' : 'reject');
     res.json({ recorded: true, approved });
   } catch (error) {
-    console.error('Consent recording error:', error);
-    res.status(500).json({ error: error.message });
+    console.error('Consent recording error:', error.message);
+    res.status(500).json({ error: 'Failed to record consent decision' });
   }
 });
 

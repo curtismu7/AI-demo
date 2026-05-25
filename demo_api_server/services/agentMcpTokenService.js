@@ -1447,23 +1447,38 @@ async function resolveMcpAccessTokenWithEvents(req, tool) {
     }
     // ─────────────────────────────────────────────────────────────────────────
 
-    // Record exchanged token into tokenChainService so /api/token-chain/current returns live data
+    // Record exchanged token into tokenChainService so /api/token-chain/current returns live data.
+    // CR-04 fix: do NOT pass the raw bearer JWT — pass only sanitised decoded claims so the
+    // live credential is never stored in the in-memory token-chain Map and never retrievable
+    // via the /api/token-chain or /api/api-calls endpoints.
     if (exchangedToken && userSub) {
+      const _mcpClaims = mcpAccessTokenClaims || decodeJwtClaims(exchangedToken)?.claims || {};
       trackTokenEvent({
         eventType: 'exchange',
-        token: exchangedToken,
+        token: '',  // intentionally blank — raw JWT must not be persisted
         userId: userSub,
         description: `RFC 8693 token exchange → MCP access token (audience=${mcpResourceUri}, method=${exchangeMethod})`,
-        additionalData: { mcpResourceUri, exchangeMethod, tool },
+        additionalData: {
+          mcpResourceUri,
+          exchangeMethod,
+          tool,
+          claims: {
+            sub: _mcpClaims.sub,
+            aud: _mcpClaims.aud,
+            scope: _mcpClaims.scope,
+            exp: _mcpClaims.exp,
+            actPresent: !!_mcpClaims.act,
+          },
+        },
       }).catch(err => {
         console.error('[TokenExchange] Failed to track token event:', err.message);
       });
-      
-      // Track token for API call display (separate from token chain)
+
+      // Track token for API call display — pass only claim summary, not the raw JWT.
       trackToken(req.session?.id || 'default', {
-        token: exchangedToken,
+        token: '',  // intentionally blank — raw JWT must not be persisted
         tokenType: 'exchanged_token',
-        description: `MCP Access Token (${exchangeMethod})`
+        description: `MCP Access Token (${exchangeMethod}) — aud=${Array.isArray(_mcpClaims.aud) ? _mcpClaims.aud.join(',') : (_mcpClaims.aud || 'unknown')}`,
       });
     }
 

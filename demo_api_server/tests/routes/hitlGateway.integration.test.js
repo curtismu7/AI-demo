@@ -61,7 +61,14 @@ jest.mock('../../services/tokenChainService', () => ({
   trackTokenEvent: jest.fn(() => Promise.resolve()),
 }));
 
-function buildApp() {
+/**
+ * Build the test app with a fixed session ID so every request within the
+ * same app instance shares the same session — required for the CR-01
+ * session-ownership check on POST /consent.
+ *
+ * Pass a custom sessionId to simulate cross-session attacks.
+ */
+function buildApp({ sessionId = 'integ-fixed-session-id' } = {}) {
   jest.resetModules();
   global.pendingConsents = {};
 
@@ -70,7 +77,7 @@ function buildApp() {
 
   app.use((req, res, next) => {
     req.session = {
-      id: 'integ-' + Math.random().toString(36).slice(2, 10),
+      id: sessionId,
       save: (cb) => cb && cb(),
     };
     next();
@@ -122,7 +129,7 @@ describe('hitlGateway integration — real configStore, key alignment + secure c
     expect(global.pendingConsents[b.body.consentId].decision).toBe('reject');
   });
 
-  test('lookup with wrong key returns 500 / not-found — no phantom match', async () => {
+  test('consent with wrong (but valid-UUID) consentId returns 404 — no phantom match', async () => {
     const app = buildApp();
 
     const init = await request(app)
@@ -130,16 +137,46 @@ describe('hitlGateway integration — real configStore, key alignment + secure c
       .send({ message: 'transfer $5000' });
     const realId = init.body.consentId;
 
-    // Same session, but use a fabricated consentId — must NOT find the
-    // real entry by walking the session id (which is what the old broken
-    // keying would have effectively done).
+    // Use a well-formed UUID that simply doesn't exist in the store.
+    // CR-01 fix: the route now checks ownership before recording; an unknown
+    // consentId returns 404 (not 500), and the real entry is untouched.
+    const fakeId = '00000000-0000-4000-8000-000000000000';
     const wrong = await request(app)
       .post('/api/banking-agent/consent')
-      .send({ consentId: 'wrong-id-' + realId.slice(0, 8), approved: true });
+      .send({ consentId: fakeId, approved: true });
 
-    expect(wrong.status).toBe(500);
+    expect(wrong.status).toBe(404);
     expect(wrong.body.error).toMatch(/not found/i);
-    // And the real entry remains unmodified.
+    // The real entry must remain unmodified.
     expect(global.pendingConsents[realId].decision).toBeNull();
+  });
+
+  test('cross-session consent attempt returns 403', async () => {
+    // Session A creates a consent request using app with sessionId='session-A'.
+    const appA = buildApp({ sessionId: 'session-A' });
+    const init = await request(appA)
+      .post('/api/banking-agent/message')
+      .send({ message: 'transfer $5000' });
+    const consentId = init.body.consentId;
+    expect(consentId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    );
+
+    // Capture the consent store after Session A created the entry.
+    const storedConsents = global.pendingConsents;
+
+    // Build Session B app with a different session ID.
+    // buildApp() resets global.pendingConsents — restore it afterward.
+    const appB = buildApp({ sessionId: 'session-B' });
+    global.pendingConsents = storedConsents; // restore Session A's store
+
+    const cross = await request(appB)
+      .post('/api/banking-agent/consent')
+      .send({ consentId, approved: true });
+
+    expect(cross.status).toBe(403);
+    expect(cross.body.error).toMatch(/does not belong/i);
+    // Original record must be untouched.
+    expect(global.pendingConsents[consentId].decision).toBeNull();
   });
 });

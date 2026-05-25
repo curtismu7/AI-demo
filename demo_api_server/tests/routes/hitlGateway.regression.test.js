@@ -82,7 +82,12 @@ jest.mock('../../services/tokenChainService', () => ({
 // hitlGatewayMiddleware is REAL — that is the module under test.
 // Reset its global state between tests so prior consents don't bleed.
 
-function buildApp() {
+/**
+ * Build the test app with a fixed session ID so POST /consent can pass the
+ * CR-01 session-ownership check. Every request from the same app shares the
+ * same session ID, mirroring a real browser session.
+ */
+function buildApp({ sessionId = 'test-session-fixed' } = {}) {
   jest.resetModules();
   // re-apply mocks (jest preserves the factories across resetModules,
   // but we have to clear the global pendingConsents map ourselves).
@@ -94,7 +99,7 @@ function buildApp() {
   // Inject a session shim before the agent router so req.session.id is set.
   app.use((req, res, next) => {
     req.session = {
-      id: 'sess-' + Math.random().toString(36).slice(2, 10),
+      id: sessionId,
       save: (cb) => cb && cb(),
     };
     next();
@@ -188,18 +193,31 @@ describe('hitlGateway regression — CR-02 store key alignment + CR-03 secure co
     expect(global.pendingConsents[consentId].decision).toBe('reject');
   });
 
-  test('POST /consent with unknown consentId returns 500 (store throws)', async () => {
-    // The middleware throws "Consent request not found" when the key is
-    // missing — that maps to a 500 in the route's catch block. Either way,
-    // looking up with the wrong key must NOT silently return a phantom
-    // "approved" record.
+  test('POST /consent with non-UUID consentId returns 400 (validation rejects before lookup)', async () => {
+    // CR-01 fix: the route now validates consentId format (UUID v4) before
+    // touching the store, so a malformed key gets 400 — not 500 from a throw.
+    // This also blocks prototype-pollution keys like __proto__ or constructor.
     const app = buildApp();
 
     const resp = await request(app)
       .post('/api/banking-agent/consent')
       .send({ consentId: 'not-a-real-id-deadbeef', approved: true });
 
-    expect(resp.status).toBe(500);
+    expect(resp.status).toBe(400);
+    expect(resp.body.error).toMatch(/consentId/i);
+  });
+
+  test('POST /consent with valid UUID but unknown consentId returns 404', async () => {
+    // A well-formed UUID that simply does not exist in the store must return
+    // 404, not 500. No phantom "approved" record.
+    const app = buildApp();
+
+    const fakeId = '00000000-0000-4000-8000-000000000001';
+    const resp = await request(app)
+      .post('/api/banking-agent/consent')
+      .send({ consentId: fakeId, approved: true });
+
+    expect(resp.status).toBe(404);
     expect(resp.body.error).toMatch(/not found/i);
   });
 

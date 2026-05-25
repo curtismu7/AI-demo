@@ -64,14 +64,20 @@ async function evaluateToolCall(toolCall, userId) {
 }
 
 /**
- * Generate unique consent request ID
+ * Generate a cryptographically random consent request ID.
+ *
+ * CR-03 fix: the previous implementation hashed deterministic inputs
+ * (userId + tool + params + Date.now()) and truncated to 16 hex chars.
+ * Three of the four inputs are known or time-bounded, making the ID
+ * partially predictable. crypto.randomUUID() gives 122 bits of CSPRNG
+ * entropy with no dependency on request inputs.
+ *
+ * Parameters are kept for backward-compat with any existing callers but
+ * are intentionally ignored.
  */
-function generateConsentId(userId, tool, params) {
-  const hash = crypto
-    .createHash('sha256')
-    .update(`${userId}-${tool}-${JSON.stringify(params)}-${Date.now()}`)
-    .digest('hex');
-  return hash.substring(0, 16);
+// eslint-disable-next-line no-unused-vars
+function generateConsentId(_userId, _tool, _params) {
+  return crypto.randomUUID();
 }
 
 /**

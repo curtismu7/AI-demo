@@ -321,6 +321,23 @@ app.use('/api/auth/oauth/callback', authLimiter);
 app.use('/api/auth/oauth/user/login', authLimiter);
 app.use('/api/auth/oauth/user/callback', authLimiter);
 
+// CR-02 fix: per-session agent message rate limiter.
+// /api/banking-agent is excluded from the global IP limiter (it has per-user
+// auth and its own latency profile), but must not be completely unlimited.
+// Keyed by session ID so shared IPs (NAT, office) don't share the budget.
+const agentLimiter = rateLimit({
+    windowMs: 60 * 1000,              // 1-minute window
+    max: (() => {
+        const n = parseInt(process.env.RATE_LIMIT_AGENT_MAX || '', 10);
+        if (Number.isFinite(n) && n > 0) return n;
+        return 30; // 30 messages/session/minute — generous for demos, still bounded
+    })(),
+    keyGenerator: (req) => req.session?.id || req.ip,
+    handler: _rateLimitHandler,
+    skip: () => rateLimitDisabled,
+});
+app.use('/api/banking-agent/message', agentLimiter);
+
 // Logging middleware
 // Skip access-log noise from high-frequency polling endpoints
 const POLL_ROUTES = new Set([
