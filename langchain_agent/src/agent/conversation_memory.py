@@ -7,7 +7,7 @@ from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta, timezone
 from collections import defaultdict
 
-from langchain_core.messages import BaseMessage
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage, trim_messages
 
 from models.chat import ChatMessage, ChatSession
 
@@ -26,30 +26,35 @@ class ConversationMemory:
     - Memory optimization for long conversations
     """
     
-    def __init__(self, 
+    def __init__(self,
                  max_messages_per_session: int = 100,
                  session_timeout_hours: int = 24,
-                 cleanup_interval_minutes: int = 60):
+                 cleanup_interval_minutes: int = 60,
+                 max_context_tokens: int = 4096):
         """
         Initialize conversation memory.
-        
+
         Args:
-            max_messages_per_session: Maximum messages to keep per session
+            max_messages_per_session: Maximum messages to keep per session (coarse count cap)
             session_timeout_hours: Hours after which inactive sessions expire
             cleanup_interval_minutes: Minutes between cleanup runs
+            max_context_tokens: Token budget for conversation trimming; uses len() as
+                token_counter (each message = 1 "token"). Trim runs before the count cap.
+                Default 4096 suits most Ollama 7B models.
         """
         self.max_messages_per_session = max_messages_per_session
+        self.max_context_tokens = max_context_tokens
         self.session_timeout = timedelta(hours=session_timeout_hours)
         self.cleanup_interval = timedelta(minutes=cleanup_interval_minutes)
-        
+
         # In-memory storage (in production, this could be Redis or database)
         self._sessions: Dict[str, ChatSession] = {}
         self._messages: Dict[str, List[ChatMessage]] = defaultdict(list)
-        
+
         # Cleanup task
         self._cleanup_task: Optional[asyncio.Task] = None
         self._shutdown_event = asyncio.Event()
-        
+
         logger.info(f"Initialized conversation memory with {max_messages_per_session} max messages per session")
     
     async def start_cleanup_task(self) -> None:
@@ -317,13 +322,57 @@ class ConversationMemory:
     
     async def _trim_session_messages(self, session_id: str) -> None:
         """
-        Trim messages for a session if it exceeds the limit.
-        
+        Trim messages for a session if it exceeds the token budget or count limit.
+
+        Two-stage trim:
+        1. Token-aware trim via trim_messages() (strategy="last", include_system=True) —
+           enforces max_context_tokens budget. Uses len() as token_counter so each
+           ChatMessage counts as 1 "token".
+        2. Coarse count cap — ensures never more than max_messages_per_session messages.
+
         Args:
             session_id: The session identifier
         """
         messages = self._messages[session_id]
-        
+
+        # Stage 1: token-aware trim (runs before the count cap).
+        # trim_messages requires BaseMessage objects; convert ChatMessage -> BaseMessage
+        # for the call, then use the returned length to slice the original list.
+        if len(messages) > self.max_context_tokens:
+            base_messages = [
+                SystemMessage(content=m.content) if m.role == "system"
+                else AIMessage(content=m.content) if m.role == "assistant"
+                else HumanMessage(content=m.content)
+                for m in messages
+            ]
+            trimmed_base = trim_messages(
+                base_messages,
+                max_tokens=self.max_context_tokens,
+                token_counter=len,
+                strategy="last",
+                include_system=True,
+                allow_partial=False,
+            )
+            if len(trimmed_base) < len(messages):
+                # Slice the original ChatMessage list to the same count from the end,
+                # accounting for a retained leading SystemMessage if present.
+                n_trimmed = len(trimmed_base)
+                if trimmed_base and isinstance(trimmed_base[0], SystemMessage) and \
+                        messages and messages[0].role == "system":
+                    # System message was retained at position 0; keep it plus the last
+                    # (n_trimmed - 1) non-system messages.
+                    non_system = [m for m in messages[1:]]
+                    kept = [messages[0]] + non_system[-(n_trimmed - 1):]
+                else:
+                    kept = messages[-n_trimmed:]
+                self._messages[session_id] = kept
+                logger.info(
+                    f"Token-trimmed session {session_id}: {len(messages)} -> {len(kept)} messages"
+                    f" (max_context_tokens={self.max_context_tokens})"
+                )
+                messages = self._messages[session_id]
+
+        # Stage 2: coarse count cap.
         if len(messages) > self.max_messages_per_session:
             # Keep the most recent messages
             messages_to_keep = messages[-self.max_messages_per_session:]

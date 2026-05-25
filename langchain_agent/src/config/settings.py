@@ -108,6 +108,11 @@ class ChatConfig:
     max_session_workers: int = 50
     session_worker_idle_ttl_seconds: int = 900
     session_worker_reap_interval_seconds: int = 60
+    # Context window token budget for conversation trimming.
+    # Uses len() as token_counter (each message = 1 "token") so this is a
+    # message-count cap applied before the coarser max_messages_per_session cap.
+    # Set to your model's context length. Default 4096 suits most Ollama 7B models.
+    max_context_tokens: int = 4096
 
 
 @dataclass
@@ -408,6 +413,7 @@ class ConfigManager:
             max_session_workers=int(get_env_value("MAX_SESSION_WORKERS", "50")),
             session_worker_idle_ttl_seconds=int(get_env_value("SESSION_WORKER_IDLE_TTL_SECONDS", "900")),
             session_worker_reap_interval_seconds=int(get_env_value("SESSION_WORKER_REAP_INTERVAL_SECONDS", "60")),
+            max_context_tokens=int(get_env_value("LANGCHAIN_MAX_CONTEXT_TOKENS", "4096")),
         )
         
         config = AppConfig(
