@@ -3,28 +3,31 @@ import React, { useCallback, useEffect, useState } from 'react';
 import apiClient from '../services/apiClient';
 import { notifyError, notifySuccess } from '../utils/appToast';
 import HelixPanel from './HelixPanel';
-import OllamaPanel from './OllamaPanel';
+import LmStudioPanel from './LmStudioPanel';
 import ProviderSelector from './ProviderSelector';
 
 /**
  * LlmConfigPage — LLM provider configuration
  *
- * Shows a two-option provider selector (Helix | Ollama) at the top,
+ * Shows a two-option provider selector (Helix | LM Studio) at the top,
  * then the appropriate config panel below.
+ *
+ * LM Studio uses the Anthropic-compatible /v1/messages endpoint at
+ * http://localhost:1234. No API key required.
  */
 export default function LlmConfigPage() {
   const [provider, setProvider] = useState('helix');
   const [helixStatus, setHelixStatus] = useState(null);
-  const [ollamaStatus, setOllamaStatus] = useState(null);
+  const [lmstudioStatus, setLmstudioStatus] = useState(null);
 
   const fetchStatuses = useCallback(async () => {
     try {
-      const [helixRes, ollamaRes] = await Promise.all([
+      const [helixRes, lmstudioRes] = await Promise.all([
         apiClient.get('/api/langchain/provider/helix/status'),
-        apiClient.get('/api/langchain/provider/ollama/status'),
+        apiClient.get('/api/langchain/provider/anthropic-lmstudio/status'),
       ]);
       setHelixStatus(helixRes.data?.status ?? null);
-      setOllamaStatus(ollamaRes.data?.status ?? null);
+      setLmstudioStatus(lmstudioRes.data?.status ?? null);
     } catch (err) {
       console.warn('[LlmConfigPage] Status fetch failed:', err.message);
     }
@@ -35,7 +38,7 @@ export default function LlmConfigPage() {
     apiClient.get('/api/langchain/config/status')
       .then(res => {
         const p = res.data?.provider;
-        if (p === 'helix' || p === 'ollama') setProvider(p);
+        if (p === 'helix' || p === 'anthropic-lmstudio') setProvider(p);
       })
       .catch(err => console.warn('[LlmConfigPage] Config load failed:', err.message));
 
@@ -47,7 +50,7 @@ export default function LlmConfigPage() {
     setProvider(selected);
     try {
       await apiClient.post('/api/langchain/config', { provider: selected });
-      notifySuccess(`Switched to ${selected === 'helix' ? 'Helix' : 'Ollama'}`);
+      notifySuccess(`Switched to ${selected === 'helix' ? 'Helix' : 'LM Studio'}`);
       await fetchStatuses();
     } catch (err) {
       notifyError(`Failed to switch provider: ${err.message}`);
@@ -61,9 +64,9 @@ export default function LlmConfigPage() {
         provider={provider}
         onSelect={handleSelect}
         helixStatus={helixStatus}
-        ollamaStatus={ollamaStatus}
+        lmstudioStatus={lmstudioStatus}
       />
-      {provider === 'helix' ? <HelixPanel /> : <OllamaPanel />}
+      {provider === 'helix' ? <HelixPanel /> : <LmStudioPanel />}
     </div>
   );
 }

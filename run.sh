@@ -986,6 +986,48 @@ if [[ -f "$BASEDIR/langchain_agent/src/main.py" ]]; then
   echo $! > "$PID_AGENT"
 fi
 
+# ── LM Studio auto-configure ─────────────────────────────────────────────────
+# If LM Studio's local server is running (default :1234), ensure the target
+# model is loaded so the demo works without manual setup. Non-blocking —
+# failure just means the user needs to load the model manually in LM Studio.
+(
+  LMS_BASE="${LMSTUDIO_BASE_URL:-http://localhost:1234}"
+  LMS_BASE="${LMS_BASE%/v1}"  # strip /v1 suffix if present
+  LMS_DEFAULT_MODEL="${LMSTUDIO_DEFAULT_MODEL:-google/gemma-4-e2b}"
+
+  # Quick ping — is the server up?
+  if curl -sf --max-time 3 "${LMS_BASE}/api/v1/models" -o /dev/null 2>/dev/null; then
+    echo "[LMS]  LM Studio server detected at ${LMS_BASE}"
+
+    # Check if default model is already loaded
+    LOADED=$(curl -sf --max-time 3 "${LMS_BASE}/api/v1/models" 2>/dev/null \
+      | python3 -c "
+import sys, json
+try:
+  d = json.load(sys.stdin)
+  loaded = [m['key'] for m in d.get('models',[]) if m.get('loaded_instances')]
+  print(' '.join(loaded))
+except: pass
+" 2>/dev/null)
+
+    if echo "${LOADED}" | grep -qF "${LMS_DEFAULT_MODEL}"; then
+      echo "[LMS]  Model already loaded: ${LMS_DEFAULT_MODEL} — ready"
+    else
+      echo "[LMS]  Loading model: ${LMS_DEFAULT_MODEL}…"
+      LOAD_RESULT=$(curl -sf --max-time 60 -X POST "${LMS_BASE}/api/v1/models/load" \
+        -H "Content-Type: application/json" \
+        -d "{\"model\":\"${LMS_DEFAULT_MODEL}\"}" 2>/dev/null)
+      if [ $? -eq 0 ]; then
+        echo "[LMS]  Model loaded: ${LMS_DEFAULT_MODEL}"
+      else
+        echo "[LMS]  Could not load model (not downloaded yet?) — use LM Studio UI to download ${LMS_DEFAULT_MODEL}"
+      fi
+    fi
+  else
+    echo "[LMS]  LM Studio server not detected — start it in LM Studio → Developer tab"
+  fi
+) &
+
 # Wait for Tier 3 services (UI and LangChain were launched above to run in parallel)
 wait_for_health 3006 "/health" 15 "Agent Service"     "${LOG_AGENT_SVC}" >/dev/null
 wait_for_health 8081 "/health" 15 "MCP Invest Server" "${LOG_INVEST}"    >/dev/null

@@ -100,6 +100,7 @@ const mcpDecisionPollingRoutes = require('./routes/mcpDecisionPolling');
 const bankingAgentRoutes = require('./routes/bankingAgentRoutes');
 const bankingAgentNlRoutes = require('./routes/bankingAgentNl');
 const langchainConfigRoutes = require('./routes/langchainConfig');
+const lmstudioRoutes = require('./routes/lmstudio');
 const tokenRoutes = require('./routes/tokens');
 const logsRoutes = require('./routes/logs');
 const delegationRoutes = require('./routes/delegation');
@@ -820,6 +821,7 @@ app.use('/api/banking-agent', bankingAgentNlRoutes);
 // Authenticated agent routes: /init, /message, /consent — require OAuth session.
 app.use('/api/banking-agent', bankingAgentRoutes);
 app.use('/api/langchain', langchainConfigRoutes);
+app.use('/api/langchain/lmstudio', lmstudioRoutes);
 app.use('/api/authorize', authorizeRoutes);
 app.use('/api/admin/authorize', authorizeConfigRoutes);
 app.use('/api/introspect', introspectRoutes);

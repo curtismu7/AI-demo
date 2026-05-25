@@ -24,12 +24,12 @@
  * @returns {{ provider: 'helix'|'ollama'|'openai'|'anthropic', model: string|undefined }}
  */
 function resolveLlmProvider(langchainConfig = {}) {
-  const requested = langchainConfig && langchainConfig.provider;
-  const model = langchainConfig && langchainConfig.model;
+  const requested = langchainConfig?.provider;
+  const model = langchainConfig?.model;
 
   if (requested === 'ollama') {
     const configured =
-      !!(langchainConfig && langchainConfig.ollama_base_url) ||
+      !!langchainConfig?.ollama_base_url ||
       !!process.env.OLLAMA_BASE_URL;
     if (configured) return { provider: 'ollama', model };
     return { provider: 'helix', model };
@@ -38,6 +38,11 @@ function resolveLlmProvider(langchainConfig = {}) {
   if (requested === 'openai' || requested === 'anthropic') {
     // Pass-through: :3006 enforces credential presence and fails fast.
     return { provider: requested, model };
+  }
+
+  if (requested === 'anthropic-lmstudio') {
+    // LM Studio Anthropic-compat endpoint — no API key required; local-only.
+    return { provider: 'anthropic-lmstudio', model };
   }
 
   if (requested === 'helix') return { provider: 'helix', model };

@@ -60,6 +60,32 @@ async function getProviderStatus(provider, config = {}) {
     };
   }
 
+  // LM Studio (Anthropic-compat) — ping the local server; no API key required
+  if (provider === 'anthropic-lmstudio') {
+    const lmstudioBase = config.lmstudio_base_url ||
+      process.env.LMSTUDIO_BASE_URL ||
+      'http://localhost:1234';
+    // Normalise: strip trailing /v1 so we always ping the origin
+    const origin = lmstudioBase.replace(/\/v1\/?$/, '');
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), HEALTH_CHECK_TIMEOUT);
+      const response = await fetch(`${origin}/api/v1/models`, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (response.ok) {
+        const data = await response.json().catch(() => ({}));
+        const loaded = (data.models || []).filter(m => m.loaded_instances?.length > 0);
+        const reason = loaded.length > 0
+          ? `LM Studio running — ${loaded.length} model(s) loaded`
+          : 'LM Studio server running (no model loaded yet)';
+        return { status: 'available', reason, hasKey: true, isReachable: true };
+      }
+      return { status: 'unreachable', reason: `LM Studio returned ${response.status}`, hasKey: true, isReachable: false };
+    } catch (err) {
+      return { status: 'unreachable', reason: `LM Studio not reachable at ${origin}: ${err.message}`, hasKey: true, isReachable: false };
+    }
+  }
+
   if (provider !== 'ollama') {
     return { status: 'unconfigured', reason: `Provider "${provider}" not supported`, hasKey: false, isReachable: false };
   }

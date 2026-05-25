@@ -1,16 +1,15 @@
 // demo_api_ui/src/components/ProviderSelector.jsx
-import React from 'react';
 
 /**
- * ProviderSelector — two-button strip: Helix (default) | Ollama
+ * ProviderSelector — two-button strip: Helix | LM Studio
  *
  * Props:
- *   provider: 'helix' | 'ollama'       — currently active provider
- *   onSelect: (provider: string) => void — called when user clicks a button
- *   helixStatus: string | null          — 'available' | 'unconfigured' | null
- *   ollamaStatus: string | null         — 'available' | 'unreachable' | null
+ *   provider: 'helix' | 'anthropic-lmstudio'
+ *   onSelect: (provider: string) => void
+ *   helixStatus:    'available' | 'unconfigured' | 'unreachable' | null
+ *   lmstudioStatus: 'available' | 'unreachable' | null
  */
-export default function ProviderSelector({ provider, onSelect, helixStatus, ollamaStatus }) {
+export default function ProviderSelector({ provider, onSelect, helixStatus, lmstudioStatus }) {
   const statusLabel = (s) => {
     if (s === 'available') return '✅ Active';
     if (s === 'unconfigured') return '⚠️ Unconfigured';
@@ -37,27 +36,25 @@ export default function ProviderSelector({ provider, onSelect, helixStatus, olla
   const pillStyle = (s) => ({
     fontSize: '0.75rem',
     color:
-      s === 'available' ? '#166534' :
+      s === 'available'    ? '#166534' :
       s === 'unconfigured' ? '#92400e' :
-      s === 'unreachable' ? '#991b1b' :
+      s === 'unreachable'  ? '#991b1b' :
       '#6b7280',
   });
 
   return (
     <div style={{ padding: '1.5rem 1.5rem 0' }}>
       <h3 style={{ marginBottom: '0.75rem' }}>LLM Provider</h3>
-      <div style={{ display: 'flex', gap: '0.75rem' }}>
-        <button style={btnStyle('helix')} onClick={() => onSelect('helix')}>
+      <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+        <button type="button" style={btnStyle('helix')} onClick={() => onSelect('helix')}>
           <span>Helix</span>
-          {helixStatus && (
-            <span style={pillStyle(helixStatus)}>{statusLabel(helixStatus)}</span>
-          )}
+          {helixStatus && <span style={pillStyle(helixStatus)}>{statusLabel(helixStatus)}</span>}
         </button>
-        <button style={btnStyle('ollama')} onClick={() => onSelect('ollama')}>
-          <span>Ollama</span>
-          {ollamaStatus && (
-            <span style={pillStyle(ollamaStatus)}>{statusLabel(ollamaStatus)}</span>
-          )}
+
+        <button type="button" style={btnStyle('anthropic-lmstudio')} onClick={() => onSelect('anthropic-lmstudio')}>
+          <span>LM Studio</span>
+          <span style={{ fontSize: '0.7rem', color: '#6b7280' }}>Anthropic API</span>
+          {lmstudioStatus && <span style={pillStyle(lmstudioStatus)}>{statusLabel(lmstudioStatus)}</span>}
         </button>
       </div>
     </div>

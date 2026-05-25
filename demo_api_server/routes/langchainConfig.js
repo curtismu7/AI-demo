@@ -19,21 +19,25 @@ const router = express.Router();
 
 // Models available per provider
 const PROVIDER_MODELS = {
-  ollama:    ['llama3.2', 'llama3.1', 'gemma4:e4b', 'mistral', 'phi3', 'qwen2.5'],
-  openai:    ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'],
-  anthropic: ['claude-opus-4-5', 'claude-sonnet-4-5', 'claude-3-5-haiku-20241022'],
-  groq:      ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768'],
-  google:    ['gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'],
-  helix:     ['gpt-4o', 'gpt-4o-mini', 'gemini-1.5-pro', 'claude-3-5-sonnet'],
+  ollama:              ['llama3.2', 'llama3.1', 'gemma4:e4b', 'mistral', 'phi3', 'qwen2.5'],
+  openai:              ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'],
+  anthropic:           ['claude-opus-4-5', 'claude-sonnet-4-5', 'claude-3-5-haiku-20241022'],
+  groq:                ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768'],
+  google:              ['gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'],
+  helix:               ['gpt-4o', 'gpt-4o-mini', 'gemini-1.5-pro', 'claude-3-5-sonnet'],
+  // LM Studio — Anthropic-compatible endpoint at /v1/messages.
+  // Model IDs must match what is loaded in LM Studio (publisher/model-name format).
+  'anthropic-lmstudio': ['google/gemma-4-e2b', 'google/gemma-4-e4b', 'google/gemma-3-12b-it', 'qwen/qwen3.6-27b'],
 };
 
 const DEFAULT_MODELS = {
-  ollama:    'mistral',
-  openai:    'gpt-4o-mini',
-  anthropic: 'claude-3-5-haiku-20241022',
-  groq:      'llama-3.1-8b-instant',
-  google:    'gemini-2.0-flash',
-  helix:     'gpt-4o-mini',
+  ollama:              'mistral',
+  openai:              'gpt-4o-mini',
+  anthropic:           'claude-3-5-haiku-20241022',
+  groq:                'llama-3.1-8b-instant',
+  google:              'gemini-2.0-flash',
+  helix:               'gpt-4o-mini',
+  'anthropic-lmstudio': 'google/gemma-4-e2b',
 };
 
 const KEY_SESSION_FIELDS = {};
@@ -110,6 +114,8 @@ router.get('/config/status', (req, res) => {
         anthropic: !!(cfg.anthropic_api_key ||
           configStore.getEffective('anthropic_api_key') ||
           process.env.ANTHROPIC_API_KEY),
+        // LM Studio — no API key needed; always "configured" (local server, no auth)
+        'anthropic-lmstudio': true,
       },
       provider_models: PROVIDER_MODELS,
       default_models: DEFAULT_MODELS,

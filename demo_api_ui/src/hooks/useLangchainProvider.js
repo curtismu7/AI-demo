@@ -9,18 +9,18 @@
 // llmProviderResolver). This hook hydrates from
 // GET  /api/langchain/config/status   and persists via
 // POST /api/langchain/config. `key_set` from the status endpoint is
-// honest (ollama always; helix when its creds set; openai/anthropic
+// honest (anthropic-lmstudio always; helix when its creds set; openai/anthropic
 // when the key the agent service actually uses is present) so callers
 // can disable unconfigured options ("disable unconfigured" UX).
 import { useCallback, useEffect, useState } from "react";
 
-// The four providers we expose in the UI. groq/google exist server-side
+// The providers we expose in the UI. groq/google exist server-side
 // but are intentionally not surfaced (out of scope for this spec).
 export const PROVIDER_OPTIONS = [
-  { id: "helix", label: "Helix (model-agnostic wrapper)" },
-  { id: "ollama", label: "Ollama (local)" },
-  { id: "openai", label: "OpenAI (ChatGPT)" },
-  { id: "anthropic", label: "Anthropic (Claude)" },
+  { id: "helix",              label: "Helix (model-agnostic wrapper)" },
+  { id: "anthropic-lmstudio", label: "LM Studio (Anthropic API, local)" },
+  { id: "openai",             label: "OpenAI (ChatGPT)" },
+  { id: "anthropic",          label: "Anthropic (Claude)" },
 ];
 
 const STATUS_URL = "/api/langchain/config/status";
@@ -48,7 +48,7 @@ const SAVE_URL = "/api/langchain/config";
 export default function useLangchainProvider() {
   const [provider, setProviderState] = useState("helix");
   const [model, setModel] = useState(undefined);
-  const [keySet, setKeySet] = useState({ ollama: true });
+  const [keySet, setKeySet] = useState({ 'anthropic-lmstudio': true });
   const [defaultModels, setDefaultModels] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -66,7 +66,7 @@ export default function useLangchainProvider() {
       const d = await res.json();
       setProviderState(d.provider || "helix");
       setModel(d.model);
-      setKeySet(d.key_set || { ollama: true });
+      setKeySet(d.key_set || { 'anthropic-lmstudio': true });
       setDefaultModels(d.default_models || {});
       setModeState(d.agent_mode || "heuristics_helix");
       setExternalWiringState(d.external_wiring || null);
@@ -98,8 +98,7 @@ export default function useLangchainProvider() {
         });
         if (!res.ok) throw new Error(`save ${res.status}`);
         const d = await res.json();
-        // Server returns the *resolved* provider (e.g. ollama→helix when
-        // unconfigured); trust it so the UI reflects reality.
+        // Server returns the *resolved* provider; trust it so the UI reflects reality.
         setProviderState(d.provider || id);
         setModel(d.model);
       } catch (e) {
