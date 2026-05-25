@@ -2,43 +2,50 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import apiClient from '../services/apiClient';
 import { notifyError, notifySuccess } from '../utils/appToast';
+import AnthropicPanel from './AnthropicPanel';
 import HelixPanel from './HelixPanel';
 import LmStudioPanel from './LmStudioPanel';
 import ProviderSelector from './ProviderSelector';
+import './LlmConfig.css';
+
+const PROVIDER_LABELS = {
+  helix: 'Helix',
+  'anthropic-lmstudio': 'LM Studio',
+  anthropic: 'Anthropic',
+};
 
 /**
  * LlmConfigPage — LLM provider configuration
  *
- * Shows a two-option provider selector (Helix | LM Studio) at the top,
- * then the appropriate config panel below.
- *
- * LM Studio uses the Anthropic-compatible /v1/messages endpoint at
- * http://localhost:1234. No API key required.
+ * Shows a three-option provider selector (Helix | LM Studio | Anthropic) at the
+ * top, then the appropriate config panel below.
  */
 export default function LlmConfigPage() {
   const [provider, setProvider] = useState('helix');
   const [helixStatus, setHelixStatus] = useState(null);
   const [lmstudioStatus, setLmstudioStatus] = useState(null);
+  const [anthropicStatus, setAnthropicStatus] = useState(null);
 
   const fetchStatuses = useCallback(async () => {
     try {
-      const [helixRes, lmstudioRes] = await Promise.all([
+      const [helixRes, lmstudioRes, anthropicRes] = await Promise.all([
         apiClient.get('/api/langchain/provider/helix/status'),
         apiClient.get('/api/langchain/provider/anthropic-lmstudio/status'),
+        apiClient.get('/api/langchain/provider/anthropic/status'),
       ]);
       setHelixStatus(helixRes.data?.status ?? null);
       setLmstudioStatus(lmstudioRes.data?.status ?? null);
+      setAnthropicStatus(anthropicRes.data?.status ?? null);
     } catch (err) {
       console.warn('[LlmConfigPage] Status fetch failed:', err.message);
     }
   }, []);
 
   useEffect(() => {
-    // Load current provider from BFF, then fetch statuses
     apiClient.get('/api/langchain/config/status')
       .then(res => {
         const p = res.data?.provider;
-        if (p === 'helix' || p === 'anthropic-lmstudio') setProvider(p);
+        if (p && PROVIDER_LABELS[p]) setProvider(p);
       })
       .catch(err => console.warn('[LlmConfigPage] Config load failed:', err.message));
 
@@ -50,7 +57,7 @@ export default function LlmConfigPage() {
     setProvider(selected);
     try {
       await apiClient.post('/api/langchain/config', { provider: selected });
-      notifySuccess(`Switched to ${selected === 'helix' ? 'Helix' : 'LM Studio'}`);
+      notifySuccess(`Switched to ${PROVIDER_LABELS[selected] ?? selected}`);
       await fetchStatuses();
     } catch (err) {
       notifyError(`Failed to switch provider: ${err.message}`);
@@ -58,15 +65,26 @@ export default function LlmConfigPage() {
     }
   };
 
+  const panel = provider === 'helix'
+    ? <HelixPanel />
+    : provider === 'anthropic'
+      ? <AnthropicPanel />
+      : <LmStudioPanel />;
+
   return (
     <div className="page-container">
+      <div className="cfg-page-heading">
+        <h2>LLM Provider</h2>
+        <p>Select and configure the language model used by the banking agent.</p>
+      </div>
       <ProviderSelector
         provider={provider}
         onSelect={handleSelect}
         helixStatus={helixStatus}
         lmstudioStatus={lmstudioStatus}
+        anthropicStatus={anthropicStatus}
       />
-      {provider === 'helix' ? <HelixPanel /> : <LmStudioPanel />}
+      {panel}
     </div>
   );
 }
