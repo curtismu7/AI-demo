@@ -1991,6 +1991,9 @@ export default function BankingAgent({
   // AG-UI hooks — only active when aguiEnabled=true; state and run are no-ops otherwise
   const { state: aguiState, handlers: aguiHandlers, reset: aguiReset } = useAgentState();
   const { run: aguiRun, abort: aguiAbort, isRunning: aguiRunning } = useAgentRun(aguiHandlers);
+  // Refs for stable thread ID and active run ID (needed by HITL resume)
+  const aguiThreadIdRef = React.useRef(null);
+  const aguiActiveRunIdRef = React.useRef(null);
   const [llmFlagSaving, setLlmFlagSaving] = useState(false);
 
   /** Render a single action button with optional emoji-only styling. */
@@ -2839,6 +2842,44 @@ export default function BankingAgent({
   useNewItems(aguiState.authorizeDecisions, aguiEnabled, (newDecisions) => {
     for (const d of newDecisions) appendAuthorizeDecision(d);
   });
+
+  // AG-UI Step 7 — HITL via interrupt: show GatewayConsentModal when the agent suspends.
+  // aguiState.hitlPending is set by useAgentState on RUN_FINISHED { outcome.type: 'interrupt' }.
+  const [aguiHitlPending, setAguiHitlPending] = React.useState(null);
+  useEffect(() => {
+    if (!aguiEnabled) return;
+    setAguiHitlPending(aguiState.hitlPending);
+  }, [aguiEnabled, aguiState.hitlPending]);
+
+  const handleAguiHitlApprove = useCallback(() => {
+    const interrupt = aguiHitlPending;
+    if (!interrupt) return;
+    setAguiHitlPending(null);
+    const threadId = aguiThreadIdRef.current || ('ba-' + Date.now());
+    const runId = 'resume-' + Date.now();
+    aguiActiveRunIdRef.current = runId;
+    setNlLoading(true);
+    aguiRun({
+      threadId,
+      runId,
+      messages: [],
+      resume: [{ interruptId: interrupt.id, status: 'approved' }],
+    }).finally(() => setNlLoading(false));
+  }, [aguiHitlPending, aguiRun]);
+
+  const handleAguiHitlDismiss = useCallback(() => {
+    const interrupt = aguiHitlPending;
+    if (!interrupt) return;
+    setAguiHitlPending(null);
+    const threadId = aguiThreadIdRef.current || ('ba-' + Date.now());
+    const runId = 'cancel-' + Date.now();
+    aguiRun({
+      threadId,
+      runId,
+      messages: [],
+      resume: [{ interruptId: interrupt.id, status: 'cancelled' }],
+    });
+  }, [aguiHitlPending, aguiRun]);
 
     // Cancel any previous in-flight send, create a fresh AbortController, and
   // return the new signal. Called once at the top of every real send path.
@@ -5501,21 +5542,24 @@ export default function BankingAgent({
     // AG-UI path (ff_agui_enabled=true): stream via POST /api/agent/run
     // The old NL pipeline is bypassed entirely when this flag is on.
     if (aguiEnabled) {
-      const threadId = req => req?.session?.id || 'ba-thread';
+      // Stable thread ID for the session (persists across HITL resumes).
+      // runId is per-message so each turn is distinct.
+      if (!aguiThreadIdRef.current) {
+        aguiThreadIdRef.current = 'ba-' + Date.now();
+      }
+      const threadId = aguiThreadIdRef.current;
       const runId = 'run-' + Date.now();
+      aguiActiveRunIdRef.current = runId;
       addMessage('user', text);
       setNlLoading(true);
-      const userMsg = { role: 'user', content: text };
       aguiRun({
-        threadId: 'ba-' + (Date.now()),
+        threadId,
         runId,
-        messages: [userMsg],
+        messages: [{ role: 'user', content: text }],
       }).finally(() => {
         setNlLoading(false);
         nlSendGuardRef.current.release();
       });
-      // Sync AG-UI streamed reply into the chat thread
-      // (useAgentState updates aguiState.messages; effect below reads it)
       return;
     }
 
@@ -8134,6 +8178,16 @@ export default function BankingAgent({
               expiresAt={gatewayHitlChallenge?.expiresAt || ""}
               onApprove={() => setGatewayHitlChallenge(null)}
               onDismiss={() => setGatewayHitlChallenge(null)}
+            />
+
+            {/* AG-UI Step 7 — HITL interrupt consent modal */}
+            <GatewayConsentModal
+              show={!!aguiHitlPending}
+              challengeId={aguiHitlPending?.id || ""}
+              challengeType="consent"
+              expiresAt={aguiHitlPending?.expiresAt || ""}
+              onApprove={handleAguiHitlApprove}
+              onDismiss={handleAguiHitlDismiss}
             />
 
             {/* Transaction failure modal — replaces auto-closing toast for write actions */}
