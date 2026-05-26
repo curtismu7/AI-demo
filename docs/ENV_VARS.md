@@ -179,6 +179,8 @@ Token endpoint auth: `CLIENT_SECRET_BASIC` (only exception to the `post` rule).
 | Variable | Description |
 |---|---|
 | `BFF_INTERNAL_SECRET` | Shared secret for BFF (:3001) → agent service (:3006) calls via `x-internal-gateway-secret` header |
+| `BFF_BASE_URL` | BFF's own public origin (e.g. `https://my-bff.railway.app`). Set on cloud deployments so the agent service can call back into `/internal/agent-tool` over the public network. Locally defaults to loopback. |
+| `BFF_INTERNAL_TOOL_URL` | Explicit override for the agent-tool callback URL (e.g. a Railway private network URL). Takes precedence over `BFF_BASE_URL` when set. |
 
 ---
 

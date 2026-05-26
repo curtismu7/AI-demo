@@ -126,10 +126,21 @@ router.post('/run', async (req, res) => {
   const provider = configStore.getEffective('llm_provider') || process.env.AGENT_PROVIDER || 'anthropic';
   const model = configStore.getEffective('llm_model') || process.env.AGENT_MODEL || undefined;
 
-  // bffToolUrl — internal loopback URL for agent service to call back into BFF
-  // for tool execution with RFC 8693 token exchange (Step 8).
-  const bffPort = process.env.BFF_PORT || process.env.PORT || 3001;
-  const bffToolUrl = `http://127.0.0.1:${bffPort}/internal/agent-tool`;
+  // bffToolUrl — URL the agent service uses to call back into the BFF for tool
+  // execution with RFC 8693 token exchange (Step 8).
+  //
+  // Resolution order (cloud-safe):
+  //   1. BFF_INTERNAL_TOOL_URL  — explicit override (e.g. Railway internal URL)
+  //   2. BFF_BASE_URL           — BFF's own public origin (set on Vercel/Railway)
+  //   3. Loopback fallback      — local dev without mkcert/HTTPS
+  //
+  // The /internal/agent-tool endpoint is gated by BFF_INTERNAL_SECRET regardless
+  // of which origin is used — the secret is the security boundary, not the host.
+  const bffBase =
+    process.env.BFF_INTERNAL_TOOL_URL ||
+    (process.env.BFF_BASE_URL ? process.env.BFF_BASE_URL.replace(/\/$/, '') : null) ||
+    `http://127.0.0.1:${process.env.BFF_PORT || process.env.PORT || 3001}`;
+  const bffToolUrl = `${bffBase}/internal/agent-tool`;
   const sessionId = req.session && req.session.id;
 
   // ---------------------------------------------------------------------------
