@@ -952,6 +952,9 @@ app.use('/api/resource-server-cc', authenticateToken, resourceServerCCRoutes);
 // Internal gateway-only endpoint — NOT under /api/*; NOT exposed to the browser.
 // Phase 266: gateway reads the user's id_token server-to-server via shared secret.
 app.use('/internal', require('./routes/agentIdToken'));
+// AG-UI Step 8: BFF-internal tool execution endpoint (agent service → BFF → MCP).
+// NOT browser-facing; bound to loopback per REGRESSION_PLAN §3.
+app.use('/internal', require('./routes/agentTool'));
 
 // Phase 266 R2 — Path A info marker (session-cookie auth; no Bearer needed from SPA)
 app.use('/api/path', require('./routes/pathInfo'));

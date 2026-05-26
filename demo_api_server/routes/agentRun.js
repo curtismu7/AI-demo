@@ -126,9 +126,11 @@ router.post('/run', async (req, res) => {
   const provider = configStore.getEffective('llm_provider') || process.env.AGENT_PROVIDER || 'anthropic';
   const model = configStore.getEffective('llm_model') || process.env.AGENT_MODEL || undefined;
 
-  // bffToolUrl is wired in Step 3 (when BFF tool execution endpoint exists)
-  // For now it's undefined so agent service uses stub results
-  const bffToolUrl = undefined; // TODO Step 3: set to internal BFF tool endpoint
+  // bffToolUrl — internal loopback URL for agent service to call back into BFF
+  // for tool execution with RFC 8693 token exchange (Step 8).
+  const bffPort = process.env.BFF_PORT || process.env.PORT || 3001;
+  const bffToolUrl = `http://127.0.0.1:${bffPort}/internal/agent-tool`;
+  const sessionId = req.session && req.session.id;
 
   // ---------------------------------------------------------------------------
   // Step D: build the RunAgentInput payload
@@ -140,6 +142,7 @@ router.post('/run', async (req, res) => {
     tools,
     context: {
       bffToolUrl,
+      sessionId,
       initialTokenEvents,
       provider,
       model,

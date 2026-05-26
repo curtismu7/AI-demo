@@ -90,6 +90,7 @@ interface RunAgentInput {
   tools?: ReasonToolSchema[];
   context?: {
     bffToolUrl?: string;
+    sessionId?: string;
     initialTokenEvents?: TokenEvent[];
     provider?: string;
     model?: string;
@@ -132,7 +133,8 @@ interface ToolExecResult {
 async function executeTool(
   toolName: string,
   toolArgs: unknown,
-  bffToolUrl: string | undefined
+  bffToolUrl: string | undefined,
+  sessionId: string | undefined
 ): Promise<ToolExecResult> {
   const id = uid('mcp');
   const timestamp = new Date().toISOString();
@@ -158,8 +160,11 @@ async function executeTool(
   try {
     const resp = await fetch(bffToolUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tool: toolName, args: toolArgs }),
+      headers: {
+        'Content-Type': 'application/json',
+        'x-internal-gateway-secret': process.env.BFF_INTERNAL_SECRET || 'dev-shared-secret-change-me',
+      },
+      body: JSON.stringify({ tool: toolName, args: toolArgs, sessionId }),
     });
     const data = (await resp.json()) as Record<string, unknown>;
     result = data.result ?? data;
@@ -253,7 +258,7 @@ export function makeAgentRunHandler(internalSecret: string) {
       return;
     }
 
-    const { bffToolUrl, initialTokenEvents = [], provider, model } = context;
+    const { bffToolUrl, sessionId, initialTokenEvents = [], provider, model } = context;
 
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
@@ -364,7 +369,7 @@ export function makeAgentRunHandler(internalSecret: string) {
           emit(res, { type: EventType.TOOL_CALL_ARGS, toolCallId: callId, delta: JSON.stringify(call.args) });
           emit(res, { type: EventType.TOOL_CALL_END, toolCallId: callId });
 
-          const { result, mcpEntry, authorizeDecision } = await executeTool(call.name, call.args, bffToolUrl);
+          const { result, mcpEntry, authorizeDecision } = await executeTool(call.name, call.args, bffToolUrl, sessionId);
 
           const interrupt = extractHitlInterrupt(result);
           if (interrupt) {
