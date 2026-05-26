@@ -48,6 +48,7 @@ class LangChainMCPApplication:
         self.message_processor: Optional[MessageProcessor] = None
         self.websocket_server = None
         self.health_server: Optional[HealthCheckServer] = None
+        self._agui_server_task: Optional[asyncio.Task] = None
         self._shutdown_event = asyncio.Event()
         
     async def initialize(self):
@@ -145,6 +146,16 @@ class LangChainMCPApplication:
             # above for the same reason.
             await self.message_processor.start()
             self.health_server.update_status("message_processor", "ready")
+
+            # AG-UI /run SSE endpoint (Phase 1.5): FastAPI on port 8888.
+            # Only started when agui_enabled is True (LANGCHAIN_AGUI_ENABLED=true).
+            if self.config.langchain.agui_enabled:
+                from .api.agui_run_handler import set_message_processor as set_agui_mp
+                set_agui_mp(self.message_processor)
+                self._agui_server_task = asyncio.create_task(
+                    self.start_agui_http_server()
+                )
+                logger.info("[AG-UI] /run SSE endpoint enabled on port 8888")
 
             # MCP Host inspector snapshot (HTTP GET /inspector/mcp-host on health port)
             try:
@@ -286,6 +297,37 @@ class LangChainMCPApplication:
             logger.error(f"❌ Failed to start WebSocket server: {e}")
             raise
     
+    async def start_agui_http_server(self) -> None:
+        """Start FastAPI/uvicorn on port 8888 serving the AG-UI /run SSE endpoint.
+
+        Runs until the application shutdown event fires.
+        Binds to 127.0.0.1 only (loopback) — the BFF proxies to it.
+        """
+        import uvicorn
+        from fastapi import FastAPI
+        from .api.agui_run_handler import router as agui_router
+
+        app = FastAPI(title="LangChain AG-UI", docs_url=None, redoc_url=None)
+        app.include_router(agui_router)
+
+        agui_port = int(os.getenv("AGUI_HTTP_PORT", "8888"))
+        agui_host = os.getenv("AGUI_HTTP_HOST", "127.0.0.1")
+
+        config = uvicorn.Config(
+            app,
+            host=agui_host,
+            port=agui_port,
+            log_level="warning",
+            access_log=False,
+        )
+        server = uvicorn.Server(config)
+
+        logger.info("[AG-UI] uvicorn starting on %s:%s", agui_host, agui_port)
+        try:
+            await server.serve()
+        except asyncio.CancelledError:
+            logger.info("[AG-UI] uvicorn server stopped")
+
     async def run(self):
         """Run the application."""
         try:
@@ -336,6 +378,15 @@ class LangChainMCPApplication:
                 self.health_server.stop()
                 logger.info("✅ Health check server stopped")
             
+            # Stop AG-UI uvicorn server task (if running)
+            if self._agui_server_task and not self._agui_server_task.done():
+                self._agui_server_task.cancel()
+                try:
+                    await self._agui_server_task
+                except asyncio.CancelledError:
+                    pass
+                logger.info("✅ AG-UI HTTP server stopped")
+
             # Stop WebSocket server
             if self.websocket_server:
                 self.websocket_server.close()
