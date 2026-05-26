@@ -887,109 +887,249 @@ git commit -m "feat(agui): wire AGUIEventEmitter into message processor (Phase 1
 
 ---
 
-### Task 2.1: `agentRunStore` — in-memory run registry
+### Task 2.1: `agentRunStore` — Redis-backed run registry + pub/sub consent
+
+**Cloud-safe design:** Run state is stored in Redis (Upstash on Vercel, TCP Redis locally). Consent signals use Redis pub/sub so the SSE stream and the consent POST can land on different BFF instances. Falls back to an in-process `EventEmitter` when Redis is unavailable (dev without Redis).
+
+Redis keys:
+- `agui:run:<runId>` — JSON run state, TTL 5 minutes
+- `agui:consent:<runId>` — pub/sub channel for consent signal
 
 **Files:**
 - Create: `demo_api_server/services/agentRunStore.js`
 
-- [ ] **Step 1: Write a failing test**
+- [ ] **Step 1: Find the existing Redis/Upstash client in the BFF**
+
+```bash
+grep -r "upstash\|ioredis\|redis\|Redis" demo_api_server/services --include="*.js" -l | head -5
+grep -r "createClient\|new Redis\|upstashClient" demo_api_server/ --include="*.js" -l | head -5
+```
+
+Identify how Redis is already used in the project (the session store uses it). Note the import pattern — you will reuse the same client.
+
+- [ ] **Step 2: Write a failing test**
 
 Create `demo_api_server/tests/agentRunStore.test.js`:
 
 ```javascript
-const { agentRunStore } = require('../services/agentRunStore');
+// agentRunStore.test.js — tests use the local EventEmitter fallback
+// (Redis not required for unit tests)
+jest.mock('../services/agentRunStore', () => {
+  // Re-require so we get the actual module with mocked Redis
+  jest.resetModules();
+  return jest.requireActual('../services/agentRunStore');
+});
 
-describe('agentRunStore', () => {
-  afterEach(() => agentRunStore.clear());
+// Force fallback mode (no Redis) for tests
+process.env.AGUI_STORE_FALLBACK = 'true';
 
-  test('registers and retrieves a run', () => {
-    agentRunStore.register('run_1', { status: 'running' });
-    expect(agentRunStore.get('run_1')).toMatchObject({ status: 'running' });
+const { createAgentRunStore } = require('../services/agentRunStore');
+
+describe('agentRunStore (fallback mode)', () => {
+  let store;
+  beforeEach(() => { store = createAgentRunStore(); });
+
+  test('registers and retrieves run state', async () => {
+    await store.setRunState('run_1', { status: 'running' });
+    const state = await store.getRunState('run_1');
+    expect(state).toMatchObject({ status: 'running' });
   });
 
-  test('get returns undefined for unknown runId', () => {
-    expect(agentRunStore.get('nope')).toBeUndefined();
+  test('getRunState returns null for unknown runId', async () => {
+    expect(await store.getRunState('nope')).toBeNull();
   });
 
-  test('remove deletes a run', () => {
-    agentRunStore.register('run_2', {});
-    agentRunStore.remove('run_2');
-    expect(agentRunStore.get('run_2')).toBeUndefined();
+  test('deleteRunState removes the entry', async () => {
+    await store.setRunState('run_2', { status: 'running' });
+    await store.deleteRunState('run_2');
+    expect(await store.getRunState('run_2')).toBeNull();
   });
 
-  test('clear empties all runs', () => {
-    agentRunStore.register('run_3', {});
-    agentRunStore.register('run_4', {});
-    agentRunStore.clear();
-    expect(agentRunStore.get('run_3')).toBeUndefined();
+  test('publish + subscribe delivers consent signal', async () => {
+    const received = [];
+    await store.subscribeConsent('run_3', (msg) => received.push(msg));
+    await store.publishConsent('run_3', { approved: true });
+    // allow microtask queue to flush
+    await new Promise((r) => setImmediate(r));
+    expect(received).toHaveLength(1);
+    expect(received[0]).toEqual({ approved: true });
+  });
+
+  test('unsubscribe stops receiving consent signals', async () => {
+    const received = [];
+    const unsub = await store.subscribeConsent('run_4', (msg) => received.push(msg));
+    unsub();
+    await store.publishConsent('run_4', { approved: true });
+    await new Promise((r) => setImmediate(r));
+    expect(received).toHaveLength(0);
   });
 });
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [ ] **Step 3: Run to verify it fails**
 
 ```bash
 cd demo_api_server
 npx jest tests/agentRunStore.test.js
 ```
 
-Expected: Cannot find module.
+Expected: Cannot find module `../services/agentRunStore`.
 
-- [ ] **Step 3: Implement `agentRunStore.js`**
+- [ ] **Step 4: Implement `agentRunStore.js`**
 
 ```javascript
 // demo_api_server/services/agentRunStore.js
 'use strict';
 
 /**
- * In-memory registry of active AG-UI agent runs.
+ * AG-UI agent run registry.
  *
- * Each entry: { sseRes, status, consentResolver, timeoutId }
- *   sseRes          — Express Response object (SSE stream)
- *   status          — 'running' | 'suspended_hitl' | 'finished'
- *   consentResolver — resolve fn from a Promise (HITL resume)
- *   timeoutId       — NodeJS timer handle for HITL timeout
+ * Cloud-safe: stores run state in Redis (Upstash on Vercel, TCP Redis locally).
+ * Uses Redis pub/sub for HITL consent signalling so consent POST and SSE stream
+ * can land on different BFF instances.
+ *
+ * Falls back to an in-process EventEmitter when:
+ *   - process.env.AGUI_STORE_FALLBACK === 'true'  (tests / explicit opt-out)
+ *   - Redis connection fails at startup
+ *
+ * Redis key schema:
+ *   agui:run:<runId>     — JSON run state, TTL 300s (5 min)
+ *   agui:consent:<runId> — pub/sub channel for consent signal
  */
-class AgentRunStore {
+
+const EventEmitter = require('events');
+const logger = require('./logger') || console;
+
+const RUN_TTL_SECONDS = 300; // 5 minutes — matches HITL timeout
+
+// ─── Fallback backend (in-process, single-instance) ──────────────────────────
+
+class FallbackStore {
   constructor() {
-    this._runs = new Map();
+    this._state = new Map();
+    this._emitter = new EventEmitter();
+    this._emitter.setMaxListeners(100);
   }
 
-  register(runId, entry) {
-    this._runs.set(runId, entry);
+  async setRunState(runId, value) {
+    this._state.set(runId, value);
   }
 
-  get(runId) {
-    return this._runs.get(runId);
+  async getRunState(runId) {
+    return this._state.get(runId) ?? null;
   }
 
-  remove(runId) {
-    this._runs.delete(runId);
+  async deleteRunState(runId) {
+    this._state.delete(runId);
   }
 
-  clear() {
-    this._runs.clear();
+  async publishConsent(runId, payload) {
+    this._emitter.emit(`consent:${runId}`, payload);
+  }
+
+  async subscribeConsent(runId, handler) {
+    const key = `consent:${runId}`;
+    this._emitter.on(key, handler);
+    return () => this._emitter.off(key, handler);
   }
 }
 
-const agentRunStore = new AgentRunStore();
-module.exports = { agentRunStore };
+// ─── Redis backend ────────────────────────────────────────────────────────────
+
+class RedisStore {
+  /**
+   * @param {object} redisClient  ioredis or Upstash-compatible client
+   *   Must support: set(key, value, 'EX', ttl), get(key), del(key),
+   *   publish(channel, message), subscribe(channel, handler)
+   */
+  constructor(redisClient) {
+    this._client = redisClient;
+    // ioredis requires a separate connection for subscribe
+    this._sub = redisClient.duplicate ? redisClient.duplicate() : redisClient;
+    this._handlers = new Map(); // runId → handler fn
+  }
+
+  async setRunState(runId, value) {
+    await this._client.set(
+      `agui:run:${runId}`,
+      JSON.stringify(value),
+      'EX',
+      RUN_TTL_SECONDS
+    );
+  }
+
+  async getRunState(runId) {
+    const raw = await this._client.get(`agui:run:${runId}`);
+    return raw ? JSON.parse(raw) : null;
+  }
+
+  async deleteRunState(runId) {
+    await this._client.del(`agui:run:${runId}`);
+  }
+
+  async publishConsent(runId, payload) {
+    await this._client.publish(`agui:consent:${runId}`, JSON.stringify(payload));
+  }
+
+  async subscribeConsent(runId, handler) {
+    const channel = `agui:consent:${runId}`;
+    const wrapped = (_ch, message) => {
+      try { handler(JSON.parse(message)); } catch { /* ignore */ }
+    };
+    this._handlers.set(runId, wrapped);
+    await this._sub.subscribe(channel);
+    this._sub.on('message', wrapped);
+    return () => {
+      this._sub.unsubscribe(channel).catch(() => {});
+      this._sub.off('message', wrapped);
+      this._handlers.delete(runId);
+    };
+  }
+}
+
+// ─── Factory ──────────────────────────────────────────────────────────────────
+
+function createAgentRunStore() {
+  if (process.env.AGUI_STORE_FALLBACK === 'true') {
+    return new FallbackStore();
+  }
+
+  // Try to reuse the project's existing Redis client
+  let redisClient;
+  try {
+    // Adapt this require path to match the actual Redis client in this codebase
+    // (found by grepping for createClient / ioredis / upstash in services/)
+    const { getRedisClient } = require('./redisClient');
+    redisClient = getRedisClient();
+  } catch {
+    logger.warn('[agentRunStore] Redis client not available — using in-process fallback. HITL will not work across multiple instances.');
+    return new FallbackStore();
+  }
+
+  return new RedisStore(redisClient);
+}
+
+const agentRunStore = createAgentRunStore();
+
+module.exports = { agentRunStore, createAgentRunStore };
 ```
 
-- [ ] **Step 4: Run tests**
+> **Note on `getRedisClient`:** Examine the Redis import you found in Step 1 and adapt the require path accordingly. If the project uses Upstash REST (not TCP), use the Upstash REST client's `set`/`get`/`del` methods — they have the same interface. For pub/sub with Upstash REST you may need `@upstash/redis` with its `publish`/`subscribe` methods, or fall back to the `FallbackStore` for pub/sub while using Upstash for state (document this choice in a comment).
+
+- [ ] **Step 5: Run tests**
 
 ```bash
 cd demo_api_server
 npx jest tests/agentRunStore.test.js
 ```
 
-Expected: 4 passed.
+Expected: 5 passed (all running against FallbackStore).
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add demo_api_server/services/agentRunStore.js demo_api_server/tests/agentRunStore.test.js
-git commit -m "feat(agui): add agentRunStore in-memory run registry (Phase 2.1)"
+git commit -m "feat(agui): add agentRunStore Redis-backed run registry + pub/sub consent (Phase 2.1)"
 ```
 
 ---
@@ -1971,7 +2111,16 @@ jest.mock('../middleware/auth', () => ({
   requireSession: (req, res, next) => next(),
 }));
 
-const { agentRunStore } = require('../services/agentRunStore');
+// Use fallback store (no Redis needed for tests)
+process.env.AGUI_STORE_FALLBACK = 'true';
+const { createAgentRunStore } = require('../services/agentRunStore');
+
+// Mock the module-level agentRunStore with a fresh fallback instance
+const mockStore = createAgentRunStore();
+jest.mock('../services/agentRunStore', () => ({
+  agentRunStore: mockStore,
+  createAgentRunStore: jest.fn(() => mockStore),
+}));
 
 const agentConsentRoute = require('../routes/agentConsentRoute');
 const app = express();
@@ -1979,8 +2128,6 @@ app.use(express.json());
 app.use('/api/agent', agentConsentRoute);
 
 describe('POST /api/agent/consent/:runId', () => {
-  afterEach(() => agentRunStore.clear());
-
   test('returns 404 for unknown runId', async () => {
     const res = await request(app)
       .post('/api/agent/consent/run_unknown')
@@ -1988,28 +2135,23 @@ describe('POST /api/agent/consent/:runId', () => {
     expect(res.status).toBe(404);
   });
 
-  test('resolves consent for a suspended run', async () => {
-    let resolved = null;
-    agentRunStore.register('run_test', {
-      status: 'suspended_hitl',
-      consentResolver: (val) => { resolved = val; },
-      timeoutId: null,
-    });
+  test('publishes consent signal for a suspended run', async () => {
+    await mockStore.setRunState('run_test', { status: 'suspended_hitl' });
+    const received = [];
+    await mockStore.subscribeConsent('run_test', (msg) => received.push(msg));
 
     const res = await request(app)
       .post('/api/agent/consent/run_test')
       .send({ approved: true });
 
+    await new Promise((r) => setImmediate(r));
     expect(res.status).toBe(200);
-    expect(resolved).toEqual({ approved: true });
+    expect(received).toHaveLength(1);
+    expect(received[0]).toEqual({ approved: true });
   });
 
   test('returns 409 if run is not suspended', async () => {
-    agentRunStore.register('run_active', {
-      status: 'running',
-      consentResolver: null,
-      timeoutId: null,
-    });
+    await mockStore.setRunState('run_active', { status: 'running' });
     const res = await request(app)
       .post('/api/agent/consent/run_active')
       .send({ approved: true });
@@ -2042,27 +2184,28 @@ const router = express.Router();
 /**
  * POST /api/agent/consent/:runId
  *
- * Resumes a run suspended at a HITL gate.
+ * Signals consent approval/denial for a HITL-suspended run.
+ * Cloud-safe: publishes to Redis pub/sub channel agui:consent:<runId>
+ * so the SSE handler (which may be on a different instance) receives it.
  * Body: { approved: boolean }
  */
-router.post('/consent/:runId', requireSession, (req, res) => {
+router.post('/consent/:runId', requireSession, async (req, res) => {
   const { runId } = req.params;
   const { approved } = req.body;
 
-  const run = agentRunStore.get(runId);
-  if (!run) {
+  const runState = await agentRunStore.getRunState(runId);
+  if (!runState) {
     return res.status(404).json({ error: 'Run not found' });
   }
-  if (run.status !== 'suspended_hitl') {
+  if (runState.status !== 'suspended_hitl') {
     return res.status(409).json({ error: 'Run is not awaiting consent' });
   }
 
-  // Clear the HITL timeout
-  if (run.timeoutId) clearTimeout(run.timeoutId);
+  // Publish consent signal via pub/sub — SSE handler on any instance receives it
+  await agentRunStore.publishConsent(runId, { approved: Boolean(approved) });
 
-  // Resume the suspended run
-  run.consentResolver({ approved: Boolean(approved) });
-  agentRunStore.remove(runId);
+  // Remove run state from Redis (SSE handler will clean up its subscription)
+  await agentRunStore.deleteRunState(runId);
 
   return res.json({ ok: true, runId, approved: Boolean(approved) });
 });

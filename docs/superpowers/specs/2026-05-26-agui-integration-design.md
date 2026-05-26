@@ -61,16 +61,29 @@ data: {"type":"RUN_STARTED","runId":"run_xyz","threadId":"thread_abc"}\n\n
 
 ### HITL suspend/resume
 
+Designed for cloud hosting (multiple BFF instances, serverless). The SSE stream and the consent POST may land on different instances — Redis pub/sub bridges them.
+
 ```
-SSE stream open
+SSE stream open (instance A)
   → CUSTOM(hitl_consent_request) emitted
-  → run suspended in agentRunStore (keyed by runId)
+  → run state written to Redis: agui:run:<runId> = { status: 'suspended_hitl', ... } TTL 5min
+  → SSE handler subscribes to Redis channel: agui:consent:<runId>
   → SSE keep-alive pings every 15s
-  → user approves/denies in UI
+
+User approves/denies (may hit instance B)
   → POST /api/agent/consent/:runId
-  → run resumed, SSE stream continues
+  → BFF reads run state from Redis, validates status = 'suspended_hitl'
+  → BFF publishes to Redis channel: agui:consent:<runId> = { approved: true }
+  → BFF deletes run state from Redis
+
+Instance A receives pub/sub message
+  → SSE stream resumes
   → RUN_FINISHED closes stream
 ```
+
+**Redis client:** Uses the existing Upstash REST client (`demo_api_server/services/upstashClient.js` or equivalent) — the same store used for sessions on Vercel. Locally, falls back to TCP Redis. The `agentRunStore` service abstracts this so routes don't know which backend is in use.
+
+**Local fallback:** When Redis is unavailable (dev without Redis), `agentRunStore` falls back to an in-process `EventEmitter` — same interface, single-instance only. A warning is logged at startup.
 
 ---
 
@@ -130,7 +143,7 @@ All custom events use the AG-UI `CUSTOM` event type:
 | `routes/agentRunRoute.js` | New | `POST /api/agent/run` — auth, RFC 8693 exchange, SSE proxy |
 | `routes/agentConsentRoute.js` | New | `POST /api/agent/consent/:runId` — HITL resume |
 | `services/aguiSseProxy.js` | New | Pipes agent SSE to browser; injects CUSTOM events inline |
-| `services/agentRunStore.js` | New | In-memory map of `runId → { sseRes, status, consentResolver }` |
+| `services/agentRunStore.js` | New | Redis-backed run registry (`agui:run:<runId>`) + pub/sub consent signalling (`agui:consent:<runId>`); falls back to in-process EventEmitter locally |
 | `services/agentMcpTokenService.js` | Modified | Emit token chain events as CUSTOM AG-UI objects |
 | `server.js` | Modified | Mount new routes; retain `/ws/langchain` during migration |
 
@@ -189,7 +202,7 @@ All custom events use the AG-UI `CUSTOM` event type:
 | SSE connection drop mid-run | `useAgentRun` retries with exponential backoff (max 3); shows "Connection lost — reconnecting…" |
 | Agent `ERROR` event | Mapped to error message in chat thread; BFF emits `RUN_FINISHED` after to close stream cleanly |
 | RFC 8693 exchange failure | BFF emits `CUSTOM(token_chain_error)` then `ERROR` + `RUN_FINISHED`; UI shows "Unable to obtain agent token" |
-| HITL timeout (5 min) | BFF emits `CUSTOM(hitl_timeout)` + `RUN_FINISHED`; consent modal shows timeout notice |
+| HITL timeout (5 min) | Redis TTL expires on `agui:run:<runId>`; SSE handler detects missing key on next keepalive, emits `CUSTOM(hitl_timeout)` + `RUN_FINISHED`; consent modal shows timeout notice |
 | Token expiry mid-run | Detected at run start by BFF; emits `CUSTOM(auth_challenge)`; UI shows "Session expired — please log in again" |
 | MCP tool failure | Agent emits `TOOL_CALL_END` with error payload; agent LLM decides recovery; no special BFF handling |
 
