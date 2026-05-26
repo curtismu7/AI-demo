@@ -303,6 +303,21 @@ const FLAG_REGISTRY = [
     defaultValue: false,
   },
   {
+    id:           'ff_agui_enabled',
+    name:         'AG-UI Streaming Agent',
+    category:     'UI / Dashboard',
+    description:
+      'When **ON**, the Banking Agent uses the AG-UI protocol (POST /api/agent/run, HTTP+SSE) ' +
+      'instead of the legacy /api/banking-agent/message endpoint. Real-time STATE_DELTA events ' +
+      'drive the Token Chain panel, MCP Traffic panel, and Authorize Decision panel live. ' +
+      'When **OFF** (default), the legacy polling path is used.',
+    impact:
+      'OFF (default) = legacy sendAgentMessage path unchanged. ' +
+      'ON = AG-UI event stream; Token Chain, MCP, and AuthZ panels update in real time.',
+    type:         'boolean',
+    defaultValue: false,
+  },
+  {
     id:           'ff_authorize_rules_panel',
     name:         'Authorize Rules Panel',
     category:     'UI / Dashboard',

@@ -77,6 +77,9 @@ import { useCustomChips } from "../hooks/useCustomChips";
 import AgentModeSelector from "./AgentModeSelector";
 import useLangchainProvider from "../hooks/useLangchainProvider";
 import { claimPendingNl, clampPanelPosition, makeReentrancyGuard, isAbortError, anySignal } from "./bankingAgentSafety";
+// AG-UI Step 3 — hooks (feature-flagged; only active when ff_agui_enabled=true)
+import { useAgentRun } from "../hooks/useAgentRun";
+import { useAgentState } from "../hooks/useAgentState";
 
 // Phase 266 H2 audit: TokenChain credentialPath stamping origins per setTokenEvents call:
 //   line 3433 (scopeTestRes.tokenEvents)  — origin: scope-test path via callMcpTool; credentialPath: oauth_bearer (default; stamped by bankingAgentService)
@@ -1979,6 +1982,11 @@ export default function BankingAgent({
   const [heuristicEnabled, setHeuristicEnabled] = useState(true);
   /** Whether the floating results panel is enabled (ff_agent_results_panel). false = panel hidden; results inline only. */
   const [agentResultsPanelEnabled, setAgentResultsPanelEnabled] = useState(false);
+  /** Whether AG-UI streaming is enabled (ff_agui_enabled). false = legacy sendAgentMessage path. */
+  const [aguiEnabled, setAguiEnabled] = useState(false);
+  // AG-UI hooks — only active when aguiEnabled=true; state and run are no-ops otherwise
+  const { state: aguiState, handlers: aguiHandlers, reset: aguiReset } = useAgentState();
+  const { run: aguiRun, abort: aguiAbort, isRunning: aguiRunning } = useAgentRun(aguiHandlers);
   const [llmFlagSaving, setLlmFlagSaving] = useState(false);
 
   /** Render a single action button with optional emoji-only styling. */
@@ -2770,6 +2778,8 @@ export default function BankingAgent({
         if (heuristicFlag != null) setHeuristicEnabled(Boolean(heuristicFlag.value));
         const panelFlag = data?.flags?.find((f) => f.id === "ff_agent_results_panel");
         if (panelFlag != null) setAgentResultsPanelEnabled(Boolean(panelFlag.value));
+        const aguiFlag = data?.flags?.find((f) => f.id === "ff_agui_enabled");
+        if (aguiFlag != null) setAguiEnabled(Boolean(aguiFlag.value));
       })
       .catch(() => {});
   }, [isOpen, isLoggedIn, marketingGuestChatEnabled]);
@@ -2780,7 +2790,35 @@ export default function BankingAgent({
     setMcpStatus({ toolCount: ACTIONS.length, connected: true });
   }, [isOpen, isLoggedIn]);
 
-  // Cancel any previous in-flight send, create a fresh AbortController, and
+  // AG-UI Step 3 — sync streamed messages from aguiState into the chat thread.
+  // Only active when ff_agui_enabled=true; no-op otherwise.
+  // Each new assistant message from AG-UI appears as a chat bubble as it streams.
+  useEffect(() => {
+    if (!aguiEnabled) return;
+    const lastMsg = aguiState.messages[aguiState.messages.length - 1];
+    if (!lastMsg || lastMsg.role !== 'assistant') return;
+    // Update or add the final assistant message in the BA chat thread
+    setMessages((prev) => {
+      const existing = prev.findIndex((m) => m.id === lastMsg.id);
+      if (existing !== -1) {
+        const next = [...prev];
+        next[existing] = { ...next[existing], text: lastMsg.content, streaming: lastMsg.streaming };
+        return next;
+      }
+      // New message: append
+      return [...prev, { id: lastMsg.id, sender: 'assistant', text: lastMsg.content, streaming: lastMsg.streaming }];
+    });
+  }, [aguiEnabled, aguiState.messages]);
+
+  // AG-UI Step 3 — sync observability slices into TokenChain when flag is on.
+  useEffect(() => {
+    if (!aguiEnabled || !aguiState.tokenEvents.length) return;
+    if (tokenChain) {
+      tokenChain.setTokenEvents('agent', aguiState.tokenEvents);
+    }
+  }, [aguiEnabled, aguiState.tokenEvents, tokenChain]);
+
+    // Cancel any previous in-flight send, create a fresh AbortController, and
   // return the new signal. Called once at the top of every real send path.
   const beginAbortableSend = useCallback(() => {
     // Abort any prior in-flight send. Load-bearing: the nlResumeAfterAuth
@@ -5438,6 +5476,27 @@ export default function BankingAgent({
   // return; .finally on the clarification dispatch chain; .finally on the
   // rAF fetch chain). Do NOT add a fourth release here.
   function sendAsNlInner(text) {
+    // AG-UI path (ff_agui_enabled=true): stream via POST /api/agent/run
+    // The old NL pipeline is bypassed entirely when this flag is on.
+    if (aguiEnabled) {
+      const threadId = req => req?.session?.id || 'ba-thread';
+      const runId = 'run-' + Date.now();
+      addMessage('user', text);
+      setNlLoading(true);
+      const userMsg = { role: 'user', content: text };
+      aguiRun({
+        threadId: 'ba-' + (Date.now()),
+        runId,
+        messages: [userMsg],
+      }).finally(() => {
+        setNlLoading(false);
+        nlSendGuardRef.current.release();
+      });
+      // Sync AG-UI streamed reply into the chat thread
+      // (useAgentState updates aguiState.messages; effect below reads it)
+      return;
+    }
+
     const signal = beginAbortableSend();
 
     // Clarification-follow-up path: if our previous turn asked "Which

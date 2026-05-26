@@ -167,6 +167,8 @@ const FIELD_DEFS = {
   ff_oidc_only_authorize:  { public: true, default: 'false' }, // Strip resource scopes from user /authorize — fixes multi-resource error when scopes are on a PingOne Resource Server
   mcp_use_legacy_protocol: { public: true, default: 'false' }, // When 'true', BFF uses protocolVersion 2024-11-05 in MCP initialize; default (false) = 2025-11-25
 ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic fast path for chips; when false, all queries go through LLM
+  ff_agent_results_panel:    { public: true, default: 'false' }, // Floating Results Panel in Banking Agent (off by default)
+  ff_agui_enabled:           { public: true, default: 'false' }, // AG-UI streaming agent via POST /api/agent/run (off by default)
   // Feature-flag registry IDs that were missing from FIELD_DEFS — without an
   // entry getEffective() can't resolve them and the env-override fallback below
   // never applies. defaults MUST match routes/featureFlags.js FLAG_REGISTRY.
