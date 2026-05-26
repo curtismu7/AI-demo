@@ -4,10 +4,9 @@ Spec: https://docs.ag-ui.com/concepts/events
 All events serialise to { "type": "<TYPE>", ...fields }
 """
 from __future__ import annotations
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 import uuid
-import time
 
 
 def _run_id() -> str:
