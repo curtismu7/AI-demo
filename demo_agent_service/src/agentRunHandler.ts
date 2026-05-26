@@ -5,6 +5,15 @@ import { reasonOnce } from './reasoningGraph';
 import type { ReasonMessage, ReasonToolSchema } from './reasonContract';
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function uid(prefix: string): string {
+  return prefix + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7);
+}
+
+
+// ---------------------------------------------------------------------------
 // Shared state shape (mirrors docs/ag-ui-integration-guide.md)
 // ---------------------------------------------------------------------------
 
@@ -125,7 +134,7 @@ async function executeTool(
   toolArgs: unknown,
   bffToolUrl: string | undefined
 ): Promise<ToolExecResult> {
-  const id = 'mcp-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7);
+  const id = uid('mcp');
   const timestamp = new Date().toISOString();
 
   if (!bffToolUrl) {
@@ -163,7 +172,7 @@ async function executeTool(
 
   const durationMs = Date.now() - startMs;
   const mcpRespEntry: McpTrafficEntry = {
-    id: 'mcp-resp-' + Date.now(),
+    id: uid('mcp-resp'),
     timestamp: new Date().toISOString(),
     direction: 'response',
     tool: toolName,
@@ -195,7 +204,7 @@ function extractHitlInterrupt(toolResult: unknown): HitlInterrupt | null {
   ) {
     const r = toolResult as Record<string, unknown>;
     return {
-      id: String(r.consentId ?? r.interruptId ?? 'hitl-' + Date.now()),
+      id: String(r.consentId ?? r.interruptId ?? uid('hitl')),
       reason: String(r.reason ?? 'consent_required'),
       message: String(r.message ?? 'User approval required'),
       responseSchema: r.responseSchema ?? { type: 'object', properties: {} },
@@ -272,7 +281,7 @@ export function makeAgentRunHandler(internalSecret: string) {
 
     // Handle HITL resume
     if (resume && resume.length > 0 && resume[0].status === 'cancelled') {
-      const msgId = 'msg-' + Date.now();
+      const msgId = uid('msg');
       emit(res, { type: EventType.TEXT_MESSAGE_START, messageId: msgId, role: 'assistant' });
       emit(res, { type: EventType.TEXT_MESSAGE_CONTENT, messageId: msgId, delta: 'The action was cancelled.' });
       emit(res, { type: EventType.TEXT_MESSAGE_END, messageId: msgId });
@@ -310,7 +319,7 @@ export function makeAgentRunHandler(internalSecret: string) {
       emit(res, { type: EventType.STEP_FINISHED, stepName: 'reasoning-' + (iter + 1) });
 
       if (reasonResult.type === 'final') {
-        const msgId = 'msg-' + Date.now();
+        const msgId = uid('msg');
         emit(res, { type: EventType.TEXT_MESSAGE_START, messageId: msgId, role: 'assistant' });
         const answer = reasonResult.answer ?? '';
         const chunkSize = 100;
@@ -329,27 +338,29 @@ export function makeAgentRunHandler(internalSecret: string) {
       }
 
       if (reasonResult.type === 'tool_calls') {
+        // Pre-assign stable IDs so the assistant message and event emissions share the same id
+        const callsWithIds = reasonResult.calls.map((c) => ({
+          ...c,
+          id: c.id ?? uid('call'),
+        }));
+
         conversationMessages = [
           ...conversationMessages,
           {
             role: 'assistant' as const,
             content: '',
-            tool_calls: reasonResult.calls.map((c) => ({
-              id: c.id ?? 'call-' + Date.now() + '-' + Math.random().toString(36).slice(2, 5),
-              name: c.name,
-              args: c.args,
-            })),
+            tool_calls: callsWithIds.map((c) => ({ id: c.id, name: c.name, args: c.args })),
           },
         ];
 
         const toolResultMessages: ReasonMessage[] = [];
 
-        for (const call of reasonResult.calls) {
+        for (const call of callsWithIds) {
           if (aborted) break;
 
-          const callId = call.id ?? 'call-' + Date.now() + '-' + Math.random().toString(36).slice(2, 5);
+          const callId = call.id;
 
-          emit(res, { type: EventType.TOOL_CALL_START, toolCallId: callId, toolCallName: call.name, parentMessageId: 'msg-' + Date.now() });
+          emit(res, { type: EventType.TOOL_CALL_START, toolCallId: callId, toolCallName: call.name, parentMessageId: uid('msg') });
           emit(res, { type: EventType.TOOL_CALL_ARGS, toolCallId: callId, delta: JSON.stringify(call.args) });
           emit(res, { type: EventType.TOOL_CALL_END, toolCallId: callId });
 
@@ -381,7 +392,7 @@ export function makeAgentRunHandler(internalSecret: string) {
           }
 
           const traceEntry: ArchTraceEntry = {
-            id: 'trace-' + Date.now(),
+            id: uid('trace'),
             timestamp: new Date().toISOString(),
             step: 'tool:' + call.name,
             component: 'agent-service',
@@ -391,7 +402,7 @@ export function makeAgentRunHandler(internalSecret: string) {
           emitStateDelta(res, [{ op: 'add', path: '/archTrace/-', value: traceEntry }]);
 
           const auditEvent: AuditEvent = {
-            id: 'audit-' + Date.now(),
+            id: uid('audit'),
             timestamp: new Date().toISOString(),
             eventType: 'tool_executed',
             actor: 'agent',

@@ -31,10 +31,11 @@ router.use(agentSessionMiddleware);
 // Helpers
 // ---------------------------------------------------------------------------
 
-function getAgentServiceUrl() {
-  const port = process.env.AGENT_SERVICE_PORT || '3006';
-  const host = process.env.AGENT_SERVICE_HOST || '127.0.0.1';
-  return 'http://' + host + ':' + port;
+function getAgentServiceTarget() {
+  return {
+    hostname: process.env.AGENT_SERVICE_HOST || '127.0.0.1',
+    port: parseInt(process.env.AGENT_SERVICE_PORT || '3006', 10),
+  };
 }
 
 function getInternalSecret() {
@@ -102,7 +103,6 @@ router.post('/run', async (req, res) => {
         initialTokenEvents = [...initialTokenEvents, ...(toolsErr.tokenEvents || [])];
       }
     } else {
-      const agentGatewayClient = require('../services/agentGatewayClient');
       toolsResult = { tools: agentGatewayClient.getLocalToolsCatalog(), tokenEvents: [] };
     }
 
@@ -156,10 +156,8 @@ router.post('/run', async (req, res) => {
   res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders();
 
-  const agentBaseUrl = getAgentServiceUrl();
+  const { hostname: agentHost, port: agentPort } = getAgentServiceTarget();
   const agentPath = '/run';
-  const agentHost = agentBaseUrl.replace(/^https?:\/\//, '').split(':')[0];
-  const agentPort = parseInt(agentBaseUrl.split(':')[2] || '3006', 10);
 
   const bodyStr = JSON.stringify(agentPayload);
 
