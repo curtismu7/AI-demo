@@ -80,6 +80,9 @@ import { claimPendingNl, clampPanelPosition, makeReentrancyGuard, isAbortError, 
 // AG-UI Step 3 — hooks (feature-flagged; only active when ff_agui_enabled=true)
 import { useAgentRun } from "../hooks/useAgentRun";
 import { useAgentState } from "../hooks/useAgentState";
+// AG-UI Steps 5–6 — observability stores (push model; replaces poll when flag is on)
+import { appendMcpCall } from "../services/mcpCallStore";
+import { appendAuthorizeDecision } from "../services/authorizeDecisionStore";
 
 // Phase 266 H2 audit: TokenChain credentialPath stamping origins per setTokenEvents call:
 //   line 3433 (scopeTestRes.tokenEvents)  — origin: scope-test path via callMcpTool; credentialPath: oauth_bearer (default; stamped by bankingAgentService)
@@ -2817,6 +2820,41 @@ export default function BankingAgent({
       tokenChain.setTokenEvents('agent', aguiState.tokenEvents);
     }
   }, [aguiEnabled, aguiState.tokenEvents, tokenChain]);
+
+  // AG-UI Step 5 — push MCP traffic entries from aguiState into mcpCallStore.
+  // McpTrafficPage subscribes to mcpCallStore, so entries appear live without polling.
+  const prevMcpTrafficLenRef = React.useRef(0);
+  useEffect(() => {
+    if (!aguiEnabled) return;
+    const entries = aguiState.mcpTraffic;
+    const newCount = entries.length - prevMcpTrafficLenRef.current;
+    if (newCount <= 0) return;
+    prevMcpTrafficLenRef.current = entries.length;
+    // Append only the new entries (oldest first so they appear in order)
+    for (const entry of entries.slice(-newCount)) {
+      appendMcpCall(
+        entry.tool,
+        entry.durationMs != null ? 200 : 0,
+        entry.durationMs ?? null,
+        entry.direction === 'response' ? entry.payload : null,
+        entry.direction === 'response' && entry.payload?.error ? String(entry.payload.error) : null,
+      );
+    }
+  }, [aguiEnabled, aguiState.mcpTraffic]);
+
+  // AG-UI Step 6 — push Authorize decisions from aguiState into authorizeDecisionStore.
+  // PingOneAuthorizePanel can subscribe to get live updates without polling.
+  const prevAuthzLenRef = React.useRef(0);
+  useEffect(() => {
+    if (!aguiEnabled) return;
+    const decisions = aguiState.authorizeDecisions;
+    const newCount = decisions.length - prevAuthzLenRef.current;
+    if (newCount <= 0) return;
+    prevAuthzLenRef.current = decisions.length;
+    for (const d of decisions.slice(-newCount)) {
+      appendAuthorizeDecision(d);
+    }
+  }, [aguiEnabled, aguiState.authorizeDecisions]);
 
     // Cancel any previous in-flight send, create a fresh AbortController, and
   // return the new signal. Called once at the top of every real send path.

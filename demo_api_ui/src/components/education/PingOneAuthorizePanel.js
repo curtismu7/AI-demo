@@ -1,5 +1,6 @@
 // banking_api_ui/src/components/education/PingOneAuthorizePanel.js
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
+import { getDecisions as getLiveDecisions, subscribe as subscribeLiveDecisions } from '../../services/authorizeDecisionStore';
 import EducationDrawer from '../shared/EducationDrawer';
 import { EduImplIntro, SNIP_AUTHORIZE_GATE } from './educationImplementationSnippets';
 
@@ -57,6 +58,13 @@ function RecentDecisionsViewer() {
   const [evalStatus, setEvalStatus] = useState(null);
   const [statusLoading, setStatusLoading] = useState(false);
   const [statusError, setStatusError] = useState(null);
+
+  // AG-UI Step 6 — live decisions pushed from authorizeDecisionStore
+  const [liveDecisions, setLiveDecisions] = useState(() => getLiveDecisions());
+  useEffect(() => {
+    setLiveDecisions(getLiveDecisions()); // sync on mount
+    return subscribeLiveDecisions(setLiveDecisions);
+  }, []);
 
   const handleFetchStatus = useCallback(async () => {
     setStatusLoading(true);
@@ -217,6 +225,42 @@ function RecentDecisionsViewer() {
       {error && (
         <div style={{ marginTop: 12, padding: '10px 14px', background: '#fee2e2', borderRadius: 8, color: '#b91c1c', fontSize: '0.82rem' }}>
           <strong>Error:</strong> {error}
+        </div>
+      )}
+
+      {/* AG-UI Step 6 — live decisions pushed via STATE_DELTA (no polling needed) */}
+      {liveDecisions.length > 0 && (
+        <div style={{ marginTop: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <span style={{ fontWeight: 700, fontSize: '0.82rem', color: '#334155' }}>
+              Live (AG-UI)
+            </span>
+            <span style={{
+              background: '#dcfce7', color: '#15803d', border: '1px solid #86efac',
+              borderRadius: 10, padding: '1px 8px', fontSize: '0.72rem', fontWeight: 600,
+            }}>
+              {liveDecisions.length} decision{liveDecisions.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+          {liveDecisions.map((d, i) => (
+            <div
+              key={d.id || i}
+              style={{ border: '1px solid #e5e7eb', borderRadius: 8, marginBottom: 6, overflow: 'hidden' }}
+            >
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '7px 12px', background: '#f0fdf4',
+              }}>
+                <DecisionBadge decision={d.decision} />
+                <span style={{ fontSize: '0.8rem', color: '#374151', flex: 1 }}>
+                  {d.policyId || 'policy evaluation'}
+                </span>
+                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                  {fmtTime(d.timestamp)}
+                </span>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
