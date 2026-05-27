@@ -1085,15 +1085,15 @@ export function AccountsTable({ accounts, terminology }) {
   );
 }
 
-function TransactionsTable({ transactions }) {
+export function TransactionsTable({ transactions, terminology }) {
   if (!transactions?.length)
     return <p className="bar-rp-empty">No transactions found.</p>;
   return (
     <table className="bar-rp-table">
       <thead>
         <tr>
-          <th>Type</th>
-          <th>Amount</th>
+          <th>{terminology?.transaction || "Type"}</th>
+          <th>{terminology?.balance || "Amount"}</th>
           <th>Description</th>
           <th>Date</th>
         </tr>
@@ -1468,7 +1468,7 @@ function ResultsPanel({ panel, onClose, style }) {
       <div className="bar-rp-body">
         {panel.type === "accounts" && <AccountsTable accounts={panel.data} terminology={panel.terminology} />}
         {panel.type === "transactions" && (
-          <TransactionsTable transactions={panel.data} />
+          <TransactionsTable transactions={panel.data} terminology={panel.terminology} />
         )}
         {panel.type === "balance" && (
           <div className="bar-rp-balance">
@@ -6412,8 +6412,9 @@ export default function BankingAgent({
             if (!data?.transactions) return;
             setResultPanel({
               type: "transactions",
-              title: "Recent Transactions",
+              title: terminology?.transactions || "Recent Transactions",
               data: data.transactions,
+              terminology,
             });
           })
           .catch(() => {});

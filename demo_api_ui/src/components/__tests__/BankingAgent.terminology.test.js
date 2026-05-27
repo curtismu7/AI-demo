@@ -10,7 +10,7 @@
 import React from "react";
 import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
-import { AccountsTable, buildResultsPanelTitle, formatResult, MessageContent } from "../BankingAgent";
+import { AccountsTable, TransactionsTable, buildResultsPanelTitle, formatResult, MessageContent, buildClarificationQuestions } from "../BankingAgent";
 
 describe("buildResultsPanelTitle", () => {
   test("returns terminology.accounts for accounts type when terminology provided", () => {
@@ -156,5 +156,45 @@ describe('formatResult accounts branch — vertical types render verbatim', () =
   it('renders checking type verbatim for banking vertical', () => {
     const text = formatResult(bankingResult, undefined);
     expect(text).toContain('checking');
+  });
+});
+
+describe('TransactionsTable vertical rendering', () => {
+  const healthcareTerminology = {
+    transaction: 'Appointment',
+    transactions: 'Appointments',
+    balance: 'Coverage',
+  };
+
+  const healthcareTransactions = [
+    { id: 't1', type: 'Visit', amount: 50,  description: 'Annual Physical', date: '2026-04-10' },
+    { id: 't2', type: 'Lab',   amount: 25,  description: 'Blood Work',      date: '2026-04-15' },
+  ];
+
+  it('uses terminology.transaction as the Type column header', () => {
+    render(<TransactionsTable transactions={healthcareTransactions} terminology={healthcareTerminology} />);
+    expect(screen.getByText('Appointment')).toBeInTheDocument();
+    expect(screen.queryByText('Type')).not.toBeInTheDocument();
+  });
+
+  it('uses terminology.balance as the Amount column header', () => {
+    render(<TransactionsTable transactions={healthcareTransactions} terminology={healthcareTerminology} />);
+    expect(screen.getByText('Coverage')).toBeInTheDocument();
+    expect(screen.queryByText('Amount')).not.toBeInTheDocument();
+  });
+
+  it('renders Visit and Lab transaction types verbatim', () => {
+    render(<TransactionsTable transactions={healthcareTransactions} terminology={healthcareTerminology} />);
+    expect(screen.getByText('Visit')).toBeInTheDocument();
+    expect(screen.getByText('Lab')).toBeInTheDocument();
+  });
+
+  it('falls back to "Type" and "Amount" with no terminology (banking)', () => {
+    const bankingTxns = [
+      { id: 't1', type: 'deposit', amount: 1000, description: 'Payroll', date: '2026-04-01' },
+    ];
+    render(<TransactionsTable transactions={bankingTxns} terminology={undefined} />);
+    expect(screen.getByText('Type')).toBeInTheDocument();
+    expect(screen.getByText('Amount')).toBeInTheDocument();
   });
 });
