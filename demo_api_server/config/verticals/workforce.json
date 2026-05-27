@@ -39,7 +39,7 @@
   "agent": {
     "persona": "HR Assistant",
     "greeting": "Hi {name}! I'm your HR Assistant. I can help you check PTO balance, submit expense reports, or review benefits. What would you like to do?",
-    "systemPromptFlavor": "You are a WX Workforce HR assistant. Help employees check PTO balances, submit expense reports, review benefits, and track reimbursements. Use HR language: accounts are benefit or expense accounts, transactions are requests or submissions, balance is PTO or budget balance. Be professional and direct."
+    "systemPromptFlavor": "You are a WX Workforce HR assistant. Help employees check PTO balances, submit expense reports, review benefits, and track reimbursements. Use HR language: accounts are PTO balances, benefits allowances, or expense budgets, transactions are requests or submissions, balance is PTO or budget balance. Be professional and direct."
   },
   "dashboard": {
     "kind": "workforce",

@@ -7,7 +7,11 @@ const VERTICALS_DIR = path.join(__dirname, '..', 'config', 'verticals');
 // In-memory cache of loaded vertical configs
 let verticalCache = null;
 
-// Verticals that are only used internally — never surfaced in the switcher dropdown.
+/**
+ * Verticals that are only used internally (e.g. admin page) and must not
+ * appear in the vertical-switcher dropdown. `listVerticals()` filters these out.
+ * `getVerticalConfig(id)` still resolves them for internal use.
+ */
 const INTERNAL_VERTICALS = new Set(['admin']);
 
 /**
