@@ -193,7 +193,12 @@ async function listTools() {
     await _ensureInitialized();
     if (_toolsCache) return _toolsCache;
     const result = await _send('tools/list', {});
-    _toolsCache = Array.isArray(result?.tools) ? result.tools : [];
+    if (!Array.isArray(result?.tools)) {
+        // Don't cache missing/malformed response — allow retry after server recovers
+        console.warn('[mcpPingOneStdioAdapter] tools/list returned no tools array');
+        return [];
+    }
+    _toolsCache = result.tools;
     return _toolsCache;
 }
 
