@@ -135,3 +135,33 @@
   color: #1e293b;
   flex-shrink: 0;
 }
+
+/* PingOne Admin chip section — blue tint to visually separate from banking chips */
+.banking-chips-dropdown__section--pingone .banking-chips-dropdown__label {
+  color: #6b8cff;
+}
+
+.banking-chips-dropdown__mcp-badge {
+  display: inline-block;
+  font-size: 9px;
+  background: rgba(107, 140, 255, 0.13);
+  color: #6b8cff;
+  border: 1px solid rgba(107, 140, 255, 0.27);
+  border-radius: 3px;
+  padding: 1px 5px;
+  margin-left: 6px;
+  vertical-align: middle;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.banking-chips-dropdown__button--pingone {
+  background: #0f1a3a;
+  border-color: rgba(107, 140, 255, 0.27);
+  color: #a0b4ff;
+}
+
+.banking-chips-dropdown__button--pingone:hover:not(:disabled) {
+  background: #1a2a4a;
+  border-color: rgba(107, 140, 255, 0.5);
+}

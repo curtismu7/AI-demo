@@ -49,6 +49,17 @@ const ADMIN_CHIPS = [
   { id: 'delete_customer',           label: 'Delete Customer',    message: 'delete this customer' },
 ];
 
+const PINGONE_ADMIN_CHIPS = [
+  { id: 'p1_list_apps',        label: 'List all apps',              message: 'List all applications in our PingOne environment' },
+  { id: 'p1_list_envs',        label: 'List environments',          message: 'Show all environments I have access to in PingOne' },
+  { id: 'p1_services_enabled', label: 'What services are enabled?', message: 'What services are enabled in our PingOne environment?' },
+  { id: 'p1_identity_count',   label: 'Identity count this week',   message: 'How many identities are in our PingOne environment?' },
+  { id: 'p1_ai_agent_config',  label: 'Show Demo AI Agent config',  message: 'Get the configuration for the Demo AI Agent application in PingOne' },
+  { id: 'p1_verify_apps',      label: 'Verify all 8 demo apps',     message: 'Confirm all 8 demo apps exist in PingOne: Demo Admin App, Demo User App, Demo MCP Server, Demo Worker, Demo MCP Exchanger, Demo MCP Gateway, Demo Agent, Demo AI Agent' },
+];
+
+export const PINGONE_ADMIN_CHIP_IDS = new Set(PINGONE_ADMIN_CHIPS.map((c) => c.id));
+
 const LLM_CHIPS = {
   "Time-Based": [
     {
@@ -222,6 +233,27 @@ export default function BankingChips({
                 key={chip.id}
                 className="banking-chips-dropdown__button banking-chips-dropdown__button--heuristic"
                 onClick={() => handleChipClick(chip, false)}
+                disabled={isLoading}
+                title={chip.message}
+              >
+                {chip.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {user?.role === 'admin' && (
+        <div className="banking-chips-dropdown__section banking-chips-dropdown__section--pingone">
+          <div className="banking-chips-dropdown__label">
+            PingOne Admin <span className="banking-chips-dropdown__mcp-badge">MCP</span>
+          </div>
+          <div className="banking-chips-dropdown__grid banking-chips-dropdown__grid--heuristic">
+            {PINGONE_ADMIN_CHIPS.map((chip) => (
+              <button
+                type="button"
+                key={chip.id}
+                className="banking-chips-dropdown__button banking-chips-dropdown__button--pingone"
+                onClick={() => handleChipClick(chip, true)}
                 disabled={isLoading}
                 title={chip.message}
               >
