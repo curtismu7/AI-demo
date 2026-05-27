@@ -23,6 +23,7 @@
 | **Legacy exchanger (unused)** | Demo MCP Exchanger | `d3f8fead-b81d-46f9-bba5-051e493cea0e` | WEB_APP | CLIENT_SECRET_POST | authorization_code, client_credentials, token_exchange |
 | **Management API (worker)** | Demo Worker Token App | `15881ac7-4d83-4cbf-9ab0-4d7cda31fab8` | WORKER | CLIENT_SECRET_BASIC | client_credentials |
 | **Agent service (worker)** | Demo Agent | `cf314c00-1fa8-470f-ab55-2ce58504e318` | WORKER | — | client_credentials |
+| **PingOne MCP Server (dev tooling)** | PingOne MCP Server | `812ffe7b-1151-4362-a0b7-2ddf907b45f8` | WORKER | NONE (PKCE) | authorization_code, refresh_token |
 
 ### Redirect URIs
 
@@ -32,6 +33,7 @@
 | Demo User App | `https://api.ping.demo:4000/api/auth/oauth/user/callback` |
 | Demo AI Agent | `https://api.ping.demo:4000/api/auth/oauth/ai-agent-placeholder-callback` |
 | Demo MCP Exchanger | `https://api.ping.demo:4000/api/auth/oauth/mcp-exchanger-placeholder-callback` |
+| PingOne MCP Server | `http://127.0.0.1:7464/callback` |
 
 ---
 

@@ -41,6 +41,7 @@
       "type": "stdio",
       "command": "pingone-mcp-server",
       "args": ["run"],
+      "note": "Official PingOne MCP Server (v0.0.2, Homebrew pingidentity/tap). Exposes PingOne Management API tools — list/get/create/update apps, environments, populations. Read-only by default; add --disable-read-only to args for write tools. On first tool use, browser opens for PingOne admin login (token cached in macOS Keychain). PINGONE_ROOT_DOMAIN: pingone.com (NA), pingone.eu (EU), pingone.asia (APAC), pingone.ca (CA).",
       "env": {
         "PINGONE_MCP_ENVIRONMENT_ID": "d02d2305-f445-406d-82ee-7cdbf6eeabfd",
         "PINGONE_AUTHORIZATION_CODE_CLIENT_ID": "812ffe7b-1151-4362-a0b7-2ddf907b45f8",
