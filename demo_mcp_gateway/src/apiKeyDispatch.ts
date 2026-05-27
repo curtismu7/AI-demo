@@ -19,7 +19,7 @@
 
 import axios from 'axios';
 import type { GatewayConfig } from './config';
-import { backendHttpUrl } from './router';
+import { backendHttpUrl, APIKEY_BACKEND_ROUTES } from './router';
 import { getScopesForGatewayTool } from './auth/toolScopes';
 
 export interface ApiKeyDispatchOk {
@@ -50,20 +50,23 @@ interface ToolMeta {
   displayName: string;
 }
 
-const TOOL_META: Record<string, ToolMeta> = {
-  show_mortgage:       { serviceLabel: 'banking_mortgage_service', routeSegment: 'mortgage',   infoPageHint: '/path/mortgage', displayName: 'Mortgage Account'  },
-  show_health_record:  { serviceLabel: 'demo_data_service',        routeSegment: 'healthcare', infoPageHint: '/path/feature',  displayName: 'Health Record'     },
-  show_gear_order:     { serviceLabel: 'demo_data_service',        routeSegment: 'gear',       infoPageHint: '/path/feature',  displayName: 'Gear Order'        },
-  show_expense_report: { serviceLabel: 'demo_data_service',        routeSegment: 'expense',    infoPageHint: '/path/feature',  displayName: 'Expense Report'    },
-  show_large_purchase: { serviceLabel: 'demo_data_service',        routeSegment: 'retail',     infoPageHint: '/path/feature',  displayName: 'Large Purchase'    },
+/** Display names for each api_key-disposition tool (for error messages and Token Chain). */
+const TOOL_DISPLAY_NAMES: Record<string, string> = {
+  show_mortgage:       'Mortgage Account',
+  show_health_record:  'Health Record',
+  show_gear_order:     'Gear Order',
+  show_expense_report: 'Expense Report',
+  show_large_purchase: 'Large Purchase',
 };
 
 function getToolMeta(toolName: string): ToolMeta {
-  return TOOL_META[toolName] ?? {
+  const routeSegment = APIKEY_BACKEND_ROUTES[toolName] ?? toolName;
+  const infoPageHint = routeSegment === 'mortgage' ? '/path/mortgage' : '/path/feature';
+  return {
     serviceLabel: 'demo_data_service',
-    routeSegment: toolName,
-    infoPageHint: '/path/feature',
-    displayName: toolName,
+    routeSegment,
+    infoPageHint,
+    displayName: TOOL_DISPLAY_NAMES[toolName] ?? toolName,
   };
 }
 

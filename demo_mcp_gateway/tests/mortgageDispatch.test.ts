@@ -164,7 +164,7 @@ describe('Phase 267 — shared api_key dispatch (buildApiKeyToolResult, BL-02)',
     if (out.ok) {
       const r = out.result as { content: Array<{ text: string }>; _meta: Record<string, unknown> };
       expect(JSON.parse(r.content[0].text)).toEqual({ mortgage: { id: 'mtg-001' } });
-      expect(r._meta.backend).toBe('banking_mortgage_service');
+      expect(r._meta.backend).toBe('demo_data_service');
       expect(r._meta.credentialPath).toBe('api_key');
     }
     // No Authorization header anywhere — the OAuth bearer is dropped at the gateway.

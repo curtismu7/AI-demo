@@ -97,16 +97,17 @@ export function backendResourceUri(target: BackendTarget, config: GatewayConfig)
 // Resolve the concrete HTTP URL for a given (target, toolName).
 // Returns empty string for targets that use WebSocket ('olb', 'invest') or are
 // Gateway-terminating ('apikey').
+/** Maps api_key-disposition tool names to their route segment on the data service backend. */
+export const APIKEY_BACKEND_ROUTES: Record<string, string> = {
+  show_mortgage:       'mortgage',
+  show_large_purchase: 'retail',
+  show_health_record:  'healthcare',
+  show_gear_order:     'gear',
+  show_expense_report: 'expense',
+};
+
 export function backendHttpUrl(target: BackendTarget, toolName: string, config: GatewayConfig): string {
   if (target === 'apikey') {
-    // Each apikey tool maps to a route on banking_mortgage_service via X-API-Key.
-    const APIKEY_BACKEND_ROUTES: Record<string, string> = {
-      show_mortgage:       'mortgage',
-      show_large_purchase: 'retail',
-      show_health_record:  'healthcare',
-      show_gear_order:     'gear',
-      show_expense_report: 'expense',
-    };
     const route = APIKEY_BACKEND_ROUTES[toolName];
     return route ? `${config.mortgageServiceBaseUrl}/${route}` : '';
   }
