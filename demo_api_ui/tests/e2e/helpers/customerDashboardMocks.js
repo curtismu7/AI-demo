@@ -140,6 +140,16 @@ async function mockCustomerDashboard(page, opts = {}) {
   );
 
   await page.route('**/ws**', (route) => route.abort());
+
+  // ThemeContext fetches /api/config/vertical on mount — stub with no manifest
+  // so the default banking layout (not retail) is used and "Your Accounts" is visible.
+  await page.route('**/api/config/vertical**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ manifest: null }),
+    }),
+  );
 }
 
 module.exports = {

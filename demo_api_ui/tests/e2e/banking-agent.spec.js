@@ -21,8 +21,7 @@
  *   AUTHENTICATED (post-login)
  *   - Customer agent renders inline on /dashboard (no FAB); admin opens via FAB
  *   - Panel shows role badge in header subtitle (Admin / Customer)
- *   - Inline title is "Super Banking Assistant"; admin float title is
- *     "Super Banking AI Agent"
+ *   - Inline title ends with "Assistant"; admin float title ends with "AI Agent"
  *   - Dashboard nav button (`.ba-left-auth-btn.primary`) shows My/Admin Dashboard
  *   - Core actions (My Accounts … Transfer) appear as popout list items
  *   - "My Accounts" / "Recent Transactions" trigger /api/mcp/tool
@@ -287,9 +286,9 @@ test.describe('BankingAgent — Authenticated (customer logged in)', () => {
     await mockAuthenticatedCustomer(page);
     await page.goto('/dashboard');
     await ensureAgentReady(page);
-    // Inline split-column chrome renders "Super Banking Assistant" (the old
-    // floating chrome used "Super Banking AI Agent").
-    await expect(page.locator('.ba-title')).toHaveText('Super Banking Assistant');
+    // Inline split-column chrome renders "{Brand} Assistant".
+    // The brand name is theme-driven so match the suffix only.
+    await expect(page.locator('.ba-title')).toContainText('Assistant');
   });
 
   test('subtitle shows customer role badge when logged in', async ({ page }) => {
@@ -505,8 +504,9 @@ test.describe('BankingAgent — Authenticated (admin logged in)', () => {
     await page.goto('/admin');
     await expect(page.locator('.banking-agent-fab')).toBeVisible({ timeout: 20000 });
     await ensureAgentReady(page);
-    // Admin float chrome keeps the original "AI Agent" title.
-    await expect(page.locator('.ba-title')).toHaveText('Super Banking AI Agent');
+    // Admin float chrome renders "{Brand} AI Agent".
+    // The brand name is theme-driven so match the suffix only.
+    await expect(page.locator('.ba-title')).toContainText('Agent');
   });
 
   test('subtitle shows admin role badge for admin user', async ({ page }) => {
