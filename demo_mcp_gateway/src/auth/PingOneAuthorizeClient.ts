@@ -18,7 +18,7 @@
 
 import axios from 'axios';
 import type { DecodedGatewayToken } from '../tokenValidator';
-import type { GatewayConfig } from '../config';
+import { isP1AZActive, type GatewayConfig } from '../config';
 import { evaluateScopeDecisionLocally } from './toolScopes';
 
 export type AuthzDecisionOutcome = 'PERMIT' | 'DENY' | 'INDETERMINATE';
@@ -116,7 +116,7 @@ export class PingOneAuthorizeClient {
     // gateway behaves the SAME as it would with a PingOne Authorize policy
     // wired (scope-based PERMIT/DENY). Identity/transaction policy still
     // requires PA; only the scope rule has a local equivalent.
-    if (!this.config.p1azEnabled || !this.config.pingAuthorizeEndpoint || !this.config.pingAuthorizeWorkerId) {
+    if (!isP1AZActive(this.config)) {
       const mode = !this.config.p1azEnabled ? 'ff=off' : 'endpoint not configured';
       const local = evaluateScopeDecisionLocally(toolName ?? '', decoded.scope);
       if (local.decision === 'DENY') {
