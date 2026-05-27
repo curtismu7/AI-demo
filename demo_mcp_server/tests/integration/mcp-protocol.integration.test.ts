@@ -980,7 +980,7 @@ describe('MCP Protocol End-to-End Integration Tests', () => {
     });
   }
 
-  async function setupSessionWithUserTokens(ws: WebSocket, index: number = 0): Promise<void> {
+  async function _setupSessionWithUserTokens(ws: WebSocket, index: number = 0): Promise<void> {
     // Get authorization challenge
     const toolCallMessage: ToolCallMessage = {
       id: `setup-auth-${index}`,

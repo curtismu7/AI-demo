@@ -170,8 +170,6 @@ export class ComplianceValidator {
   } {
     const errors: string[] = [];
     let score = 0;
-    const maxScore = 100;
-
     // Check for required fields
     if (error.error) {
       score += 10;
