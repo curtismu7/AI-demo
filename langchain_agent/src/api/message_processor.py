@@ -777,6 +777,8 @@ class MessageProcessor:
         # 2. Ensure the graph is initialised.
         if not self.agent._graph:
             await self.agent.initialize_tools()
+            if not self.agent._graph:
+                raise RuntimeError("Agent graph failed to initialise")
 
         # 3. Prepare the message list for LangGraph (inject SystemMessage only on
         #    the first turn -- mirrors the pattern in process_message_with_tracing).
@@ -851,6 +853,7 @@ class MessageProcessor:
                     await emitter.on_llm_end()
                     llm_streaming = False
                 await emitter.on_error(error)
+                return  # on_error emits RUN_FINISHED; avoid double RUN_FINISHED from caller
 
         # 6. Close the LLM message if it was still open at stream end.
         if llm_streaming:
