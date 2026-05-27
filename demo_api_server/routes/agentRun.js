@@ -49,7 +49,7 @@ function getInternalSecret() {
 router.post('/run', async (req, res) => {
   // Feature flag check
   const aguiEnabled = configStore.getEffective('ff_agui_enabled');
-  if (aguiEnabled === 'false' || aguiEnabled === false) {
+  if (aguiEnabled !== 'true' && aguiEnabled !== true) {
     return res.status(404).json({ error: 'AG-UI not enabled. Set ff_agui_enabled=true in config.' });
   }
 
@@ -136,6 +136,17 @@ router.post('/run', async (req, res) => {
   //
   // The /internal/agent-tool endpoint is gated by BFF_INTERNAL_SECRET regardless
   // of which origin is used — the secret is the security boundary, not the host.
+  // Warn when BFF_BASE_URL is set without BFF_INTERNAL_TOOL_URL.
+  // On platforms like Vercel, /internal/* is not rewritten to the BFF handler,
+  // so BFF_BASE_URL alone is not sufficient — BFF_INTERNAL_TOOL_URL must be set
+  // to the internal/private network address of the BFF.
+  if (process.env.BFF_BASE_URL && !process.env.BFF_INTERNAL_TOOL_URL) {
+    console.warn(
+      '[agentRun] BFF_BASE_URL is set but BFF_INTERNAL_TOOL_URL is not. ' +
+      'If /internal/* is not routed on your platform (e.g. Vercel), ' +
+      'tool execution will fail. Set BFF_INTERNAL_TOOL_URL to the internal BFF URL.',
+    );
+  }
   const bffBase =
     process.env.BFF_INTERNAL_TOOL_URL ||
     (process.env.BFF_BASE_URL ? process.env.BFF_BASE_URL.replace(/\/$/, '') : null) ||
@@ -194,6 +205,23 @@ router.post('/run', async (req, res) => {
   });
 
   agentReq = http.request(options, (agentRes) => {
+    // Non-200 from agent service — emit RUN_ERROR rather than piping raw JSON as SSE
+    if (agentRes.statusCode !== 200) {
+      let body = '';
+      agentRes.on('data', (c) => { body += c; });
+      agentRes.on('end', () => {
+        console.error('[agentRun] Agent service returned HTTP', agentRes.statusCode, body.slice(0, 200));
+        try {
+          res.write('data: ' + JSON.stringify({
+            type: 'RUN_ERROR',
+            message: 'Agent service returned HTTP ' + agentRes.statusCode + ': ' + body.slice(0, 200),
+            code: 'AGENT_HTTP_ERROR',
+          }) + '\n\n');
+        } catch (_) {}
+        res.end();
+      });
+      return;
+    }
     // Pipe SSE stream verbatim to browser
     agentRes.on('data', (chunk) => {
       res.write(chunk);

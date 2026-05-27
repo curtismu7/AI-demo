@@ -2826,7 +2826,7 @@ export default function BankingAgent({
   }, [aguiEnabled, aguiState.tokenEvents, tokenChain]);
 
   // AG-UI Step 5 — push MCP traffic entries into mcpCallStore (live, no polling).
-  useNewItems(aguiState.mcpTraffic, aguiEnabled, (newEntries) => {
+  const onNewMcpEntries = useCallback((newEntries) => {
     for (const entry of newEntries) {
       appendMcpCall(
         entry.tool,
@@ -2836,12 +2836,23 @@ export default function BankingAgent({
         entry.direction === 'response' && entry.payload?.error ? String(entry.payload.error) : null,
       );
     }
-  });
+  }, []);
+  useNewItems(aguiState.mcpTraffic, aguiEnabled, onNewMcpEntries);
 
   // AG-UI Step 6 — push Authorize decisions into authorizeDecisionStore (live, no polling).
-  useNewItems(aguiState.authorizeDecisions, aguiEnabled, (newDecisions) => {
+  const onNewAuthorizeDecisions = useCallback((newDecisions) => {
     for (const d of newDecisions) appendAuthorizeDecision(d);
-  });
+  }, []);
+  useNewItems(aguiState.authorizeDecisions, aguiEnabled, onNewAuthorizeDecisions);
+
+  // AG-UI cleanup — abort in-flight run and reset state on unmount.
+  useEffect(() => {
+    return () => {
+      aguiAbort();
+      aguiReset();
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // AG-UI Step 7 — HITL via interrupt: show GatewayConsentModal when the agent suspends.
   // aguiState.hitlPending is set by useAgentState on RUN_FINISHED { outcome.type: 'interrupt' }.
@@ -2859,13 +2870,18 @@ export default function BankingAgent({
     const runId = 'resume-' + Date.now();
     aguiActiveRunIdRef.current = runId;
     setNlLoading(true);
+    // Pass the full conversation history so the agent has context after resume.
+    // Map from UI message shape { id, role, content } to ReasonMessage { role, content }.
+    const conversationHistory = (aguiState.messages || [])
+      .filter((m) => !m.streaming)
+      .map(({ role, content }) => ({ role, content }));
     aguiRun({
       threadId,
       runId,
-      messages: [],
+      messages: conversationHistory,
       resume: [{ interruptId: interrupt.id, status: 'approved' }],
     }).finally(() => setNlLoading(false));
-  }, [aguiHitlPending, aguiRun]);
+  }, [aguiHitlPending, aguiRun, aguiState.messages]);
 
   const handleAguiHitlDismiss = useCallback(() => {
     const interrupt = aguiHitlPending;
@@ -2873,13 +2889,17 @@ export default function BankingAgent({
     setAguiHitlPending(null);
     const threadId = aguiThreadIdRef.current || ('ba-' + Date.now());
     const runId = 'cancel-' + Date.now();
+    // Pass conversation history even for cancel so the agent can acknowledge gracefully.
+    const conversationHistory = (aguiState.messages || [])
+      .filter((m) => !m.streaming)
+      .map(({ role, content }) => ({ role, content }));
     aguiRun({
       threadId,
       runId,
-      messages: [],
+      messages: conversationHistory,
       resume: [{ interruptId: interrupt.id, status: 'cancelled' }],
     });
-  }, [aguiHitlPending, aguiRun]);
+  }, [aguiHitlPending, aguiRun, aguiState.messages]);
 
     // Cancel any previous in-flight send, create a fresh AbortController, and
   // return the new signal. Called once at the top of every real send path.
@@ -5670,6 +5690,8 @@ export default function BankingAgent({
       return;
     }
     if (actionId === "logout") {
+      aguiAbort();
+      aguiReset();
       onLogout?.();
       return;
     }

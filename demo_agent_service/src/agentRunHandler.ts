@@ -128,13 +128,15 @@ interface ToolExecResult {
   result: unknown;
   mcpEntry?: McpTrafficEntry;
   authorizeDecision?: AuthorizeDecision;
+  callTokenEvents?: TokenEvent[];
 }
 
 async function executeTool(
   toolName: string,
   toolArgs: unknown,
   bffToolUrl: string | undefined,
-  sessionId: string | undefined
+  sessionId: string | undefined,
+  internalSecret: string
 ): Promise<ToolExecResult> {
   const id = uid('mcp');
   const timestamp = new Date().toISOString();
@@ -156,13 +158,14 @@ async function executeTool(
   const startMs = Date.now();
   let result: unknown;
   let authorizeDecision: AuthorizeDecision | undefined;
+  let callTokenEvents: TokenEvent[] = [];
 
   try {
     const resp = await fetch(bffToolUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-internal-gateway-secret': process.env.BFF_INTERNAL_SECRET || 'dev-shared-secret-change-me',
+        'x-internal-gateway-secret': internalSecret,
       },
       body: JSON.stringify({ tool: toolName, args: toolArgs, sessionId }),
     });
@@ -170,6 +173,9 @@ async function executeTool(
     result = data.result ?? data;
     if (data.authorizeDecision) {
       authorizeDecision = data.authorizeDecision as AuthorizeDecision;
+    }
+    if (Array.isArray(data.tokenEvents)) {
+      callTokenEvents = data.tokenEvents as TokenEvent[];
     }
   } catch (err) {
     result = { error: String(err), tool: toolName };
@@ -184,7 +190,7 @@ async function executeTool(
     payload: result,
     durationMs,
   };
-  return { result, mcpEntry: mcpRespEntry, authorizeDecision };
+  return { result, mcpEntry: mcpRespEntry, authorizeDecision, callTokenEvents };
 }
 
 // ---------------------------------------------------------------------------
@@ -229,7 +235,8 @@ function secretsMatch(a: string, b: string): boolean {
     const ab = Buffer.from(a);
     const bb = Buffer.from(b);
     if (ab.length !== bb.length) {
-      timingSafeEqual(Buffer.alloc(ab.length), Buffer.alloc(ab.length));
+      // Use expected-secret length for dummy comparison to avoid leaking secret length via timing.
+      timingSafeEqual(Buffer.alloc(bb.length), Buffer.alloc(bb.length));
       return false;
     }
     return timingSafeEqual(ab, bb);
@@ -251,7 +258,8 @@ export function makeAgentRunHandler(internalSecret: string) {
     }
 
     const body = req.body as RunAgentInput;
-    const { threadId, runId, messages, tools = [], context = {}, resume } = body;
+    const { threadId, runId, messages: initialMessages, tools = [], context = {}, resume } = body;
+    let messages: ReasonMessage[] = [...initialMessages];
 
     if (!threadId || !runId || !Array.isArray(messages)) {
       res.status(400).json({ error: 'threadId, runId, and messages are required' });
@@ -279,20 +287,32 @@ export function makeAgentRunHandler(internalSecret: string) {
     };
 
     emit(res, { type: EventType.STATE_SNAPSHOT, snapshot: state });
-
-    for (const te of initialTokenEvents) {
-      emitStateDelta(res, [{ op: 'add', path: '/tokenEvents/-', value: te }]);
-    }
+    // initialTokenEvents are already in the STATE_SNAPSHOT — no need to re-emit via STATE_DELTA.
 
     // Handle HITL resume
-    if (resume && resume.length > 0 && resume[0].status === 'cancelled') {
-      const msgId = uid('msg');
-      emit(res, { type: EventType.TEXT_MESSAGE_START, messageId: msgId, role: 'assistant' });
-      emit(res, { type: EventType.TEXT_MESSAGE_CONTENT, messageId: msgId, delta: 'The action was cancelled.' });
-      emit(res, { type: EventType.TEXT_MESSAGE_END, messageId: msgId });
-      emit(res, { type: EventType.RUN_FINISHED, threadId, runId, outcome: { type: 'success' } });
-      res.end();
-      return;
+    if (resume && resume.length > 0) {
+      const { status: resumeStatus, interruptId } = resume[0];
+      if (resumeStatus === 'cancelled') {
+        const msgId = uid('msg');
+        emit(res, { type: EventType.TEXT_MESSAGE_START, messageId: msgId, role: 'assistant' });
+        emit(res, { type: EventType.TEXT_MESSAGE_CONTENT, messageId: msgId, delta: 'The action was cancelled.' });
+        emit(res, { type: EventType.TEXT_MESSAGE_END, messageId: msgId });
+        emit(res, { type: EventType.RUN_FINISHED, threadId, runId, outcome: { type: 'success' } });
+        res.end();
+        return;
+      }
+      if (resumeStatus === 'approved') {
+        // Inject a synthetic tool result so the agent knows the HITL was approved.
+        // The conversation history is supplied in `messages`; append a system note
+        // so the LLM understands it should proceed with the original tool call.
+        messages = [
+          ...messages,
+          {
+            role: 'user' as const,
+            content: `[System: The user approved the action (interrupt ${interruptId}). Please proceed.]`,
+          },
+        ];
+      }
     }
 
     emit(res, { type: EventType.RUN_STARTED, threadId, runId });
@@ -369,7 +389,7 @@ export function makeAgentRunHandler(internalSecret: string) {
           emit(res, { type: EventType.TOOL_CALL_ARGS, toolCallId: callId, delta: JSON.stringify(call.args) });
           emit(res, { type: EventType.TOOL_CALL_END, toolCallId: callId });
 
-          const { result, mcpEntry, authorizeDecision } = await executeTool(call.name, call.args, bffToolUrl, sessionId);
+          const { result, mcpEntry, authorizeDecision, callTokenEvents } = await executeTool(call.name, call.args, bffToolUrl, sessionId, internalSecret);
 
           const interrupt = extractHitlInterrupt(result);
           if (interrupt) {
@@ -394,6 +414,13 @@ export function makeAgentRunHandler(internalSecret: string) {
           if (authorizeDecision) {
             state.authorizeDecisions.push(authorizeDecision);
             emitStateDelta(res, [{ op: 'add', path: '/authorizeDecisions/-', value: authorizeDecision }]);
+          }
+          // Emit per-tool token events (RFC 8693 exchange events from BFF)
+          if (callTokenEvents && callTokenEvents.length > 0) {
+            for (const te of callTokenEvents) {
+              state.tokenEvents.push(te);
+              emitStateDelta(res, [{ op: 'add', path: '/tokenEvents/-', value: te }]);
+            }
           }
 
           const traceEntry: ArchTraceEntry = {

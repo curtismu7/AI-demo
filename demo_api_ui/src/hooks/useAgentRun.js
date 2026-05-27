@@ -70,22 +70,26 @@ export function applyJsonPatch(state, operations) {
       if (verb === 'add' && idx === '-') {
         // Append to array
         next[key] = Array.isArray(next[key]) ? [...next[key], value] : [value];
-      } else if (verb === 'replace' && Array.isArray(next[key])) {
+      } else if (Array.isArray(next[key])) {
+        // Numeric index operation on array
         const i = parseInt(idx, 10);
         const arr = [...next[key]];
-        arr[i] = value;
-        next[key] = arr;
-      } else if (verb === 'remove' && Array.isArray(next[key])) {
-        const i = parseInt(idx, 10);
-        const arr = [...next[key]];
-        arr.splice(i, 1);
-        next[key] = arr;
-      }
-    } else if (parts.length === 3) {
-      // Nested: e.g. /activeRun/status
-      const [obj, subKey] = parts;
-      if (verb === 'add' || verb === 'replace') {
-        next[obj] = { ...(next[obj] || {}), [subKey]: value };
+        if (verb === 'replace') {
+          arr[i] = value;
+          next[key] = arr;
+        } else if (verb === 'remove') {
+          arr.splice(i, 1);
+          next[key] = arr;
+        }
+      } else {
+        // Object property update — e.g. /activeRun/status, /activeRun/currentStep
+        if (verb === 'add' || verb === 'replace') {
+          next[key] = { ...(next[key] || {}), [idx]: value };
+        } else if (verb === 'remove') {
+          const obj = { ...(next[key] || {}) };
+          delete obj[idx];
+          next[key] = obj;
+        }
       }
     }
   }

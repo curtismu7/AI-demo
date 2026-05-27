@@ -53,7 +53,7 @@ function checkSecret(req, res) {
   return true;
 }
 
-router.post('/agent-tool', express.json({ limit: '256kb' }), async (req, res) => {
+router.post('/agent-tool', async (req, res) => {
   if (!checkSecret(req, res)) return;
 
   const { tool, args, sessionId } = req.body || {};
@@ -68,6 +68,9 @@ router.post('/agent-tool', express.json({ limit: '256kb' }), async (req, res) =>
   // ---------------------------------------------------------------------------
   // Load session from store to obtain oauthTokens
   // ---------------------------------------------------------------------------
+  if (!req.sessionStore) {
+    return res.status(503).json({ error: 'session_store_unavailable' });
+  }
   let session;
   try {
     session = await new Promise((resolve, reject) => {
