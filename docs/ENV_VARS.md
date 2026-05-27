@@ -266,6 +266,15 @@ Three ways to supply `HELIX_API_KEY` (priority order):
 
 Default for local dev: LMDB at `demo_api_server/data/sessions-lmdb/` (no config needed).
 
+### Lighthouse scheduled audits
+
+| Variable | Description | Default |
+|---|---|---|
+| `LIGHTHOUSE_CRON` | Cron schedule for automatic Lighthouse performance audits | `0 0 * * *` (midnight daily) |
+
+- **Example:** `0 */6 * * *` (every 6 hours)
+- **Notes:** Read at BFF startup. Changes take effect on next restart. Must be a valid cron expression. Invalid values fall back to the default.
+
 ### Debug flags
 
 | Variable | Description | Production |

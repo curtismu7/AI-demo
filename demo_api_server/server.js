@@ -14,6 +14,7 @@ require('./scripts/check-env');
 // Phase 269: vault loader — loads encrypted secrets into configStore at startup.
 // Wired below at .listen() time so the cache is populated BEFORE the first request.
 const { loadVaultIntoConfigStore } = require('./services/vaultLoader');
+const { startScheduler: startLighthouseScheduler } = require('./services/lighthouseScheduler');
 
 // ConfigStore must be required early so oauth config module getters are ready
 const configStore = require('./services/configStore');
@@ -1662,6 +1663,7 @@ if (require.main === module) {
         // calls at module scope which could fire before loadVaultIntoConfigStore
         // completed, causing false "credentials not configured" warnings.
         setImmediate(() => runBackgroundStartupTasks());
+        startLighthouseScheduler();
 
         process.on('SIGTERM', () => {
             oauthMonitor.stop();
