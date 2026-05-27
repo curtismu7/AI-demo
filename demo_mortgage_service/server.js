@@ -82,7 +82,7 @@ app.get('/mortgage', requireApiKey, (_req, res) => {
       originationDate: '2023-04-15',
       currency: 'USD',
     },
-    source: 'banking_mortgage_service',
+    source: 'demo_data_service',
     authMechanism: 'X-API-Key (shared secret)',
     note: 'This data was returned because the gateway presented a valid service API key. No OAuth bearer was involved on this hop.',
   });
@@ -103,9 +103,9 @@ app.get('/retail', requireApiKey, (_req, res) => {
       rewardsPointsEarned: 1299,
       retailer: 'Great Buy',
     },
-    source: 'banking_mortgage_service',
+    source: 'demo_data_service',
     authMechanism: 'X-API-Key (shared secret)',
-    note: 'This data was returned because the gateway presented a valid service API key. No OAuth bearer was involved on this hop.',
+    note: 'This large purchase record was returned because the gateway presented a valid service API key. No OAuth bearer was involved on this hop.',
   });
 });
 
@@ -124,9 +124,9 @@ app.get('/healthcare', requireApiKey, (_req, res) => {
       status: 'Processed',
       coveragePlan: 'BlueShield PPO Gold',
     },
-    source: 'banking_mortgage_service',
+    source: 'demo_data_service',
     authMechanism: 'X-API-Key (shared secret)',
-    note: 'This data was returned because the gateway presented a valid service API key. No OAuth bearer was involved on this hop.',
+    note: 'This health record was returned because the gateway presented a valid service API key. No OAuth bearer was involved on this hop.',
   });
 });
 
@@ -144,9 +144,9 @@ app.get('/gear', requireApiKey, (_req, res) => {
       loyaltyPointsEarned: 1598,
       memberTier: 'Elite Member',
     },
-    source: 'banking_mortgage_service',
+    source: 'demo_data_service',
     authMechanism: 'X-API-Key (shared secret)',
-    note: 'This data was returned because the gateway presented a valid service API key. No OAuth bearer was involved on this hop.',
+    note: 'This gear order was returned because the gateway presented a valid service API key. No OAuth bearer was involved on this hop.',
   });
 });
 
@@ -164,9 +164,9 @@ app.get('/expense', requireApiKey, (_req, res) => {
       approver: 'Jordan Lee (Finance)',
       reimbursementDate: '2026-05-15',
     },
-    source: 'banking_mortgage_service',
+    source: 'demo_data_service',
     authMechanism: 'X-API-Key (shared secret)',
-    note: 'This data was returned because the gateway presented a valid service API key. No OAuth bearer was involved on this hop.',
+    note: 'This expense report was returned because the gateway presented a valid service API key. No OAuth bearer was involved on this hop.',
   });
 });
 

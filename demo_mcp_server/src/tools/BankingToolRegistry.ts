@@ -606,6 +606,71 @@ export class BankingToolRegistry {
         required: ['query'],
         additionalProperties: false
       }
+    },
+
+    // -------------------------------------------------------------------------
+    // Vertical feature tools — gateway intercepts these before BankingToolProvider.
+    // Registered here so they appear in tools/list and scope checks work correctly.
+    // -------------------------------------------------------------------------
+
+    show_mortgage: {
+      name: 'show_mortgage',
+      title: 'Mortgage Account',
+      description: 'Retrieve the user\'s mortgage account details including property address, loan amount, current balance, interest rate, monthly payment, and next payment date. Routes through the MCP gateway api_key disposition — the gateway drops the OAuth bearer and calls the mortgage backend with a service API key.',
+      requiresUserAuth: true,
+      requiredScopes: ['mortgage:read'],
+      handler: 'executeShowMortgage',
+      readOnly: true,
+      annotations: { userFacing: { readable: true, destructive: false, idempotent: true, openWorld: false } },
+      inputSchema: { type: 'object', properties: {}, required: [], additionalProperties: false }
+    },
+
+    show_health_record: {
+      name: 'show_health_record',
+      title: 'Health Record',
+      description: 'Retrieve the user\'s latest health record including record type, provider, facility, visit date, covered amount, copay, status, and coverage plan. Routes through the MCP gateway api_key disposition — the gateway drops the OAuth bearer and calls the healthcare backend with a service API key.',
+      requiresUserAuth: true,
+      requiredScopes: ['records:read'],
+      handler: 'executeShowHealthRecord',
+      readOnly: true,
+      annotations: { userFacing: { readable: true, destructive: false, idempotent: true, openWorld: false } },
+      inputSchema: { type: 'object', properties: {}, required: [], additionalProperties: false }
+    },
+
+    show_gear_order: {
+      name: 'show_gear_order',
+      title: 'Gear Order',
+      description: 'Retrieve the user\'s latest gear order including item, category, amount, status, delivery date, loyalty points earned, and member tier. Routes through the MCP gateway api_key disposition — the gateway drops the OAuth bearer and calls the sporting-goods backend with a service API key.',
+      requiresUserAuth: true,
+      requiredScopes: ['gear:read'],
+      handler: 'executeShowGearOrder',
+      readOnly: true,
+      annotations: { userFacing: { readable: true, destructive: false, idempotent: true, openWorld: false } },
+      inputSchema: { type: 'object', properties: {}, required: [], additionalProperties: false }
+    },
+
+    show_expense_report: {
+      name: 'show_expense_report',
+      title: 'Expense Report',
+      description: 'Retrieve the user\'s latest expense report including category, description, amount, submission date, status, approver, and reimbursement date. Routes through the MCP gateway api_key disposition — the gateway drops the OAuth bearer and calls the workforce backend with a service API key.',
+      requiresUserAuth: true,
+      requiredScopes: ['expense:read'],
+      handler: 'executeShowExpenseReport',
+      readOnly: true,
+      annotations: { userFacing: { readable: true, destructive: false, idempotent: true, openWorld: false } },
+      inputSchema: { type: 'object', properties: {}, required: [], additionalProperties: false }
+    },
+
+    show_large_purchase: {
+      name: 'show_large_purchase',
+      title: 'Large Purchase',
+      description: 'Retrieve the user\'s latest large purchase record including product, SKU, category, amount, status, estimated delivery, rewards points earned, and retailer. Routes through the MCP gateway api_key disposition — the gateway drops the OAuth bearer and calls the retail backend with a service API key.',
+      requiresUserAuth: true,
+      requiredScopes: ['largepurchase:read'],
+      handler: 'executeShowLargePurchase',
+      readOnly: true,
+      annotations: { userFacing: { readable: true, destructive: false, idempotent: true, openWorld: false } },
+      inputSchema: { type: 'object', properties: {}, required: [], additionalProperties: false }
     }
   };
 
