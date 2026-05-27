@@ -76,3 +76,38 @@ describe("formatResult", () => {
     expect(text).toBe("PTO Balance: $500.00");
   });
 });
+
+describe("AccountsTable — null account guard (Issue 1)", () => {
+  test("does not throw when account list contains a null entry", () => {
+    expect(() =>
+      render(
+        <AccountsTable
+          accounts={[null]}
+          terminology={{ account: "Order", accounts: "Orders" }}
+        />
+      )
+    ).not.toThrow();
+  });
+});
+
+describe("AccountsTable — camelCase accountNumber (Issue 2)", () => {
+  test("uses accountNumber (camelCase) when account_number is absent", () => {
+    const mcpAccount = { id: "acc-2", accountNumber: "MCP9999", account_type: "savings", balance: 1234 };
+    render(
+      <AccountsTable
+        accounts={[mcpAccount]}
+        terminology={{ account: "Order", accounts: "Orders" }}
+      />
+    );
+    // Should show last 4 of "MCP9999" → "9999"
+    expect(screen.getByText(/9999/)).toBeInTheDocument();
+  });
+});
+
+describe("buildResultsPanelTitle — transactions type uses terminology (Issue 3)", () => {
+  test("returns terminology.transactions for transactions type when terminology provided", () => {
+    expect(
+      buildResultsPanelTitle("transactions", { transactions: "My Purchases" })
+    ).toBe("My Purchases");
+  });
+});

@@ -1071,11 +1071,12 @@ export function AccountsTable({ accounts, terminology }) {
     return <p className="bar-rp-empty">No accounts found.</p>;
 
   const getFriendlyAccountName = (account) => {
+    if (!account) return terminology?.account || "Account";
     // Use server-stored name for banking vertical (no terminology overlay)
     if (!terminology && account.name && account.name !== account.id) {
       return account.name;
     }
-    const accountNumber = account.account_number || account.id || "";
+    const accountNumber = account.accountNumber || account.account_number || account.id || "";
     const accountLabel = terminology?.account || "Account";
     return accountNumber ? `${accountLabel} (${accountNumber.slice(-4)})` : accountLabel;
   };
@@ -1090,7 +1091,7 @@ export function AccountsTable({ accounts, terminology }) {
         </tr>
       </thead>
       <tbody>
-        {accounts.map((a, i) => (
+        {accounts.filter(Boolean).map((a, i) => (
           <tr key={a.account_number || a.id || i}>
             <td>{a.account_type || a.type || (terminology?.account || "Account")}</td>
             <td>
@@ -5953,9 +5954,10 @@ export default function BankingAgent({
           type: "transactions",
           title:
             action === "biggest_purchase"
-              ? "Transactions"
+              ? (terminology?.transactions || "Transactions")
               : "Spending Breakdown",
           data: txList,
+          terminology,
         });
         return;
       }
