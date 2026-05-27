@@ -101,6 +101,14 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null, su
   const sessionRole = req?.session?.user?.role;
   const isAdmin = sessionRole === 'admin';
 
+  const manifest = getActiveManifest();
+  const term = manifest?.terminology || {};
+  const termAccount = term.account || 'Account';
+  const termAccounts = term.accounts || 'accounts';
+  const termTransaction = term.transaction || 'transaction';
+  const termTransactions = term.transactions || 'transactions';
+  const termBalance = term.balance || 'balance';
+
   try {
     // READ actions — route through the full token-exchange → gateway → MCP server
     // pipeline so PingAuthorize evaluates every call (same path as the chip/action UI).
@@ -137,16 +145,16 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null, su
       if (action === 'accounts' || (action === 'balance' && !params.accountId)) {
         const accts = parsed2.accounts || [];
         if (!accts.length) {
-          return { reply: isAdmin ? 'No customer accounts found in the system.' : 'You don\'t have any accounts yet.', success: true, toolsCalled: [toolName], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents, accounts: [] };
+          return { reply: isAdmin ? `No customer ${termAccounts} found in the system.` : `You don't have any ${termAccounts} yet.`, success: true, toolsCalled: [toolName], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents, accounts: [] };
         }
         const lines = accts.map(a => {
-          const type = a.accountType || a.account_type || a.type || 'Account';
+          const type = a.accountType || a.account_type || a.type || termAccount;
           const num = a.accountNumber || a.account_number || '—';
           const bal = Number(a.balance ?? 0).toFixed(2);
           const cur = a.currency || 'USD';
           return `• **${type}** (${num}) — **$${bal}** ${cur}`;
         });
-        const heading = action === 'balance' ? 'Your balances' : (isAdmin ? 'Here are all customer accounts' : 'Here are your accounts');
+        const heading = action === 'balance' ? `Your ${termBalance}` : (isAdmin ? `Here are all customer ${termAccounts}` : `Here are your ${termAccounts}`);
         return { reply: `${heading}:\n\n${lines.join('\n\n')}`, success: true, toolsCalled: [toolName], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents, accounts: accts };
       }
 
@@ -155,27 +163,27 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null, su
         const bal = parsed2.balance;
         const acctType = parsed2.accountType || parsed2.account_type || params.accountId;
         if (bal !== undefined) {
-          return { reply: `Your **${acctType}** balance is **$${Number(bal).toFixed(2)}**.`, success: true, toolsCalled: [toolName], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents, balance: bal };
+          return { reply: `Your **${acctType}** ${termBalance} is **$${Number(bal).toFixed(2)}**.`, success: true, toolsCalled: [toolName], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents, balance: bal };
         }
         // fallback: show accounts list from result
         const accts2 = parsed2.accounts || [];
         const match = accts2.find(a => (a.accountType || a.account_type || a.type || '').toLowerCase() === String(params.accountId).toLowerCase() || a.id === params.accountId);
         if (match) {
           const bal2 = Number(match.balance ?? 0).toFixed(2);
-          const type2 = match.accountType || match.account_type || match.type || 'Account';
-          return { reply: `Your **${type2}** balance is **$${bal2}**.`, success: true, toolsCalled: [toolName], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents, balance: match.balance };
+          const type2 = match.accountType || match.account_type || match.type || termAccount;
+          return { reply: `Your **${type2}** ${termBalance} is **$${bal2}**.`, success: true, toolsCalled: [toolName], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents, balance: match.balance };
         }
-        return { reply: 'Balance information is not available right now.', success: false, toolsCalled: [toolName], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents };
+        return { reply: `${termBalance} information is not available right now.`, success: false, toolsCalled: [toolName], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents };
       }
 
       // transactions
       const txns = parsed2.transactions || [];
       if (!txns.length) {
-        return { reply: 'No recent transactions found.', success: true, toolsCalled: [toolName], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents, transactions: [] };
+        return { reply: `No recent ${termTransactions} found.`, success: true, toolsCalled: [toolName], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents, transactions: [] };
       }
       const recent = txns.slice(0, 5);
       const lines = recent.map(t => `• ${t.type} — $${Number(t.amount).toFixed(2)} — ${t.description || t.type}`);
-      return { reply: `Recent transactions:\n\n${lines.join('\n')}`, success: true, toolsCalled: [toolName], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents, transactions: recent };
+      return { reply: `Recent ${termTransactions}:\n\n${lines.join('\n')}`, success: true, toolsCalled: [toolName], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents, transactions: recent };
     }
 
     if (action === 'transfer') {
@@ -408,6 +416,38 @@ function buildToolSchemasForAgent() {
       inputSchema,
     };
   });
+}
+
+/**
+ * Build tool schemas for the PingOne Admin reason loop.
+ * Fetches tool list from pingone-mcp-server via stdio and converts to
+ * the JSON Schema shape runReasonLoop expects.
+ * @returns {Promise<Array<{ name: string, description: string, inputSchema: object }>>}
+ */
+async function buildPingOneAdminToolSchemas() {
+  const { listTools } = require('./mcpPingOneStdioAdapter');
+  const tools = await listTools();
+  return tools.map((t) => ({
+    name: t.name,
+    description: t.description || '',
+    inputSchema: t.inputSchema || { type: 'object', properties: {} },
+  }));
+}
+
+/**
+ * Execute a PingOne Admin tool via the stdio adapter.
+ * No token exchange — pingone-mcp-server handles its own PKCE auth.
+ * @returns {Promise<string>} JSON-stringified result
+ */
+async function executePingOneTool(name, args) {
+  const { callToolViaStdio } = require('./mcpPingOneStdioAdapter');
+  try {
+    const result = await callToolViaStdio(name, args || {}, null);
+    return typeof result === 'string' ? result : JSON.stringify(result);
+  } catch (err) {
+    console.error('[executePingOneTool] Error calling tool %s: %s', name, err.message);
+    return JSON.stringify({ error: 'pingone_mcp_unavailable', message: err.message });
+  }
 }
 
 /**
@@ -672,6 +712,65 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
     const { resolveLlmProvider } = require('./llmProviderResolver');
     const { runReasonLoop } = require('./agentReasoningClient');
     const { provider, model } = resolveLlmProvider(langchainConfig);
+
+    // PingOne Admin path — tool schemas from pingone-mcp-server, no token exchange
+    if (langchainConfig?.provider === 'pingone-admin') {
+      console.log('[processAgentMessage] PingOne Admin path — building tool schemas');
+      const { provider: llmProvider, model: llmModel } = resolveLlmProvider(
+        { ...langchainConfig, provider: undefined }
+      );
+      let pingOneToolSchemas;
+      try {
+        pingOneToolSchemas = await buildPingOneAdminToolSchemas();
+      } catch (schemaErr) {
+        console.error('[processAgentMessage] Failed to build PingOne tool schemas:', schemaErr.message);
+        return {
+          reply: 'PingOne Admin tools are unavailable. Ensure pingone-mcp-server is installed and running.',
+          success: false,
+          toolsCalled: [],
+          tokensUsed: 0,
+          requiresConsent: false,
+          agentConfigured: true,
+          tokenEvents: tokenEvents || [],
+          error: 'pingone_tools_unavailable',
+        };
+      }
+      const p1LoopResult = await runReasonLoop({
+        messages: [{ role: 'user', content: message }],
+        tools: pingOneToolSchemas,
+        provider: llmProvider,
+        model: llmModel,
+        helixConfig: extractHelixConfig(langchainConfig),
+        ollamaBaseUrl: langchainConfig?.ollama_base_url,
+        anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+        maxIterations: MAX_TOOL_ITERATIONS,
+        executeTool: async (name, args) => executePingOneTool(name, args),
+      });
+      if (p1LoopResult.ok) {
+        return {
+          reply: p1LoopResult.answer,
+          success: true,
+          toolsCalled: [],
+          inputTokens: p1LoopResult.inputTokens ?? 0,
+          outputTokens: p1LoopResult.outputTokens ?? 0,
+          requiresConsent: false,
+          agentConfigured: true,
+          tokenEvents: tokenEvents || [],
+        };
+      }
+      return {
+        reply: p1LoopResult.reason === 'max_iterations'
+          ? 'Agent reached maximum tool iteration limit. Please rephrase your request.'
+          : 'PingOne Admin reasoning is temporarily unavailable.',
+        success: false,
+        toolsCalled: [],
+        tokensUsed: 0,
+        requiresConsent: false,
+        agentConfigured: true,
+        tokenEvents: tokenEvents || [],
+        error: p1LoopResult.reason || 'reasoning_unavailable',
+      };
+    }
 
     // If the resolved provider is Helix but no Helix credentials are configured,
     // fall back to the heuristics-only catalog message rather than attempting a
