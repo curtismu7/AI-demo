@@ -50,10 +50,9 @@ import { isPublicMarketingAgentPath } from "../utils/embeddedAgentFabVisibility"
 import AccountDetailsPanel from "./AccountDetailsPanel";
 import AgentConsentModal from "./AgentConsentModal";
 import AgentDemoGuide from "./AgentDemoGuide";
-import BankingChips from "./BankingChips";
+import BankingChips, { PINGONE_ADMIN_CHIP_IDS } from "./BankingChips";
 import ComplianceModal from "./ComplianceModal";
 import GatewayConsentModal from "./GatewayConsentModal";
-import { EDUCATION_COMMANDS } from "./education/educationCommands";
 import { EDU } from "./education/educationIds";
 import FidoStepUpModal from "./FidoStepUpModal";
 import MCPToolsListModal from "./MCPToolsListModal";
@@ -1857,7 +1856,6 @@ export default function BankingAgent({
       admin: false,
       ai: false,
       testing: false,
-      learn: true,
     };
   });
 
@@ -1883,7 +1881,6 @@ export default function BankingAgent({
       admin: false,
       ai: false,
       testing: false,
-      learn: true,
     }));
   }, [useActionsPopout, isBottomDock]);
 
@@ -2050,12 +2047,6 @@ export default function BankingAgent({
         isEducation: false,
       },
       ...customEntries,
-      {
-        key: "learn",
-        label: "Learn & Explore",
-        chips: EDUCATION_COMMANDS,
-        isEducation: true,
-      },
     ];
   }, [customChips, customGroups]);
 
@@ -6949,7 +6940,7 @@ export default function BankingAgent({
                   <BankingChips
                     customChips={customChips}
                     user={user}
-                    onChipClick={({ message, label, requiresLlm }) => {
+                    onChipClick={({ message, label, requiresLlm, chipId }) => {
                       setShowDiscovery(false);
                       if (isAgentBlockedByConsentDecline()) {
                         addMessage(
@@ -6968,7 +6959,9 @@ export default function BankingAgent({
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({
                               message: message,
-                              provider: requiresLlm ? (activeLlmProvider || "heuristic") : "heuristic",
+                              provider: requiresLlm
+                                ? (PINGONE_ADMIN_CHIP_IDS.has(chipId) ? "pingone-admin" : (activeLlmProvider || "heuristic"))
+                                : "heuristic",
                             }),
                             signal: AbortSignal.timeout(15000),
                           });
@@ -7018,10 +7011,7 @@ export default function BankingAgent({
                     )
                       return null;
                     if (group.chips.length === 0) return null;
-                    const groupExpanded =
-                      group.key === "learn"
-                        ? true
-                        : !!chipGroupsState[group.key];
+                    const groupExpanded = !!chipGroupsState[group.key];
                     return (
                       <div key={group.key} className="ba-popout-section">
                         <button
@@ -7070,7 +7060,7 @@ export default function BankingAgent({
                   })}
                   {discoverySearch.trim() !== "" &&
                     filteredDiscoveryGroups.filter(
-                      (g) => g.key !== "learn" && g.chips.length > 0,
+                      (g) => g.chips.length > 0,
                     ).length === 0 && (
                       <div className="ba-popout-empty">
                         <div className="ba-popout-empty-heading">

@@ -213,7 +213,7 @@ export default function BankingChips({
 
   const handleChipClick = (chip, requiresLlm = false) => {
     if (onChipClick) {
-      onChipClick({ message: chip.message, label: chip.label, requiresLlm });
+      onChipClick({ message: chip.message, label: chip.label, requiresLlm, chipId: chip.id });
     }
   };
 
