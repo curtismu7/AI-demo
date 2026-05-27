@@ -19,7 +19,7 @@
 
 import axios from 'axios';
 import type { GatewayConfig } from './config';
-import { backendHttpUrl } from './router';
+import { backendHttpUrl, APIKEY_BACKEND_ROUTES } from './router';
 import { getScopesForGatewayTool } from './auth/toolScopes';
 
 export interface ApiKeyDispatchOk {
@@ -38,13 +38,45 @@ export interface ApiKeyDispatchErr {
 
 export type ApiKeyDispatchOutcome = ApiKeyDispatchOk | ApiKeyDispatchErr;
 
+/** Per-tool metadata for Token Chain events and error messages. */
+interface ToolMeta {
+  /** Short service name shown in Token Chain events (e.g. 'banking_mortgage_service'). */
+  serviceLabel: string;
+  /** Route segment on the backend (e.g. 'mortgage'). */
+  routeSegment: string;
+  /** UI info page hint. */
+  infoPageHint: string;
+  /** Human-readable tool display name for error messages. */
+  displayName: string;
+}
+
+/** Display names for each api_key-disposition tool (for error messages and Token Chain). */
+const TOOL_DISPLAY_NAMES: Record<string, string> = {
+  show_mortgage:       'Mortgage Account',
+  show_health_record:  'Health Record',
+  show_gear_order:     'Gear Order',
+  show_expense_report: 'Expense Report',
+  show_large_purchase: 'Large Purchase',
+};
+
+function getToolMeta(toolName: string): ToolMeta {
+  const routeSegment = APIKEY_BACKEND_ROUTES[toolName] ?? toolName;
+  const infoPageHint = routeSegment === 'mortgage' ? '/path/mortgage' : '/path/feature';
+  return {
+    serviceLabel: 'demo_data_service',
+    routeSegment,
+    infoPageHint,
+    displayName: TOOL_DISPLAY_NAMES[toolName] ?? toolName,
+  };
+}
+
 /**
  * Dispatch an api_key-disposition tool.
  *
- * Phase 267: if the tool maps to a real backend URL (today: `show_mortgage`
- * → banking_mortgage_service) the gateway DROPS the OAuth bearer and calls
- * the backend with X-API-Key + X-User-Sub — the credential swap IS the demo.
- * Otherwise it returns the Phase 266 Gateway-only marker (no backend call).
+ * Phase 267: if the tool maps to a real backend URL the gateway DROPS the
+ * OAuth bearer and calls the backend with X-API-Key + X-User-Sub — the
+ * credential swap IS the demo. Otherwise it returns the Phase 266 Gateway-only
+ * marker (no backend call).
  *
  * @param toolName             the tools/call tool name (already routed to 'apikey')
  * @param userSub              decoded.sub of the inbound user token
@@ -59,6 +91,7 @@ export async function buildApiKeyToolResult(
 ): Promise<ApiKeyDispatchOutcome> {
   const last4 = apiKeyMaskedLast4 || 'XXXX';
   const backendUrl = backendHttpUrl('apikey', toolName, config);
+  const meta = getToolMeta(toolName);
 
   // Phase 266 Gateway-only marker — apikey tool with no real backend.
   if (!backendUrl) {
@@ -105,13 +138,13 @@ export async function buildApiKeyToolResult(
       validateStatus: (s: number) => s < 500,
     });
   } catch {
-    return { ok: false, code: -32500, message: 'Mortgage backend unreachable', data: { credentialPath: 'api_key' } };
+    return { ok: false, code: -32500, message: `${meta.displayName} backend unreachable`, data: { credentialPath: 'api_key' } };
   }
   if (mResp.status === 401) {
-    return { ok: false, code: -32401, message: 'Mortgage backend rejected the service API key', data: { credentialPath: 'api_key' } };
+    return { ok: false, code: -32401, message: `${meta.displayName} backend rejected the service API key`, data: { credentialPath: 'api_key' } };
   }
   if (mResp.status >= 400) {
-    return { ok: false, code: -32500, message: `Mortgage backend returned ${mResp.status}`, data: { credentialPath: 'api_key' } };
+    return { ok: false, code: -32500, message: `${meta.displayName} backend returned ${mResp.status}`, data: { credentialPath: 'api_key' } };
   }
 
   return {
@@ -122,9 +155,9 @@ export async function buildApiKeyToolResult(
         credentialPath: 'api_key',
         apiKeyMaskedLast4: last4,
         maskedApiKey: `xxxx${last4}`,
-        backend: 'banking_mortgage_service',
-        infoPageHint: '/path/mortgage',
-        note: 'Gateway dropped your OAuth bearer, attached a service API key, and called banking_mortgage_service (X-API-Key + X-User-Sub).',
+        backend: meta.serviceLabel,
+        infoPageHint: meta.infoPageHint,
+        note: `Gateway dropped your OAuth bearer, attached a service API key, and called ${meta.serviceLabel} /${meta.routeSegment} (X-API-Key + X-User-Sub).`,
         tokenEvents: [
           {
             id: 'evt-inbound',
@@ -151,7 +184,7 @@ export async function buildApiKeyToolResult(
           },
           {
             id: 'evt-backend',
-            label: 'Outbound GET banking_mortgage_service /mortgage (X-API-Key + X-User-Sub, no OAuth)',
+            label: `Outbound GET ${meta.serviceLabel} /${meta.routeSegment} (X-API-Key + X-User-Sub, no OAuth)`,
             tokenType: 'api_key',
             credentialPath: 'api_key',
             status: 'ok',

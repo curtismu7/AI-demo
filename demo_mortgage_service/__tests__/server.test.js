@@ -38,7 +38,7 @@ describe('banking_mortgage_service', () => {
     });
     expect(typeof res.body.mortgage.loanAmount).toBe('number');
     expect(typeof res.body.mortgage.currentBalance).toBe('number');
-    expect(res.body.source).toBe('banking_mortgage_service');
+    expect(res.body.source).toBe('demo_data_service');
   });
 
   test('GET /unknown returns 404', async () => {

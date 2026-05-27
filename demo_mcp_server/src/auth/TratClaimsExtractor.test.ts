@@ -1,4 +1,4 @@
-import { extractTratClaims, TratClaims } from './TratClaimsExtractor';
+import { extractTratClaims } from './TratClaimsExtractor';
 
 describe('TratClaimsExtractor', () => {
   const base64 = (obj: object) => Buffer.from(JSON.stringify(obj)).toString('base64url');

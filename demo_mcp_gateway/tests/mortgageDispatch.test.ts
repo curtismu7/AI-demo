@@ -5,7 +5,7 @@
  *
  *   1. Routing — show_mortgage is an apikey tool that resolves to the
  *      banking_mortgage_service URL; other apikey tools stay Gateway-only.
- *   2. Scope decision — banking:mortgage:read is enforced by the Authorize
+ *   2. Scope decision — mortgage:read is enforced by the Authorize
  *      layer, NOT the tool dispatch. When PingOne Authorize is unconfigured
  *      both transports apply evaluateScopeDecisionLocally(), which must mirror
  *      what a PA policy returns. This test proves the HTTP client
@@ -58,20 +58,20 @@ describe('Phase 267 — show_mortgage routing', () => {
 });
 
 describe('Phase 267 — local Authorize scope decision', () => {
-  test('show_mortgage requires banking:mortgage:read', () => {
+  test('show_mortgage requires mortgage:read', () => {
     expect(getScopesForGatewayTool('show_mortgage')).toEqual([
-      'banking:mortgage:read',
+      'mortgage:read',
     ]);
   });
 
   test('missing scope → DENY (insufficient_scope)', () => {
     const d = evaluateScopeDecisionLocally(
       'show_mortgage',
-      'openid profile banking:read banking:write',
+      'openid profile read write',
     );
     expect(d.decision).toBe('DENY');
     if (d.decision === 'DENY') {
-      expect(d.missingScopes).toEqual(['banking:mortgage:read']);
+      expect(d.missingScopes).toEqual(['mortgage:read']);
       expect(d.reason).toMatch(/insufficient_scope/);
     }
   });
@@ -80,7 +80,7 @@ describe('Phase 267 — local Authorize scope decision', () => {
     expect(
       evaluateScopeDecisionLocally(
         'show_mortgage',
-        'openid banking:read banking:mortgage:read',
+        'openid read mortgage:read',
       ),
     ).toEqual({ decision: 'PERMIT' });
   });
@@ -96,7 +96,7 @@ describe('Phase 267 — local Authorize scope decision', () => {
     expect(
       evaluateScopeDecisionLocally(
         'show_mortgage',
-        '  banking:read   banking:mortgage:read  ',
+        '  read   mortgage:read  ',
       ),
     ).toEqual({ decision: 'PERMIT' });
   });
@@ -105,8 +105,8 @@ describe('Phase 267 — local Authorize scope decision', () => {
 describe('Phase 267 — HTTP and WS transports behave identically (no-PA mode)', () => {
   const httpClient = new PingOneAuthorizeClient(CONFIG);
 
-  test('both DENY when banking:mortgage:read is absent', async () => {
-    const decoded = tokenWith('openid banking:read');
+  test('both DENY when mortgage:read is absent', async () => {
+    const decoded = tokenWith('openid read');
 
     const http = await httpClient.evaluate(decoded, 'tools/call', 'show_mortgage');
     const ws = await guardToolCall('show_mortgage', decoded, CONFIG);
@@ -118,8 +118,8 @@ describe('Phase 267 — HTTP and WS transports behave identically (no-PA mode)',
     expect(ws.reason).toMatch(/insufficient_scope/);
   });
 
-  test('both PERMIT when banking:mortgage:read is present', async () => {
-    const decoded = tokenWith('openid banking:read banking:mortgage:read');
+  test('both PERMIT when mortgage:read is present', async () => {
+    const decoded = tokenWith('openid read mortgage:read');
 
     const http = await httpClient.evaluate(decoded, 'tools/call', 'show_mortgage');
     const ws = await guardToolCall('show_mortgage', decoded, CONFIG);
@@ -128,8 +128,8 @@ describe('Phase 267 — HTTP and WS transports behave identically (no-PA mode)',
     expect(ws.permitted).toBe(true);
   });
 
-  test('a banking:read-only tool still PERMITs with a basic bearer (no regression)', async () => {
-    const decoded = tokenWith('openid banking:read');
+  test('a read-only tool still PERMITs with a basic bearer (no regression)', async () => {
+    const decoded = tokenWith('openid read');
 
     const http = await httpClient.evaluate(decoded, 'tools/call', 'get_my_accounts');
     const ws = await guardToolCall('get_my_accounts', decoded, CONFIG);
@@ -164,7 +164,7 @@ describe('Phase 267 — shared api_key dispatch (buildApiKeyToolResult, BL-02)',
     if (out.ok) {
       const r = out.result as { content: Array<{ text: string }>; _meta: Record<string, unknown> };
       expect(JSON.parse(r.content[0].text)).toEqual({ mortgage: { id: 'mtg-001' } });
-      expect(r._meta.backend).toBe('banking_mortgage_service');
+      expect(r._meta.backend).toBe('demo_data_service');
       expect(r._meta.credentialPath).toBe('api_key');
     }
     // No Authorization header anywhere — the OAuth bearer is dropped at the gateway.

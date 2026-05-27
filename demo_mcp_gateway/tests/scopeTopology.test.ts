@@ -1,12 +1,12 @@
 import { TOOL_SCOPES, getScopesForGatewayTool, getChallengeTypeForTool } from '../src/auth/toolScopes';
 
 describe('gateway toolScopes derives from manifest', () => {
-  test('create_transfer requires banking:write + banking:transfer', () => {
-    expect(getScopesForGatewayTool('create_transfer')).toEqual(['banking:write', 'banking:transfer']);
+  test('create_transfer requires write + transfer', () => {
+    expect(getScopesForGatewayTool('create_transfer')).toEqual(['write', 'transfer']);
   });
 
-  test('unknown tool falls back to [banking:read]', () => {
-    expect(getScopesForGatewayTool('no_such_tool')).toEqual(['banking:read']);
+  test('unknown tool falls back to [read]', () => {
+    expect(getScopesForGatewayTool('no_such_tool')).toEqual(['read']);
   });
 
   test('create_transfer challenge type is step_up', () => {

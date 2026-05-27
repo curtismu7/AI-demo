@@ -14,8 +14,6 @@ import {
   TokenExchangeValidationResult,
   MayActClaim,
   ActClaim,
-  TokenExchangeError,
-  TokenExchangeErrorCodes,
   TokenExchangeAudit
 } from '../interfaces/tokenExchange';
 import { AuthenticationError, AuthErrorCodes } from '../interfaces/auth';

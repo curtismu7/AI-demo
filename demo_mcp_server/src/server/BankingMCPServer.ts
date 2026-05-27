@@ -922,7 +922,7 @@ export class BankingMCPServer extends EventEmitter {
   /**
    * RFC 8693 Token Exchange endpoint
    */
-  private async handleTokenExchange(req: any, res: any, url: URL): Promise<void> {
+  private async handleTokenExchange(req: any, res: any, _url: URL): Promise<void> {
     try {
       if (req.method !== 'POST') {
         res.writeHead(405, { 'Content-Type': 'application/json' });

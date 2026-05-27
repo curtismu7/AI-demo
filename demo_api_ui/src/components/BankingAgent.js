@@ -170,6 +170,12 @@ const ACTION_GROUPS = {
       desc: "Reason step-by-step through a banking question or decision",
       rfcs: [],
     },
+    {
+      id: "logout",
+      label: "Log Out",
+      desc: "Sign out of your account",
+      rfcs: [],
+    },
   ],
   transaction: [
     {
@@ -208,12 +214,6 @@ const ACTION_GROUPS = {
       id: "query_user",
       label: "Query User by Email",
       desc: "Check if a user exists by email address",
-      rfcs: [],
-    },
-    {
-      id: "logout",
-      label: "Log Out",
-      desc: "Sign out of your account",
       rfcs: [],
     },
   ],
@@ -934,7 +934,9 @@ function formatHttpTrace(trace) {
   return lines.join("\n");
 }
 
-function formatResult(result) {
+export function formatResult(result, terminology) {
+  const termAccount = terminology?.account || "Account";
+  const termBalance = terminology?.balance || "Balance";
   const r = normalizeAgentToolResult(result);
   if (!r) return "No data returned.";
   if (r.error === "hitl_required") {
@@ -957,39 +959,19 @@ function formatResult(result) {
   // Accounts list
   if (r.accounts) {
     return r.accounts
+      .filter(Boolean)
       .map((a) => {
-        // Normalise field names — MCP server uses camelCase, local tools may use snake_case
-        const type = (
-          a.accountType ||
-          a.account_type ||
-          a.type ||
-          ""
-        ).toLowerCase();
+        // Use the actual account type from the server — vertical-seeded accounts already
+        // carry the correct domain type (e.g. "Rewards Points", "Pro Member", "Primary Care").
+        // For banking vertical (no terminology), fall back to the stored display name.
+        const rawType = a.accountType || a.account_type || a.type || "";
+        const displayType = rawType || termAccount;
         const num = a.accountNumber || a.account_number || "";
-        const name =
-          a.name && a.name !== a.id
-            ? a.name
-            : type.includes("check")
-              ? "Checking Account"
-              : type.includes("sav")
-                ? "Savings Account"
-                : type.includes("loan")
-                  ? "Loan Account"
-                  : type.includes("crd") || type.includes("credit")
-                    ? "Credit Card"
-                    : "Account";
+        const name = (!terminology && a.name && a.name !== a.id)
+          ? `${a.name} (${num || "—"})`
+          : `${displayType} (${num || "—"})`;
 
-        // Show only basic account info — IBAN/SWIFT/routing are revealed only via "View Sensitive Account Details"
-        return (
-          "\u{1f3e6} " +
-          name +
-          " (" +
-          (num || "—") +
-          ") — " +
-          formatCurrency(a.balance) +
-          " " +
-          (a.currency || "USD")
-        );
+        return `${name} — ${formatCurrency(a.balance)} ${a.currency || "USD"}`;
       })
       .join("\n\n");
   }
@@ -1005,7 +987,7 @@ function formatResult(result) {
   }
   // Balance response
   if (r.balance !== undefined) {
-    return `Balance: ${formatCurrency(r.balance)}`;
+    return `${termBalance}: ${formatCurrency(r.balance)}`;
   }
   // Transaction confirmation (single transaction)
   if (r.transaction_id || r.transactionId || r.id) {
@@ -1038,45 +1020,43 @@ function formatResult(result) {
   return JSON.stringify(r, null, 2);
 }
 
+// ─── Exported terminology helpers (used in tests and internally) ──────────────
+
+/** Returns the appropriate results panel title using vertical terminology. */
+export function buildResultsPanelTitle(resultType, terminology) {
+  if (resultType === "accounts") return terminology?.accounts || "Accounts";
+  if (resultType === "transactions") return terminology?.transactions || "Recent Transactions";
+  if (resultType === "balance") return terminology?.balance || "Balance";
+  return resultType || "Results";
+}
+
+/** Returns the clarification question strings, adjusted for vertical terminology. */
+export function buildClarificationQuestions(terminology) {
+  const termAccounts  = terminology?.accounts       || "accounts";
+  const termHighValue = terminology?.highValueAction || "Transfer";
+  const termTypes     = terminology?.accountTypes    || ["checking", "savings"];
+  return {
+    transfer: `Which ${termAccounts} would you like to ${termHighValue.toLowerCase()} between? (e.g. ${termTypes[0] || "account"} to ${termTypes[1] || "account"})`,
+    accounts: `Which ${termAccounts} would you like to view?`,
+  };
+}
+
+
 // ─── Results Panel (side panel showing rich formatted data next to the agent) ──
 
-function AccountsTable({ accounts }) {
+export function AccountsTable({ accounts, terminology }) {
   if (!accounts?.length)
     return <p className="bar-rp-empty">No accounts found.</p>;
 
-  // Helper function to generate friendly account names
   const getFriendlyAccountName = (account) => {
-    if (account.name && account.name !== account.id) {
+    if (!account) return terminology?.account || "Account";
+    // Use server-stored name for banking vertical (no terminology overlay)
+    if (!terminology && account.name && account.name !== account.id) {
       return account.name;
     }
-
-    const accountType = (
-      account.account_type ||
-      account.type ||
-      ""
-    ).toLowerCase();
-    const accountNumber = account.account_number || account.id || "";
-
-    // Create friendly name based on type and number
-    if (accountType === "checking" || accountType.includes("chk")) {
-      return accountNumber
-        ? `Checking Account (${accountNumber.slice(-4)})`
-        : "Checking Account";
-    } else if (accountType === "savings" || accountType.includes("sav")) {
-      return accountNumber
-        ? `Savings Account (${accountNumber.slice(-4)})`
-        : "Savings Account";
-    } else if (accountType === "credit" || accountType.includes("crd")) {
-      return accountNumber
-        ? `Credit Card (${accountNumber.slice(-4)})`
-        : "Credit Card";
-    } else if (accountType === "investment" || accountType.includes("inv")) {
-      return accountNumber
-        ? `Investment Account (${accountNumber.slice(-4)})`
-        : "Investment Account";
-    } else {
-      return accountNumber ? `Account (${accountNumber.slice(-4)})` : "Account";
-    }
+    const accountNumber = account.accountNumber || account.account_number || account.id || "";
+    const accountLabel = terminology?.account || "Account";
+    return accountNumber ? `${accountLabel} (${accountNumber.slice(-4)})` : accountLabel;
   };
 
   return (
@@ -1084,14 +1064,14 @@ function AccountsTable({ accounts }) {
       <thead>
         <tr>
           <th>Type</th>
-          <th>Account Name</th>
-          <th>Balance</th>
+          <th>{(terminology?.account || "Account")} Name</th>
+          <th>{terminology?.balance || "Balance"}</th>
         </tr>
       </thead>
       <tbody>
-        {accounts.map((a, i) => (
+        {accounts.filter(Boolean).map((a, i) => (
           <tr key={a.account_number || a.id || i}>
-            <td>{a.account_type || a.type || "Account"}</td>
+            <td>{a.account_type || a.type || (terminology?.account || "Account")}</td>
             <td>
               <span className="bar-rp-account-name">
                 {getFriendlyAccountName(a)}
@@ -1105,15 +1085,15 @@ function AccountsTable({ accounts }) {
   );
 }
 
-function TransactionsTable({ transactions }) {
+export function TransactionsTable({ transactions, terminology }) {
   if (!transactions?.length)
     return <p className="bar-rp-empty">No transactions found.</p>;
   return (
     <table className="bar-rp-table">
       <thead>
         <tr>
-          <th>Type</th>
-          <th>Amount</th>
+          <th>{terminology?.transaction || "Type"}</th>
+          <th>{terminology?.balance || "Amount"}</th>
           <th>Description</th>
           <th>Date</th>
         </tr>
@@ -1260,9 +1240,10 @@ function ToolProgressChips({ steps }) {
   );
 }
 
-function MessageContent({ text, isTokenEvent }) {
+export function MessageContent({ text, isTokenEvent, terminology }) {
   // Detect and format account data as tables (remove emojis)
-  const accountPattern = /🏦\s+([^(]+)\s*\(([^)]+)\)\s*—\s*([^\n]+)/gm;
+  // Matches lines emitted by formatResult: "Type (****NNNN) — $X.XX USD"
+  const accountPattern = /^(.+?)\s*\(([^)]+)\)\s*—\s*(\$[\d,]+\.\d{2}(?:\s+\w+)?)\s*$/gm;
   const accountMatches = [...text.matchAll(accountPattern)];
 
   if (accountMatches.length > 0) {
@@ -1276,9 +1257,9 @@ function MessageContent({ text, isTokenEvent }) {
       <table className="ba-msg-table">
         <thead>
           <tr>
-            <th>Account</th>
+            <th>{terminology?.accounts || "Account"}</th>
             <th>ID</th>
-            <th>Balance</th>
+            <th>{terminology?.balance || "Balance"}</th>
           </tr>
         </thead>
         <tbody>
@@ -1485,9 +1466,9 @@ function ResultsPanel({ panel, onClose, style }) {
         </button>
       </div>
       <div className="bar-rp-body">
-        {panel.type === "accounts" && <AccountsTable accounts={panel.data} />}
+        {panel.type === "accounts" && <AccountsTable accounts={panel.data} terminology={panel.terminology} />}
         {panel.type === "transactions" && (
-          <TransactionsTable transactions={panel.data} />
+          <TransactionsTable transactions={panel.data} terminology={panel.terminology} />
         )}
         {panel.type === "balance" && (
           <div className="bar-rp-balance">
@@ -1543,7 +1524,7 @@ function ResultsPanel({ panel, onClose, style }) {
 export function buildCustomerGreeting(u, manifestGreeting) {
   const name = (u && (u.firstName || (u.name && u.name.split(' ')[0]))) || 'there';
   if (manifestGreeting) return manifestGreeting.replace('{name}', name);
-  return `Hi ${name}! I can check your balances, move money between accounts, and explain the OAuth flows happening behind the scenes. What would you like to do?`;
+  return `Hi ${name}! I'm your AI assistant. I can help with your accounts, explain the OAuth flows behind the scenes, and more. What would you like to do?`;
 }
 
 function welcomeMessage(
@@ -1666,6 +1647,7 @@ export default function BankingAgent({
     effectiveAgentTheme,
     agent: themeAgent,
     manifest: themeManifest,
+    terminology,
   } = useTheme();
   // Always start collapsed on page load — never restore open state from localStorage.
   const [isOpen, setIsOpen] = useState(false);
@@ -2112,7 +2094,8 @@ export default function BankingAgent({
     );
     let groupsToRender = { ...ACTION_GROUPS, ...customGroupMap };
     if (isConfigEmbeddedFocus) {
-      groupsToRender = { admin: ACTION_GROUPS.admin || [] };
+      const logoutAction = ACTION_GROUPS.account?.filter((a) => a.id === "logout") || [];
+      groupsToRender = { admin: [...(ACTION_GROUPS.admin || []), ...logoutAction] };
     } else if (effectiveUser?.role !== "admin") {
       const { admin: _admin, ...rest } = groupsToRender;
       groupsToRender = rest;
@@ -2439,24 +2422,29 @@ export default function BankingAgent({
   // Auto-open when the user prop transitions from null → authenticated user
   // (fires on initial mount when App.js has already resolved the session,
   //  and again if the user changes while the component is mounted)
+  // Also replaces a sole initial greeting when themeAgent resolves asynchronously
+  // after the initial render (vertical manifest race condition).
   useEffect(() => {
     if (!user) return;
-    setMessages((prev) =>
-      prev.length === 0
-        ? [
-            {
-              id: Date.now().toString(),
-              role: "assistant",
-              content: welcomeMessage(
-                user,
-                embeddedFocus,
-                brandShortName,
-                themeAgent && themeAgent.greeting,
-              ),
-            },
-          ]
-        : prev,
-    );
+    setMessages((prev) => {
+      const isSoleGreeting =
+        prev.length === 1 &&
+        prev[0].role === "assistant" &&
+        !prev[0].tool;
+      if (prev.length > 0 && !isSoleGreeting) return prev;
+      return [
+        {
+          id: Date.now().toString(),
+          role: "assistant",
+          content: welcomeMessage(
+            user,
+            embeddedFocus,
+            brandShortName,
+            themeAgent && themeAgent.greeting,
+          ),
+        },
+      ];
+    });
   }, [user, embeddedFocus, brandShortName, industryPreset.id, themeAgent]);
 
   // Effective user: prefer prop (App.js state), fall back to self-detected session
@@ -4833,15 +4821,16 @@ export default function BankingAgent({
 
       if (resultType) {
         const titleMap = {
-          accounts: "Accounts",
-          transactions: "Recent Transactions",
-          balance: "Balance",
+          accounts:      terminology?.accounts     || "Accounts",
+          transactions:  terminology?.transactions || "Recent Transactions",
+          balance:       terminology?.balance      || "Balance",
           confirm: `${label} confirmed`,
         };
         setResultPanel({
           type: resultType,
           title: titleMap[resultType],
           data: resultData,
+          terminology,
         });
       }
 
@@ -5944,9 +5933,10 @@ export default function BankingAgent({
           type: "transactions",
           title:
             action === "biggest_purchase"
-              ? "Transactions"
+              ? (terminology?.transactions || "Transactions")
               : "Spending Breakdown",
           data: txList,
+          terminology,
         });
         return;
       }
@@ -6398,15 +6388,17 @@ export default function BankingAgent({
           if (currentPanel?.type === "accounts") {
             setResultPanel({
               type: "accounts",
-              title: "Accounts",
+              title: terminology?.accounts || "Accounts",
               data: fresh,
+              terminology,
             });
           } else if (currentPanel?.type === "balance") {
             // Switch to full accounts view so all updated balances are visible
             setResultPanel({
               type: "accounts",
-              title: "Accounts",
+              title: terminology?.accounts || "Accounts",
               data: fresh,
+              terminology,
             });
           }
         })
@@ -6420,8 +6412,9 @@ export default function BankingAgent({
             if (!data?.transactions) return;
             setResultPanel({
               type: "transactions",
-              title: "Recent Transactions",
+              title: terminology?.transactions || "Recent Transactions",
               data: data.transactions,
+              terminology,
             });
           })
           .catch(() => {});
