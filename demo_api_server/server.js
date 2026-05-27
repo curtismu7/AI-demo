@@ -808,6 +808,7 @@ app.use('/api/admin/config', adminConfigRoutes);
 app.use('/api/admin/feature-flags', featureFlagsRoutes);
 app.use('/api/admin/scope-audit', authenticateToken, require('./routes/scopeAudit'));
 app.use('/api/admin/token-compliance', authenticateToken, require('./routes/tokenCompliance'));
+app.use('/api/admin/lighthouse', authenticateToken, require('./routes/lighthouseRoute'));
 
 // PingOne redirect URI allowlist (JSON). Registered here BEFORE /api/auth so the path is not
 // handled only by routes/auth.js (avoids "Cannot GET" on some deployments).

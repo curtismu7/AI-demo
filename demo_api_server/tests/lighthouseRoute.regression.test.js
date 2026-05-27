@@ -22,7 +22,10 @@ function buildApp({ sessionUser } = {}) {
   app.use(express.json());
   app.use(session({ secret: 'test', resave: false, saveUninitialized: false }));
   app.use((req, _res, next) => {
-    if (sessionUser) req.session.user = sessionUser;
+    if (sessionUser) {
+      req.session.user = sessionUser;
+      req.user = sessionUser; // set by authenticateToken in production; required for requireAdmin
+    }
     next();
   });
   app.use('/api/admin/lighthouse', lighthouseRoute);

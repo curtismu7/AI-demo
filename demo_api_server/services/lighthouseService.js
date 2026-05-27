@@ -18,13 +18,14 @@ let _isRunning = false;
 async function runLighthouseAudit(url) {
   // Lazy-require so the module loads fine in test environments that mock it
   const chromeLauncher = require('chrome-launcher');
-  const lighthouse = require('lighthouse');
+  const lighthouse = require('lighthouse').default ?? require('lighthouse');
 
   let chrome;
   let timedOut = false;
+  let timeoutHandle;
 
   const timeoutPromise = new Promise((_, reject) => {
-    setTimeout(() => {
+    timeoutHandle = setTimeout(() => {
       timedOut = true;
       if (chrome) chrome.kill().catch(() => {});
       const err = new Error('Audit timed out after 60s');
@@ -70,14 +71,18 @@ async function runLighthouseAudit(url) {
         },
       };
 
-      saveResult(result);
+      if (!timedOut) saveResult(result);
       return result;
     } finally {
       await chrome.kill().catch(() => {});
     }
   })();
 
-  return Promise.race([auditPromise, timeoutPromise]);
+  try {
+    return await Promise.race([auditPromise, timeoutPromise]);
+  } finally {
+    clearTimeout(timeoutHandle);
+  }
 }
 
 /**
