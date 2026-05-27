@@ -168,7 +168,7 @@ const FIELD_DEFS = {
   mcp_use_legacy_protocol: { public: true, default: 'false' }, // When 'true', BFF uses protocolVersion 2024-11-05 in MCP initialize; default (false) = 2025-11-25
 ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic fast path for chips; when false, all queries go through LLM
   ff_agent_results_panel:    { public: true, default: 'false' }, // Floating Results Panel in Banking Agent (off by default)
-  ff_agui_enabled:           { public: true, default: 'false' }, // AG-UI streaming agent via POST /api/agent/run (off by default)
+  ff_agui_enabled:           { public: true, default: 'true'  }, // AG-UI streaming agent via POST /api/agent/run
   // Feature-flag registry IDs that were missing from FIELD_DEFS — without an
   // entry getEffective() can't resolve them and the env-override fallback below
   // never applies. defaults MUST match routes/featureFlags.js FLAG_REGISTRY.
@@ -342,7 +342,7 @@ ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic 
   ai_agent_audience:                     { public: true,  default: '' },
   ai_agent_scope:                        { public: true,  default: 'ai_agent' },
   banking_api_resource_uri:              { public: true,  default: '' },
-  mcp_token_exchange_scopes:             { public: true,  default: 'read write mcp:invoke mortgage:read' },
+  mcp_token_exchange_scopes:             { public: true,  default: 'read write mcp:invoke mortgage:read largepurchase:read' },
 
   // Token exchange auth methods
   pingone_token_exchange_auth_method:    { public: true,  default: 'post' },
@@ -1133,7 +1133,8 @@ function buildAllowedScopesByAudience() {
       'write',
       'mcp:invoke',
       'ai:agent',
-      'mortgage:read',
+      'mortgage:read',      // banking — show_mortgage
+      'largepurchase:read', // retail — show_large_purchase
     ];
   }
 
@@ -1146,7 +1147,8 @@ function buildAllowedScopesByAudience() {
       'read',
       'write',
       'mcp:invoke',
-      'mortgage:read',
+      'mortgage:read',      // banking — show_mortgage
+      'largepurchase:read', // retail — show_large_purchase
     ];
   }
 
