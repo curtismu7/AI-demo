@@ -36,6 +36,16 @@
       "type": "http",
       "url": "https://api.ping.demo:3005/mcp",
       "note": "Claude Code as MCP client (Option B/C). The gateway validates the bearer token from Claude Code's Authorization header against PingOne. Requires the gateway to be running (./run.sh) and a valid access token in CLAUDE_BEARER_TOKEN env or set via Claude Code MCP auth."
+    },
+    "pingone-admin": {
+      "type": "stdio",
+      "command": "pingone-mcp-server",
+      "args": ["run"],
+      "env": {
+        "PINGONE_MCP_ENVIRONMENT_ID": "d02d2305-f445-406d-82ee-7cdbf6eeabfd",
+        "PINGONE_AUTHORIZATION_CODE_CLIENT_ID": "812ffe7b-1151-4362-a0b7-2ddf907b45f8",
+        "PINGONE_ROOT_DOMAIN": "pingone.com"
+      }
     }
   }
 }
