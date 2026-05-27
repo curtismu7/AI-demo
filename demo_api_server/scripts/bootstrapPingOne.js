@@ -831,6 +831,7 @@ const KNOWN_APP_NAMES = [
   'Demo MCP Gateway',
   'Demo Agent',
   'Demo AI Agent',
+  'PingOne MCP Server',
 ];
 
 const KNOWN_RESOURCE_NAMES = [

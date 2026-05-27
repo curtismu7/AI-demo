@@ -518,7 +518,7 @@ class PingOneProvisionService {
    * either lowercase (legacy) or uppercase form — we normalize to UPPERCASE
    * before sending so existing callers don't all have to change at once.
    */
-  async createApplication(name, description, type, grantTypes) {
+  async createApplication(name, description, type, grantTypes, tokenEndpointAuthMethod) {
     // Normalize grants once and reuse.
     const normalizeGrant = (g) => {
       if (g === 'urn:ietf:params:oauth:grant-type:token-exchange') return 'TOKEN_EXCHANGE';
@@ -535,10 +535,14 @@ class PingOneProvisionService {
     // wrongly force those three back to basic.
     // Match against the provisioning display name (may be 'Demo Worker' or the
     // legacy 'Super Banking Worker' depending on scope-topology.json).
+    // tokenEndpointAuthMethod param overrides the default when explicitly supplied
+    // (e.g. 'none' for PKCE-only apps that have no client secret).
     const _mgmtWorkerDisplayName = _provisioningAppName('Super Banking Worker');
     const isMgmtWorkerApp = String(name || '').trim() === _mgmtWorkerDisplayName ||
                             String(name || '').trim() === 'Super Banking Worker';
-    const desiredAuthMethod = isMgmtWorkerApp ? 'CLIENT_SECRET_BASIC' : 'CLIENT_SECRET_POST';
+    const desiredAuthMethod = tokenEndpointAuthMethod
+      ? String(tokenEndpointAuthMethod).toUpperCase()
+      : (isMgmtWorkerApp ? 'CLIENT_SECRET_BASIC' : 'CLIENT_SECRET_POST');
 
     const existing = await this.findResourceByName('application', name);
 
@@ -2291,6 +2295,25 @@ class PingOneProvisionService {
       // If the apps need explicit policy wiring (e.g. "this app may exchange
       // for this resource"), that's done in Phase B via the resource server's
       // token-exchange policy — not at provisioning time here.
+
+      // Step 32b: Create PingOne MCP Server WORKER app (developer tooling — not a demo runtime component)
+      // This app is used by the pingone-mcp-server CLI binary so developers can administer
+      // the PingOne tenant via AI assistants (Claude Code, Cursor, etc.).
+      // Auth method must be NONE (PKCE, no client secret).
+      // createApplication sets CLIENT_SECRET_POST by default, so we patch it to NONE after creation.
+      // PKCE enforcement (S256_REQUIRED) and redirect URI (http://127.0.0.1:7464/callback)
+      // cannot be set via the Management API on WORKER-type apps — they must be set in the console.
+      steps.push({ step: 'pingone-mcp-server-app', icon: '🔧', message: 'Creating PingOne MCP Server worker app (dev tooling)...' });
+      onStep(steps[steps.length - 1]);
+      const pingOneMcpServerAppResult = await this.createApplication(
+        'PingOne MCP Server',
+        'Worker app for pingone-mcp-server CLI (AI admin tooling — PKCE, no secret, no app roles)',
+        'WORKER',
+        ['authorization_code', 'refresh_token'],
+        'none'  // PKCE, no client secret — drift-corrected by createApplication on re-runs
+      );
+      pushAppResultStep(steps, 'pingone-mcp-server-app', 'PingOne MCP Server worker app (dev tooling)', pingOneMcpServerAppResult);
+      onStep(steps[steps.length - 1]);
 
       // Step 33: Write configuration
       steps.push({ step: 'config', icon: '📝', message: 'Writing .env file...' });
