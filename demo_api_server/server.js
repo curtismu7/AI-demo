@@ -1655,16 +1655,6 @@ if (require.main === module) {
             });
         }
 
-        // Path A (CR-02/CR-04): attach the BFF ↔ langchain chat-WS proxy so the
-        // browser never holds a PingOne token. Cookie-authenticated upgrade,
-        // server-side token resolution, frames piped to ws://localhost:8889.
-        try {
-            const { attachLangchainChatProxy } = require('./services/langchainChatProxy');
-            attachLangchainChatProxy(server, sessionMiddleware);
-        } catch (err) {
-            console.error('[langchain-proxy] failed to attach chat-WS proxy:', err.message);
-        }
-
         // WR-22/WR-25: Run background startup tasks INSIDE the IIFE's listen
         // callback so they execute only after the vault has loaded into configStore
         // and the server is actually ready. Previously these were bare setImmediate

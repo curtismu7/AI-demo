@@ -147,15 +147,13 @@ class LangChainMCPApplication:
             await self.message_processor.start()
             self.health_server.update_status("message_processor", "ready")
 
-            # AG-UI /run SSE endpoint (Phase 1.5): FastAPI on port 8888.
-            # Only started when agui_enabled is True (LANGCHAIN_AGUI_ENABLED=true).
-            if self.config.langchain.agui_enabled:
-                from .api.agui_run_handler import set_message_processor as set_agui_mp
-                set_agui_mp(self.message_processor)
-                self._agui_server_task = asyncio.create_task(
-                    self.start_agui_http_server()
-                )
-                logger.info("[AG-UI] /run SSE endpoint enabled on port 8888")
+            # AG-UI /run SSE endpoint: FastAPI on port 8888 (always active).
+            from .api.agui_run_handler import set_message_processor as set_agui_mp
+            set_agui_mp(self.message_processor)
+            self._agui_server_task = asyncio.create_task(
+                self.start_agui_http_server()
+            )
+            logger.info("[AG-UI] /run SSE endpoint active on port 8888")
 
             # MCP Host inspector snapshot (HTTP GET /inspector/mcp-host on health port)
             try:

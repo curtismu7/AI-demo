@@ -68,7 +68,6 @@ class LangChainConfig:
     # WebSocket streaming: MCP tool lifecycle + optional LLM token deltas
     stream_mcp_tool_events: bool = True
     stream_llm_tokens: bool = True
-    agui_enabled: bool = False  # Phase 1: dual-emit AG-UI events alongside WS (default off)
     # LLM provider — "helix" (default), "ollama", "lmstudio", "anthropic-lmstudio"
     provider: str = "helix"
     ollama_base_url: str = "http://localhost:11434"
@@ -398,7 +397,6 @@ class ConfigManager:
             max_execution_time=int(get_env_value("LANGCHAIN_MAX_EXECUTION_TIME", "60")),
             stream_mcp_tool_events=get_env_value("LANGCHAIN_STREAM_MCP_TOOL_EVENTS", "true").lower() == "true",
             stream_llm_tokens=get_env_value("LANGCHAIN_STREAM_LLM_TOKENS", "true").lower() == "true",
-            agui_enabled=get_env_value("LANGCHAIN_AGUI_ENABLED", "false").lower() == "true",
             # LLM provider — defaults to "helix" (project-wide default)
             provider=get_env_value("LANGCHAIN_LLM_PROVIDER", "helix"),
             ollama_base_url=get_env_value("OLLAMA_BASE_URL", "http://localhost:11434"),

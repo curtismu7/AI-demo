@@ -367,48 +367,6 @@ class TestMCPServerConfigs:
             assert configs["another"]["capabilities"] == ["read"]
             assert configs["another"]["auth_required"] is False
 
-class TestAguiEnabledConfig:
-    """Tests for agui_enabled configuration flag (Phase 1.3)."""
-
-    def test_agui_enabled_defaults_false(self):
-        """agui_enabled should default to False."""
-        env_vars = {
-            "ENVIRONMENT": "development",
-            "PINGONE_BASE_URL": "https://test.forgeblocks.com",
-            "PINGONE_CLIENT_REGISTRATION_ENDPOINT": "https://test.forgeblocks.com/register",
-            "PINGONE_TOKEN_ENDPOINT": "https://test.forgeblocks.com/token",
-            "PINGONE_AUTHORIZATION_ENDPOINT": "https://test.forgeblocks.com/auth",
-            "PINGONE_REDIRECT_URI": "http://localhost:8080/callback",
-            "ENCRYPTION_MASTER_KEY": "test-master-key-32-characters-long",
-            "ENCRYPTION_SALT": "test-salt-16-char",
-        }
-
-        with patch.dict(os.environ, env_vars, clear=True):
-            manager = ConfigManager()
-            config = manager.load_config()
-
-            assert config.langchain.agui_enabled is False
-
-    def test_agui_enabled_can_be_enabled(self):
-        """agui_enabled should be True when LANGCHAIN_AGUI_ENABLED=true."""
-        env_vars = {
-            "ENVIRONMENT": "development",
-            "LANGCHAIN_AGUI_ENABLED": "true",
-            "PINGONE_BASE_URL": "https://test.forgeblocks.com",
-            "PINGONE_CLIENT_REGISTRATION_ENDPOINT": "https://test.forgeblocks.com/register",
-            "PINGONE_TOKEN_ENDPOINT": "https://test.forgeblocks.com/token",
-            "PINGONE_AUTHORIZATION_ENDPOINT": "https://test.forgeblocks.com/auth",
-            "PINGONE_REDIRECT_URI": "http://localhost:8080/callback",
-            "ENCRYPTION_MASTER_KEY": "test-master-key-32-characters-long",
-            "ENCRYPTION_SALT": "test-salt-16-char",
-        }
-
-        with patch.dict(os.environ, env_vars, clear=True):
-            manager = ConfigManager()
-            config = manager.load_config()
-
-            assert config.langchain.agui_enabled is True
-
 
 class TestSkipTokenSignatureValidationGuard:
     """Tests for SKIP_TOKEN_SIGNATURE_VALIDATION production guard (Phase 279)."""
