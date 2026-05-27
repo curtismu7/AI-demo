@@ -368,6 +368,7 @@ class TestMCPServerConfigs:
             assert configs["another"]["auth_required"] is False
 
 
+
 class TestSkipTokenSignatureValidationGuard:
     """Tests for SKIP_TOKEN_SIGNATURE_VALIDATION production guard (Phase 279)."""
 
