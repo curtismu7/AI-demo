@@ -51,7 +51,7 @@ describe("AccountsTable", () => {
 
 describe("MessageContent", () => {
   test("uses terminology.accounts as the first column header when rendering account rows", () => {
-    const text = "\u{1f3e6} Checking Order (****6321) — $5,000.00 USD";
+    const text = 'Checking Order (****6321) — $5,000.00 USD\n\nSavings Order (****7890) — $8,500.00 USD';
     render(<MessageContent text={text} terminology={{ account: "Order", accounts: "My Orders", balance: "Reward Points" }} />);
     expect(screen.getByRole("columnheader", { name: /my orders/i })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: /reward points/i })).toBeInTheDocument();

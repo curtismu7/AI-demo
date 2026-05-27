@@ -959,6 +959,7 @@ export function formatResult(result, terminology) {
   // Accounts list
   if (r.accounts) {
     return r.accounts
+      .filter(Boolean)
       .map((a) => {
         // Use the actual account type from the server — vertical-seeded accounts already
         // carry the correct domain type (e.g. "Rewards Points", "Pro Member", "Primary Care").
@@ -967,7 +968,7 @@ export function formatResult(result, terminology) {
         const displayType = rawType || termAccount;
         const num = a.accountNumber || a.account_number || "";
         const name = (!terminology && a.name && a.name !== a.id)
-          ? a.name
+          ? `${a.name} (${num || "—"})`
           : `${displayType} (${num || "—"})`;
 
         return `${name} — ${formatCurrency(a.balance)} ${a.currency || "USD"}`;
@@ -1241,7 +1242,8 @@ function ToolProgressChips({ steps }) {
 
 export function MessageContent({ text, isTokenEvent, terminology }) {
   // Detect and format account data as tables (remove emojis)
-  const accountPattern = /🏦\s+([^(]+)\s*\(([^)]+)\)\s*—\s*([^\n]+)/gm;
+  // Matches lines emitted by formatResult: "Type (****NNNN) — $X.XX USD"
+  const accountPattern = /^(.+?)\s*\(([^)]+)\)\s*—\s*(\$[\d,]+\.\d{2}(?:\s+\w+)?)\s*$/gm;
   const accountMatches = [...text.matchAll(accountPattern)];
 
   if (accountMatches.length > 0) {
