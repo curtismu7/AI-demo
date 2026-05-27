@@ -87,8 +87,8 @@ export function useActivityLog({ enabled = false } = {}) {
     });
   }, []);
 
-  const setAllFilters = useCallback((enabled) => {
-    setActiveFiltersState(enabled ? new Set(ALL_CATEGORIES) : new Set());
+  const setAllFilters = useCallback((enabledArg) => {
+    setActiveFiltersState(enabledArg ? new Set(ALL_CATEGORIES) : new Set());
   }, []);
 
   // Apply category filter for display.
