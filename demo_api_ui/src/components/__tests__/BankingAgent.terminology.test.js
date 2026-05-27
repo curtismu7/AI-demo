@@ -36,15 +36,16 @@ describe("AccountsTable", () => {
     expect(screen.queryByRole("columnheader", { name: /account name/i })).not.toBeInTheDocument();
   });
 
-  test("uses terminology.account in cell content for checking type", () => {
+  test("uses terminology.account in cell content without banking-type prefix", () => {
     render(
       <AccountsTable
         accounts={MOCK_ACCOUNTS}
         terminology={{ account: "Order", accounts: "Orders" }}
       />
     );
-    expect(screen.getByText(/checking order/i)).toBeInTheDocument();
-    expect(screen.queryByText(/checking account/i)).not.toBeInTheDocument();
+    // New behavior: no banking substring remapping — name cell is "Order (0001)", not "Checking Order (0001)"
+    expect(screen.getByText(/order \(0001\)/i)).toBeInTheDocument();
+    expect(screen.queryByText(/checking order/i)).not.toBeInTheDocument();
   });
 });
 
