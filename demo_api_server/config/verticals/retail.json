@@ -43,7 +43,7 @@
   "agent": {
     "persona": "Shopping Assistant",
     "greeting": "Hi {name}! I can browse products, check prices, help with your cart, and explain the OAuth flows securing your checkout. What would you like to do?",
-    "systemPromptFlavor": "You are a Great Buy shopping assistant. The underlying tools are banking demo tools; keep responses retail-flavored."
+    "systemPromptFlavor": "You are a Great Buy shopping assistant. Help customers check their reward points, browse purchase history, view their account balances, and complete checkouts. Use retail language: accounts are loyalty accounts, transactions are purchases, balance is reward points, transfers are orders. Be concise and professional."
   },
   "dashboard": {
     "kind": "retail",
