@@ -1070,11 +1070,7 @@ export function AccountsTable({ accounts, terminology }) {
   if (!accounts?.length)
     return <p className="bar-rp-empty">No accounts found.</p>;
 
-  // Helper function to generate friendly account names.
-  // Skip account.name when vertical terminology is active — server-stored names
-  // are banking-flavoured and should not override the vertical's terminology.
   const getFriendlyAccountName = (account) => {
-    // Use server-stored name for banking vertical (no terminology overlay)
     if (!terminology && account.name && account.name !== account.id) {
       return account.name;
     }
@@ -4843,15 +4839,12 @@ export default function BankingAgent({
       }
 
       if (resultType) {
-        const titleMap = {
-          accounts:      terminology?.accounts     || "Accounts",
-          transactions:  terminology?.transactions || "Recent Transactions",
-          balance:       terminology?.balance      || "Balance",
-          confirm: `${label} confirmed`,
-        };
+        const title = resultType === "confirm"
+          ? `${label} confirmed`
+          : buildResultsPanelTitle(resultType, terminology);
         setResultPanel({
           type: resultType,
-          title: titleMap[resultType],
+          title,
           data: resultData,
           terminology,
         });
@@ -6407,18 +6400,11 @@ export default function BankingAgent({
           if (!data?.accounts?.length) return;
           const fresh = data.accounts.map(normalizeAccountRow);
           setLiveAccounts(fresh);
-          if (currentPanel?.type === "accounts") {
-            setResultPanel({
-              type: "accounts",
-              title: terminology?.accounts || "Accounts",
-              data: fresh,
-              terminology,
-            });
-          } else if (currentPanel?.type === "balance") {
+          if (currentPanel?.type === "accounts" || currentPanel?.type === "balance") {
             // Switch to full accounts view so all updated balances are visible
             setResultPanel({
               type: "accounts",
-              title: terminology?.accounts || "Accounts",
+              title: buildResultsPanelTitle("accounts", terminology),
               data: fresh,
               terminology,
             });
