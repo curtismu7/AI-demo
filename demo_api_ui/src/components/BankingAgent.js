@@ -960,40 +960,17 @@ export function formatResult(result, terminology) {
   if (r.accounts) {
     return r.accounts
       .map((a) => {
-        // Normalise field names — MCP server uses camelCase, local tools may use snake_case
-        const type = (
-          a.accountType ||
-          a.account_type ||
-          a.type ||
-          ""
-        ).toLowerCase();
+        // Use the actual account type from the server — vertical-seeded accounts already
+        // carry the correct domain type (e.g. "Rewards Points", "Pro Member", "Primary Care").
+        // For banking vertical (no terminology), fall back to the stored display name.
+        const rawType = a.accountType || a.account_type || a.type || "";
+        const displayType = rawType || termAccount;
         const num = a.accountNumber || a.account_number || "";
-        // When vertical terminology is active, derive name from type so server-stored
-        // banking names ("Checking Account") don't leak through on other verticals.
-        const name =
-          (!terminology && a.name && a.name !== a.id)
-            ? a.name
-            : type.includes("check")
-              ? `Checking ${termAccount}`
-              : type.includes("sav")
-                ? `Savings ${termAccount}`
-                : type.includes("loan")
-                  ? `Loan ${termAccount}`
-                  : type.includes("crd") || type.includes("credit")
-                    ? `Credit ${termAccount}`
-                    : termAccount;
+        const name = (!terminology && a.name && a.name !== a.id)
+          ? a.name
+          : `${displayType} (${num || "—"})`;
 
-        // Show only basic account info — IBAN/SWIFT/routing are revealed only via "View Sensitive Account Details"
-        return (
-          "\u{1f3e6} " +
-          name +
-          " (" +
-          (num || "—") +
-          ") — " +
-          formatCurrency(a.balance) +
-          " " +
-          (a.currency || "USD")
-        );
+        return `${name} — ${formatCurrency(a.balance)} ${a.currency || "USD"}`;
       })
       .join("\n\n");
   }

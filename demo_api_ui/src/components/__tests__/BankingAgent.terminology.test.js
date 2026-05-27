@@ -111,3 +111,50 @@ describe("buildResultsPanelTitle — transactions type uses terminology (Issue 3
     ).toBe("My Purchases");
   });
 });
+
+describe('formatResult accounts branch — vertical types render verbatim', () => {
+  const retailTerminology = {
+    account: 'Account',
+    accounts: 'Orders',
+    balance: 'Balance',
+  };
+
+  const retailResult = {
+    content: [{ text: JSON.stringify({
+      accounts: [
+        { id: 'acc1', accountType: 'Rewards Points', accountNumber: '****1234', balance: 4200, currency: 'USD' },
+        { id: 'acc2', accountType: 'Store Credit',   accountNumber: '****5678', balance: 150,  currency: 'USD' },
+      ]
+    }) }]
+  };
+
+  it('renders Rewards Points type for retail without remapping to banking names', () => {
+    const text = formatResult(retailResult, retailTerminology);
+    expect(text).toContain('Rewards Points');
+    expect(text).not.toMatch(/checking/i);
+    expect(text).not.toMatch(/savings/i);
+  });
+
+  it('renders Store Credit type for retail', () => {
+    const text = formatResult(retailResult, retailTerminology);
+    expect(text).toContain('Store Credit');
+  });
+
+  it('does not emit the 🏦 emoji', () => {
+    const text = formatResult(retailResult, retailTerminology);
+    expect(text).not.toContain('🏦');
+  });
+
+  const bankingResult = {
+    content: [{ text: JSON.stringify({
+      accounts: [
+        { id: 'acc1', accountType: 'checking', accountNumber: '****9999', balance: 2500, currency: 'USD' },
+      ]
+    }) }]
+  };
+
+  it('renders checking type verbatim for banking vertical', () => {
+    const text = formatResult(bankingResult, undefined);
+    expect(text).toContain('checking');
+  });
+});
