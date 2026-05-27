@@ -839,6 +839,7 @@ app.use('/api/banking-agent', bankingAgentNlRoutes);
 // Authenticated agent routes: /init, /message, /consent — require OAuth session.
 app.use('/api/banking-agent', bankingAgentRoutes);
 app.use('/api/agent', agentRunRoutes); // AG-UI Step 2: /api/agent/run
+app.use('/api/agent/langchain', require('./routes/agentLangchainRunRoute')); // AG-UI Phase 2.3: LangChain /run
 app.use('/api/langchain', langchainConfigRoutes);
 app.use('/api/langchain/lmstudio', lmstudioRoutes);
 app.use('/api/authorize', authorizeRoutes);
