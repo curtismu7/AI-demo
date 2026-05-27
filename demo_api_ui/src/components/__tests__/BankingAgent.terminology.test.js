@@ -10,7 +10,7 @@
 import React from "react";
 import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
-import { AccountsTable, TransactionsTable, buildResultsPanelTitle, formatResult, MessageContent, buildClarificationQuestions } from "../BankingAgent";
+import { AccountsTable, buildClarificationQuestions, buildResultsPanelTitle, formatResult, MessageContent, ResultsPanel, TransactionsTable } from "../BankingAgent";
 
 describe("buildResultsPanelTitle", () => {
   test("returns terminology.accounts for accounts type when terminology provided", () => {
@@ -196,5 +196,26 @@ describe('TransactionsTable vertical rendering', () => {
     render(<TransactionsTable transactions={bankingTxns} terminology={undefined} />);
     expect(screen.getByText('Type')).toBeInTheDocument();
     expect(screen.getByText('Amount')).toBeInTheDocument();
+  });
+});
+
+describe('Balance panel label uses vertical terminology', () => {
+  it('buildResultsPanelTitle returns "Reward Points" for balance with sporting-goods terminology', () => {
+    expect(buildResultsPanelTitle('balance', { balance: 'Reward Points' })).toBe('Reward Points');
+  });
+
+  it('buildResultsPanelTitle returns "Coverage" for balance with healthcare terminology', () => {
+    expect(buildResultsPanelTitle('balance', { balance: 'Coverage' })).toBe('Coverage');
+  });
+
+  it('buildResultsPanelTitle falls back to "Balance" with no terminology', () => {
+    expect(buildResultsPanelTitle('balance', undefined)).toBe('Balance');
+  });
+
+  it('ResultsPanel renders terminology.balance as the balance label instead of hardcoded "Balance"', () => {
+    const panel = { type: 'balance', title: 'Points Summary', data: 1500, terminology: { balance: 'Reward Points' } };
+    render(<ResultsPanel panel={panel} onClose={() => {}} />);
+    expect(screen.getByText('Reward Points')).toBeInTheDocument();
+    expect(screen.queryByText('Balance')).not.toBeInTheDocument();
   });
 });

@@ -1401,7 +1401,7 @@ export function MessageContent({ text, isTokenEvent, terminology }) {
   );
 }
 
-function ResultsPanel({ panel, onClose, style }) {
+export function ResultsPanel({ panel, onClose, style }) {
   const [size, setSize] = useState({ width: 340, height: 420 });
   const resizingRef = useRef(null);
 
@@ -1472,7 +1472,7 @@ function ResultsPanel({ panel, onClose, style }) {
         )}
         {panel.type === "balance" && (
           <div className="bar-rp-balance">
-            <span className="bar-rp-balance-label">Balance</span>
+            <span className="bar-rp-balance-label">{panel.terminology?.balance || "Balance"}</span>
             <span className="bar-rp-balance-value">
               {formatCurrency(panel.data)}
             </span>
@@ -6006,7 +6006,7 @@ export default function BankingAgent({
           withdraw:
             "How much would you like to withdraw, and from which account?",
           transfer:
-            "Which accounts would you like to transfer between, and how much? (e.g. 'Transfer $200 from checking to savings')",
+            `Which accounts would you like to ${(terminology?.highValueAction || "Transfer").toLowerCase()} between, and how much?`,
         };
         addMessage("assistant", questions[action]);
         // Remember WHAT we asked so the next user message can fill the slot.
