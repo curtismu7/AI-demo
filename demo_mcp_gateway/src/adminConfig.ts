@@ -33,6 +33,7 @@ export const ADMIN_CONFIG_ALLOWED_KEYS: Array<keyof GatewayConfig> = [
   'mcpOlbWsUrl', 'mcpInvestWsUrl',
   'mcpOlbResourceUri', 'mcpInvestResourceUri',
   'pingAuthorizeEndpoint', 'pingAuthorizeWorkerId',
+  'p1azEnabled',
   'hitlServiceUrl',
   'devBypass',
 ];
@@ -53,6 +54,7 @@ function safeView(config: GatewayConfig): Record<string, unknown> {
     mcpInvestResourceUri:  config.mcpInvestResourceUri,
     pingAuthorizeEndpoint: config.pingAuthorizeEndpoint,
     pingAuthorizeWorkerId: config.pingAuthorizeWorkerId,
+    p1azEnabled:           config.p1azEnabled,
     hitlServiceUrl:        config.hitlServiceUrl,
     devBypass:             config.devBypass,
     mcpServerPassthrough:  config.mcpServerPassthrough,

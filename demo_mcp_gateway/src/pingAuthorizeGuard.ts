@@ -26,7 +26,7 @@ export async function guardToolsList(
   decoded: DecodedGatewayToken,
   config: GatewayConfig,
 ): Promise<AuthzDecision> {
-  if (!config.pingAuthorizeEndpoint || !config.pingAuthorizeWorkerId) {
+  if (!config.p1azEnabled || !config.pingAuthorizeEndpoint || !config.pingAuthorizeWorkerId) {
     return { permitted: true };
   }
 
@@ -75,10 +75,10 @@ export async function guardToolCall(
     } catch { /* malformed */ }
   }
 
-  // No PingAuthorize configured — apply the local scope decision so the WS
+  // No P1AZ configured or flag off — apply the local scope decision so the WS
   // transport behaves IDENTICALLY to the HTTP transport
   // (PingOneAuthorizeClient.evaluate) and to a wired PingOne Authorize policy.
-  if (!config.pingAuthorizeEndpoint || !config.pingAuthorizeWorkerId) {
+  if (!config.p1azEnabled || !config.pingAuthorizeEndpoint || !config.pingAuthorizeWorkerId) {
     const local = evaluateScopeDecisionLocally(toolName, decoded.scope);
     if (local.decision === 'DENY') {
       return { permitted: false, reason: local.reason };

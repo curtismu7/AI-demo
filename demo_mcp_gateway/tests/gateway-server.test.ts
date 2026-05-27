@@ -40,8 +40,11 @@ const stubConfig: GatewayConfig = {
   mcpInvestResourceUri: 'https://mcp-invest.example.com',
   pingAuthorizeEndpoint: '',
   pingAuthorizeWorkerId: '',
+  p1azEnabled: false,
   hitlServiceUrl: '',
   introspectionEndpoint: '',
+  introspectionClientId: '',
+  introspectionClientSecret: '',
   devBypass: false,
   // Phase 266 fields
   demoApiKeyServiceKey: 'demo-api-key-0000',

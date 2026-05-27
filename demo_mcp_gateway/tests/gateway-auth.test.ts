@@ -59,8 +59,11 @@ const stubConfig: GatewayConfig = {
   mcpInvestResourceUri: INVEST_AUD,
   pingAuthorizeEndpoint: 'https://pingauthorize.example.com',
   pingAuthorizeWorkerId: 'worker-01',
+  p1azEnabled: true,
   hitlServiceUrl: '',
   introspectionEndpoint: '',
+  introspectionClientId: '',
+  introspectionClientSecret: '',
   devBypass: false,
   // Phase 266 fields
   demoApiKeyServiceKey: 'demo-api-key-0000',
@@ -79,6 +82,7 @@ const stubConfigNoAuthz: GatewayConfig = {
   ...stubConfig,
   pingAuthorizeEndpoint: '', // no PingAuthorize — permit all
   pingAuthorizeWorkerId: '',
+  p1azEnabled: false,
 };
 
 function decodedToken(overrides: Partial<DecodedGatewayToken> = {}): DecodedGatewayToken {
@@ -212,7 +216,8 @@ describe('PingOneAuthorizeClient', () => {
 
   it('permits all when PingAuthorize is not configured', async () => {
     const client = new PingOneAuthorizeClient(stubConfigNoAuthz);
-    const result = await client.evaluate(decodedToken(), 'tools/list');
+    // Use plain scope names that match the scope topology (generic naming).
+    const result = await client.evaluate(decodedToken({ scope: 'read write' }), 'tools/list');
     expect(result.decision).toBe('PERMIT');
     expect(mockedAxios.post).not.toHaveBeenCalled();
   });
@@ -414,8 +419,9 @@ describe('buildAuthorizeMcpRequest middleware', () => {
 
   it('no-authz config → permit all, forwards original bearer token unchanged', async () => {
     // No PingAuthorize configured — no exchange, bearer forwarded as-is.
+    // Use plain scope names that match the scope topology (generic naming).
     McpTokenExchangeClient.clearCache();
-    const NO_AUTHZ_BEARER = makeToken('user-123', GATEWAY_AUD);
+    const NO_AUTHZ_BEARER = makeToken('user-123', GATEWAY_AUD, { scope: 'read write' });
     const noAuthzMiddleware = buildAuthorizeMcpRequest(stubConfigNoAuthz);
     const body = mcpBody('tools/list');
     const { req: req2, res: res2 } = mockReqRes();

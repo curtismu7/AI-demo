@@ -36,6 +36,7 @@ function cfgWith(secret: string): GatewayConfig {
     mcpInvestResourceUri: 'https://mcp-invest.example.com',
     pingAuthorizeEndpoint: '',
     pingAuthorizeWorkerId: '',
+    p1azEnabled: false,
     hitlServiceUrl: '',
     introspectionEndpoint: '',
     devBypass: false,

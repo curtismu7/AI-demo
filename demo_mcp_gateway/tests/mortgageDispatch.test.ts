@@ -34,6 +34,7 @@ const CONFIG = {
   // PingAuthorize intentionally NOT configured — exercises the local decision.
   pingAuthorizeEndpoint: '',
   pingAuthorizeWorkerId: '',
+  p1azEnabled: false,
   gatewayResourceUri: 'https://gateway.example.com',
 } as unknown as GatewayConfig;
 

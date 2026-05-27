@@ -24,6 +24,10 @@ export interface GatewayConfig {
   // Optional PingAuthorize endpoint for tools/list guard
   pingAuthorizeEndpoint: string;
   pingAuthorizeWorkerId: string;
+  // Feature flag — when false, P1AZ is never called regardless of endpoint config.
+  // Set MCP_GW_P1AZ_ENABLED=true to activate live P1AZ policy decisions.
+  // Defaults to false so credentials can be configured without activating the feature.
+  p1azEnabled: boolean;
   // Optional HITL service URL — when set, INDETERMINATE decisions trigger a challenge
   hitlServiceUrl: string;
   // Optional RFC 7662 introspection endpoint
@@ -135,6 +139,7 @@ export function loadConfig(): GatewayConfig {
       optional('MCP_INVEST_AUDIENCE', 'mcp-invest.ping.demo')),
     pingAuthorizeEndpoint: optional('PINGAUTHORIZE_ENDPOINT', ''),
     pingAuthorizeWorkerId: optional('PINGAUTHORIZE_WORKER_ID', ''),
+    p1azEnabled: process.env.MCP_GW_P1AZ_ENABLED === 'true',
     hitlServiceUrl: optional('HITL_SERVICE_URL', ''),
     introspectionEndpoint: optional('GW_INTROSPECTION_ENDPOINT',
       optional('PINGONE_INTROSPECTION_ENDPOINT', '')),
