@@ -16,11 +16,11 @@ function severityIcon(severity) {
   return '✅';
 }
 
-function EventRow({ event }) {
+const EventRow = React.memo(function EventRow({ event }) {
   const [expanded, setExpanded] = useState(false);
 
   const ts = new Date(event.timestamp);
-  const timeStr = isNaN(ts)
+  const timeStr = isNaN(ts.getTime())
     ? '--:--:--'
     : ts.toTimeString().slice(0, 8); // HH:mm:ss
 
@@ -33,7 +33,7 @@ function EventRow({ event }) {
 
   return (
     <div
-      className={`alp-row${expanded ? ' alp-row--expanded' : ''}`}
+      className={`alp-row${detail ? ' alp-row--expandable' : ''}${expanded ? ' alp-row--expanded' : ''}`}
       onClick={() => detail && setExpanded((v) => !v)}
     >
       <div className="alp-row-main">
@@ -58,7 +58,7 @@ function EventRow({ event }) {
       )}
     </div>
   );
-}
+});
 
 export default function ActivityLogPanel({ enabled }) {
   const {
@@ -74,16 +74,15 @@ export default function ActivityLogPanel({ enabled }) {
     resetNewCount,
   } = useActivityLog({ enabled });
 
-  // Reset unread count whenever this panel becomes enabled.
-  const resetRef = useRef(resetNewCount);
-  resetRef.current = resetNewCount;
+  // Reset pause count whenever this panel becomes active.
   useEffect(() => {
-    if (enabled) resetRef.current();
-  }, [enabled]);
+    if (enabled) resetNewCount();
+  }, [enabled, resetNewCount]);
 
-  // Track connection health: optimistic "live" until no events for >35s.
-  const [isLive, setIsLive] = useState(true);
-  const lastEventTime = useRef(Date.now());
+  // Track connection health: starts false, goes live on first event, drops
+  // to reconnecting if no events for >35s.
+  const [isLive, setIsLive] = useState(false);
+  const lastEventTime = useRef(null);
 
   useEffect(() => {
     if (events.length > 0) {
@@ -95,7 +94,9 @@ export default function ActivityLogPanel({ enabled }) {
   useEffect(() => {
     if (!enabled) return;
     const id = setInterval(() => {
-      setIsLive(Date.now() - lastEventTime.current < 35000);
+      if (lastEventTime.current !== null) {
+        setIsLive(Date.now() - lastEventTime.current < 35000);
+      }
     }, 5000);
     return () => clearInterval(id);
   }, [enabled]);
@@ -108,20 +109,20 @@ export default function ActivityLogPanel({ enabled }) {
       <div className="alp-toolbar">
         <span className={`alp-status ${isLive ? 'alp-status--live' : 'alp-status--reconnecting'}`}>
           <span className="alp-status-dot" />
-          {isLive ? 'Live' : 'Reconnecting…'}
+          {isLive ? 'Live' : 'Connecting…'}
         </span>
 
         {isPaused ? (
-          <button className="alp-btn" onClick={resume}>
+          <button type="button" className="alp-btn" onClick={resume}>
             Resume{newCount > 0 ? ` (+${newCount})` : ''}
           </button>
         ) : (
-          <button className="alp-btn" onClick={pause}>
+          <button type="button" className="alp-btn" onClick={pause}>
             Pause
           </button>
         )}
 
-        <button className="alp-btn" onClick={clear}>
+        <button type="button" className="alp-btn" onClick={clear}>
           Clear
         </button>
       </div>
@@ -129,6 +130,7 @@ export default function ActivityLogPanel({ enabled }) {
       {/* Category filter pills */}
       <div className="alp-filters">
         <button
+          type="button"
           className="alp-filter-all"
           onClick={() => setAllFilters(!allOn)}
         >
@@ -136,6 +138,7 @@ export default function ActivityLogPanel({ enabled }) {
         </button>
         {ALL_CATEGORIES.map((cat) => (
           <button
+            type="button"
             key={cat}
             className={`alp-pill alp-cat--${cat}${activeFilters.has(cat) ? '' : ' alp-pill--off'}`}
             onClick={() => toggleFilter(cat)}
@@ -156,7 +159,7 @@ export default function ActivityLogPanel({ enabled }) {
         ) : (
           events.map((event) => (
             <EventRow
-              key={event.id || `${event.timestamp}-${event.category}`}
+              key={event.id || `${event.timestamp}-${event.category}-${event.message}`}
               event={event}
             />
           ))

@@ -7,10 +7,10 @@
  * - Per-category filter: 15 known categories, all active by default.
  * - Pause: stops prepending to visible list but keeps SSE open.
  * - Clear: empties visible list; new events continue.
- * - newCount: events received while isPaused or tab is not focused (for badge).
+ * - newCount: events received while isPaused (shown in Resume button label).
  *
  * @param {{ enabled: boolean }} opts
- *   enabled — connect SSE only when the modal is open AND this tab is active.
+ *   enabled — connect SSE when the modal is open (true keeps stream alive across tab switches).
  */
 import { useState, useCallback, useRef } from 'react';
 import { useAppEventsSSE } from './useAppEventsSSE';
@@ -49,6 +49,7 @@ export function useActivityLog({ enabled = false } = {}) {
 
   const handleEvent = useCallback((event) => {
     if (isPausedRef.current) {
+      // Only count while paused — used by Resume button label.
       setNewCount((n) => n + 1);
       return;
     }
@@ -56,7 +57,6 @@ export function useActivityLog({ enabled = false } = {}) {
       const next = [event, ...prev];
       return next.length > MAX_EVENTS ? next.slice(0, MAX_EVENTS) : next;
     });
-    setNewCount((n) => n + 1);
   }, []);
 
   useAppEventsSSE(handleEvent, { enabled });

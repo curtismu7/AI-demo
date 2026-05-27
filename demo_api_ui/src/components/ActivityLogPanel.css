@@ -150,10 +150,11 @@
   display: flex;
   flex-direction: column;
   border-bottom: 1px solid #f1f5f9;
-  cursor: pointer;
+  cursor: default;
   transition: background 0.1s;
 }
-.alp-row:hover { background: #f8fafc; }
+.alp-row--expandable { cursor: pointer; }
+.alp-row--expandable:hover { background: #f8fafc; }
 .alp-row--expanded { background: #f8fafc; }
 
 .alp-row-main {
