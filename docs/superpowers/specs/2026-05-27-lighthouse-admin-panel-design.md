@@ -43,7 +43,7 @@ Admin UI
 
 ### Scheduler
 
-A `node-cron` job registered at BFF startup. Default schedule: `0 0 * * *` (midnight daily). Configurable via `LIGHTHOUSE_CRON` env var read through `configStore` — changeable at runtime via the `/config` UI without restart. Calls the same `runLighthouseAudit()` function used by the manual route.
+A `node-cron` job registered at BFF startup. Default schedule: `0 0 * * *` (midnight daily). Configurable via `LIGHTHOUSE_CRON` env var read through `configStore` at startup — schedule changes take effect on next BFF restart. Calls the same `runLighthouseAudit()` function used by the manual route.
 
 ---
 
@@ -101,7 +101,7 @@ New "Performance" tab in the Admin sidebar nav. Uses the existing `AdminSubPageS
 | Audit times out (>60s) | `504` — timeout message | Inline error |
 | LMDB write fails | Result returned to UI, not persisted; `console.error` logged | No UI indication — non-fatal |
 | Scheduled run fails | Logged to console, process continues | — |
-| Concurrent run attempted | Button disabled while running — UI prevents this | Disabled state |
+| Concurrent run attempted | `lighthouseService` holds an in-memory `isRunning` flag; returns `429` if already running | Button disabled while running (UI); inline error if API returns 429 |
 
 ---
 
