@@ -7,6 +7,9 @@ const VERTICALS_DIR = path.join(__dirname, '..', 'config', 'verticals');
 // In-memory cache of loaded vertical configs
 let verticalCache = null;
 
+// Verticals that are only used internally — never surfaced in the switcher dropdown.
+const INTERNAL_VERTICALS = new Set(['admin']);
+
 /**
  * Load all vertical config JSON files from config/verticals/.
  */
@@ -47,7 +50,9 @@ function loadVerticals() {
  */
 function listVerticals() {
   const all = loadVerticals();
-  return Object.values(all).map(v => ({
+  return Object.values(all)
+    .filter(v => !INTERNAL_VERTICALS.has(v.id))
+    .map(v => ({
     id: v.id,
     displayName: (v.identity && v.identity.displayName) || v.displayName,
     tagline: (v.identity && v.identity.tagline) || v.tagline,
