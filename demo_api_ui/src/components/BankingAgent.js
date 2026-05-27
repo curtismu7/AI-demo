@@ -20,7 +20,7 @@ import {
 } from "../services/agentAccessConsent";
 import { agentFlowDiagram } from "../services/agentFlowDiagramService";
 import { appendTokenEvents } from "../services/apiTrafficStore";
-import { fetchNlStatus } from "../services/bankingAgentNlService";
+import { fetchNlStatus } from "../services/demoAgentNlService";
 import {
   callMcpTool,
   createDeposit,
@@ -34,7 +34,7 @@ import {
   getMyTransactions,
   refreshOAuthSession,
   sendAgentMessage,
-} from "../services/bankingAgentService";
+} from "../services/demoAgentService";
 import bffAxios from "../services/bffAxios";
 import { getCachedStatus } from "../services/cachedStatusService";
 import { loadPublicConfig } from "../services/configService";
@@ -45,7 +45,7 @@ import {
   notifySuccess,
   toast,
 } from "../utils/appToast";
-import { isBankingAgentFloatingDefaultOpen } from "../utils/bankingAgentFloatingDefaultOpen";
+import { isBankingAgentFloatingDefaultOpen } from "../utils/demoAgentFloatingDefaultOpen";
 import { isPublicMarketingAgentPath } from "../utils/embeddedAgentFabVisibility";
 import AccountDetailsPanel from "./AccountDetailsPanel";
 import AgentConsentModal from "./AgentConsentModal";
@@ -75,7 +75,7 @@ import APP_CONFIG from "../services/appConfig";
 import { useCustomChips } from "../hooks/useCustomChips";
 import AgentModeSelector from "./AgentModeSelector";
 import useLangchainProvider from "../hooks/useLangchainProvider";
-import { claimPendingNl, clampPanelPosition, makeReentrancyGuard, isAbortError, anySignal } from "./bankingAgentSafety";
+import { claimPendingNl, clampPanelPosition, makeReentrancyGuard, isAbortError, anySignal } from "./demoAgentSafety";
 // AG-UI Step 3 — hooks (feature-flagged; only active when ff_agui_enabled=true)
 import { useAgentRun } from "../hooks/useAgentRun";
 import { useAgentState } from "../hooks/useAgentState";

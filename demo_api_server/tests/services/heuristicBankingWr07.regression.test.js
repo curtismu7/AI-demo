@@ -46,7 +46,7 @@ jest.mock('../../services/agentBuilder', () => {
   };
 });
 
-const { processAgentMessage } = require('../../services/bankingAgentLangGraphService');
+const { processAgentMessage } = require('../../services/demoAgentLangGraphService');
 
 describe('WR-07 — heuristic write error handling + description sanitization (regression)', () => {
   beforeEach(() => {

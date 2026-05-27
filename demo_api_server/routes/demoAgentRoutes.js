@@ -11,7 +11,7 @@ const {
   storeConsentRequest,
   recordConsentDecision,
 } = require('../middleware/hitlGatewayMiddleware');
-const { processAgentMessage } = require('../services/bankingAgentLangGraphService');
+const { processAgentMessage } = require('../services/demoAgentLangGraphService');
 const appEventService = require('../services/appEventService');
 const { trackTokenEvent } = require('../services/tokenChainService');
 

@@ -57,7 +57,7 @@ jest.mock("../../context/AgentUiModeContext", () => ({
   }),
 }));
 
-jest.mock("../../services/bankingAgentNlService", () => ({
+jest.mock("../../services/demoAgentNlService", () => ({
   fetchNlStatus: jest
     .fn()
     .mockResolvedValue({ groqConfigured: false, geminiConfigured: false }),
@@ -67,7 +67,7 @@ jest.mock("../../services/bankingAgentNlService", () => ({
   }),
 }));
 
-jest.mock("../../services/bankingAgentService", () => ({
+jest.mock("../../services/demoAgentService", () => ({
   getMyAccounts: jest.fn().mockResolvedValue([]),
   getAccountBalance: jest.fn().mockResolvedValue({ balance: 100 }),
   getMyTransactions: jest.fn().mockResolvedValue([]),
@@ -135,7 +135,7 @@ jest.mock("../BankingAgent.css", () => ({}), { virtual: true });
 // jest.fn().mockResolvedValue() in a factory can be silently cleared; re-arm to be safe.
 beforeEach(() => {
   localStorage.clear();
-  const nlMock = jest.requireMock("../../services/bankingAgentNlService");
+  const nlMock = jest.requireMock("../../services/demoAgentNlService");
   nlMock.fetchNlStatus.mockResolvedValue({
     groqConfigured: false,
     geminiConfigured: false,
@@ -146,7 +146,7 @@ beforeEach(() => {
   });
   const cfgMock = jest.requireMock("../../services/configService");
   cfgMock.loadPublicConfig.mockResolvedValue({});
-  const svcMock = jest.requireMock("../../services/bankingAgentService");
+  const svcMock = jest.requireMock("../../services/demoAgentService");
   svcMock.sendAgentMessage.mockResolvedValue({ success: true, reply: "Done." });
 });
 
@@ -811,7 +811,7 @@ describe("Consent-denied banner visibility", () => {
 describe("Action chip dispatch — MCP tool calls", () => {
   let svcMock;
   beforeEach(() => {
-    svcMock = jest.requireMock("../../services/bankingAgentService");
+    svcMock = jest.requireMock("../../services/demoAgentService");
     svcMock.getMyAccounts.mockClear();
     svcMock.getMyTransactions.mockClear();
     svcMock.getAccountBalance.mockClear();

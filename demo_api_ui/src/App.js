@@ -42,7 +42,7 @@ import ApiTrafficPage from "./components/ApiTrafficPage";
 import AuditPage from "./components/AuditPage";
 import BankingAdminOps from "./components/BankingAdminOps";
 import BankingAgent from "./components/BankingAgent";
-import { resolveEmbeddedFocus } from "./components/bankingAgentSafety";
+import { resolveEmbeddedFocus } from "./components/demoAgentSafety";
 import CIBAPanel from "./components/CIBAPanel";
 import CimdSimPanel from "./components/CimdSimPanel";
 import ClientCredentialsResourcePage from "./components/ClientCredentialsResourcePage";

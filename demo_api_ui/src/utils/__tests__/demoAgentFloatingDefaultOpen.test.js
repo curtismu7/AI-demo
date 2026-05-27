@@ -1,5 +1,5 @@
 // banking_api_ui/src/utils/__tests__/bankingAgentFloatingDefaultOpen.test.js
-import { isBankingAgentFloatingDefaultOpen } from '../bankingAgentFloatingDefaultOpen';
+import { isBankingAgentFloatingDefaultOpen } from '../demoAgentFloatingDefaultOpen';
 
 describe('isBankingAgentFloatingDefaultOpen', () => {
   it('defaults closed on dashboard home routes', () => {

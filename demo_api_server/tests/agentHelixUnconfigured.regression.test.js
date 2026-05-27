@@ -56,7 +56,7 @@ jest.mock('../services/agentMcpTokenService', () => ({
   resolveMcpAccessTokenWithEvents: jest.fn().mockResolvedValue({ token: 'mock-tok', tokenEvents: [] }),
 }));
 
-const { processAgentMessage } = require('../services/bankingAgentLangGraphService');
+const { processAgentMessage } = require('../services/demoAgentLangGraphService');
 const { buildCatalogMessage } = require('../services/nlIntentParser');
 
 describe('processAgentMessage — Helix unconfigured fallback', () => {

@@ -98,9 +98,9 @@ const agentIdentityRoutes = require('./routes/agentIdentity');
 const agentDelegationRoutes = require('./routes/agentDelegation');
 const adminDemoUsersRoutes = require('./routes/adminDemoUsers');
 const mcpDecisionPollingRoutes = require('./routes/mcpDecisionPolling');
-const bankingAgentRoutes = require('./routes/bankingAgentRoutes');
+const demoAgentRoutes = require('./routes/demoAgentRoutes');
 const agentRunRoutes = require('./routes/agentRun');
-const bankingAgentNlRoutes = require('./routes/bankingAgentNl');
+const demoAgentNlRoutes = require('./routes/demoAgentNl');
 const langchainConfigRoutes = require('./routes/langchainConfig');
 const lmstudioRoutes = require('./routes/lmstudio');
 const tokenRoutes = require('./routes/tokens');
@@ -835,11 +835,11 @@ app.use('/api/mfa/test', mfaTestRoutes);
 app.use('/api/agent', agentIdentityRoutes);
 app.use('/api/agent', agentDelegationRoutes);
 app.use('/api/mcp', mcpDecisionPollingRoutes);
-// NL/search routes: public LLM config + NL parsing. Must be mounted BEFORE bankingAgentRoutes
+// NL/search routes: public LLM config + NL parsing. Must be mounted BEFORE demoAgentRoutes
 // so /nl/status, /nl, and /search are handled without agentSessionMiddleware.
-app.use('/api/banking-agent', bankingAgentNlRoutes);
+app.use('/api/banking-agent', demoAgentNlRoutes);
 // Authenticated agent routes: /init, /message, /consent — require OAuth session.
-app.use('/api/banking-agent', bankingAgentRoutes);
+app.use('/api/banking-agent', demoAgentRoutes);
 app.use('/api/agent', agentRunRoutes); // AG-UI Step 2: /api/agent/run
 app.use('/api/agent/langchain', require('./routes/agentLangchainRunRoute')); // AG-UI Phase 2.3: LangChain /run
 app.use('/api/agent', require('./routes/agentConsentRoute')); // AG-UI Phase 4.1: HITL consent

@@ -70,7 +70,7 @@ jest.mock('../services/agentBuilder', () => ({
   MAX_TOOL_ITERATIONS: 5,
 }));
 
-const { processAgentMessage } = require('../services/bankingAgentLangGraphService');
+const { processAgentMessage } = require('../services/demoAgentLangGraphService');
 
 describe('Bug #2 Part C redo — explicit agent-path delegation_action audit', () => {
   beforeEach(() => {

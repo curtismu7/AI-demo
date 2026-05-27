@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAgentUiMode } from '../context/AgentUiModeContext';
 import { isEmbeddedAgentDockRoute } from '../utils/embeddedAgentFabVisibility';
-import { resolveEmbeddedFocus } from './bankingAgentSafety';
+import { resolveEmbeddedFocus } from './demoAgentSafety';
 
 const HEIGHT_KEY = 'embedded_agent_dock_height_px';
 const COLLAPSE_KEY = 'embedded_agent_dock_collapsed';

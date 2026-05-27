@@ -16,7 +16,7 @@ import { agentFlowDiagram } from "./agentFlowDiagramService";
 import { openMcpFlowSse } from "./mcpFlowSseClient";
 import { addMilestone, updateMilestoneStatus } from "./milestonesStore";
 import { createLogger } from "./logger";
-import { anySignal } from "../components/bankingAgentSafety";
+import { anySignal } from "../components/demoAgentSafety";
 
 const log = createLogger("callMcpTool");
 const streamLog = createLogger("parseStreamingResponse");

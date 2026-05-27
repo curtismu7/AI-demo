@@ -42,7 +42,7 @@ jest.mock('../../services/agentReasoningClient', () => ({
 }));
 
 const { MAX_TOOL_ITERATIONS } = require('../../services/agentBuilder');
-const { processAgentMessage } = require('../../services/bankingAgentLangGraphService');
+const { processAgentMessage } = require('../../services/demoAgentLangGraphService');
 
 describe('WR-03 — agent max-iterations termination (regression)', () => {
   beforeEach(() => {

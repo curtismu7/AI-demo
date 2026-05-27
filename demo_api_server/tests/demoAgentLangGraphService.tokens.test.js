@@ -30,7 +30,7 @@ jest.mock('../services/llmProviderResolver', () => ({
 jest.mock('../services/appEventService', () => ({ logEvent: jest.fn() }));
 jest.mock('../data/store', () => ({ getUserById: jest.fn(() => null) }));
 
-const { processAgentMessage } = require('../services/bankingAgentLangGraphService');
+const { processAgentMessage } = require('../services/demoAgentLangGraphService');
 
 describe('bankingAgentLangGraphService tokens', () => {
   beforeEach(() => {

@@ -11,7 +11,7 @@ import {
   resolveEmbeddedFocus,
   isAbortError,
   anySignal,
-} from "../components/bankingAgentSafety";
+} from "../components/demoAgentSafety";
 
 describe("claimPendingNl — atomic single-fire post-OAuth replay (Task 1)", () => {
   beforeEach(() => {

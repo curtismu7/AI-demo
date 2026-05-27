@@ -36,7 +36,7 @@ jest.mock('../../services/agentBuilder', () => {
   };
 });
 
-const { processAgentMessage } = require('../../services/bankingAgentLangGraphService');
+const { processAgentMessage } = require('../../services/demoAgentLangGraphService');
 
 describe('WR-07 — propagation + sanitization via real configStore (integration)', () => {
   beforeEach(() => {

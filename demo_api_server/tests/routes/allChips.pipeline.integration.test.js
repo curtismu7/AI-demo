@@ -34,7 +34,7 @@ function buildNlApp() {
     req.session = { id: 'ci-' + Math.random().toString(36).slice(2, 8), save: (cb) => cb && cb() };
     next();
   });
-  app.use('/api/banking-agent', require('../../routes/bankingAgentNl'));
+  app.use('/api/banking-agent', require('../../routes/demoAgentNl'));
   return app;
 }
 

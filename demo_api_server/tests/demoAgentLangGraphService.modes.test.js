@@ -56,7 +56,7 @@ jest.mock('../services/appEventService', () => ({ logEvent: jest.fn() }));
 const { performTokenExchange } = require('../services/oauthService');
 const { runPlatformLoop } = require('../services/platformAgentRuntime');
 const nlIntentParser = require('../services/nlIntentParser');
-const { processAgentMessage } = require('../services/bankingAgentLangGraphService');
+const { processAgentMessage } = require('../services/demoAgentLangGraphService');
 
 function resetCfg(next = {}) {
   for (const k of Object.keys(_cfg)) delete _cfg[k];

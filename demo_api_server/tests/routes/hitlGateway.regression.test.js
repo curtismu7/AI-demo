@@ -105,7 +105,7 @@ function buildApp({ sessionId = 'test-session-fixed' } = {}) {
     next();
   });
 
-  const router = require('../../routes/bankingAgentRoutes');
+  const router = require('../../routes/demoAgentRoutes');
   app.use('/api/banking-agent', router);
   return app;
 }
