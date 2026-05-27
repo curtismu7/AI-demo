@@ -20,6 +20,7 @@ let _msgId       = 0;      // JSON-RPC id counter
 let _pending     = new Map(); // id → { resolve, reject }
 let _initialized = false;
 let _initPromise = null;
+let _toolsCache  = null;   // cached tools/list result
 
 const TIMEOUT_MS = 30_000;
 
@@ -40,6 +41,7 @@ function _ensureProcess() {
     // Reset state on respawn
     _initialized = false;
     _initPromise  = null;
+    _toolsCache   = null;
     _buffer       = '';
     _msgId        = 0;
     for (const { reject } of _pending.values()) {
@@ -93,6 +95,7 @@ function _ensureProcess() {
         _proc        = null;
         _initialized = false;
         _initPromise  = null;
+        _toolsCache   = null;
         for (const { reject } of _pending.values()) {
             reject(new Error(`pingone-mcp-server exited unexpectedly (code=${code})`));
         }
@@ -104,6 +107,7 @@ function _ensureProcess() {
         _proc        = null;
         _initialized = false;
         _initPromise  = null;
+        _toolsCache   = null;
         for (const { reject: rej } of _pending.values()) {
             rej(new Error(`pingone-mcp-server spawn error: ${err.message}`));
         }
@@ -180,4 +184,17 @@ async function callToolViaStdio(tool, params, accessToken, userSub, correlationI
     return result;
 }
 
-module.exports = { callToolViaStdio };
+/**
+ * List all tools exposed by the PingOne MCP Server.
+ * Result is cached for the lifetime of the process (resets on respawn).
+ * @returns {Promise<Array<{ name: string, description: string, inputSchema: object }>>}
+ */
+async function listTools() {
+    await _ensureInitialized();
+    if (_toolsCache) return _toolsCache;
+    const result = await _send('tools/list', {});
+    _toolsCache = Array.isArray(result?.tools) ? result.tools : [];
+    return _toolsCache;
+}
+
+module.exports = { callToolViaStdio, listTools };
