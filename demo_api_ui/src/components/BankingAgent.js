@@ -170,6 +170,12 @@ const ACTION_GROUPS = {
       desc: "Reason step-by-step through a banking question or decision",
       rfcs: [],
     },
+    {
+      id: "logout",
+      label: "Log Out",
+      desc: "Sign out of your account",
+      rfcs: [],
+    },
   ],
   transaction: [
     {
@@ -208,12 +214,6 @@ const ACTION_GROUPS = {
       id: "query_user",
       label: "Query User by Email",
       desc: "Check if a user exists by email address",
-      rfcs: [],
-    },
-    {
-      id: "logout",
-      label: "Log Out",
-      desc: "Sign out of your account",
       rfcs: [],
     },
   ],
@@ -934,7 +934,9 @@ function formatHttpTrace(trace) {
   return lines.join("\n");
 }
 
-function formatResult(result) {
+export function formatResult(result, terminology) {
+  const termAccount = terminology?.account || "Account";
+  const termBalance = terminology?.balance || "Balance";
   const r = normalizeAgentToolResult(result);
   if (!r) return "No data returned.";
   if (r.error === "hitl_required") {
@@ -966,18 +968,20 @@ function formatResult(result) {
           ""
         ).toLowerCase();
         const num = a.accountNumber || a.account_number || "";
+        // When vertical terminology is active, derive name from type so server-stored
+        // banking names ("Checking Account") don't leak through on other verticals.
         const name =
-          a.name && a.name !== a.id
+          (!terminology && a.name && a.name !== a.id)
             ? a.name
             : type.includes("check")
-              ? "Checking Account"
+              ? `Checking ${termAccount}`
               : type.includes("sav")
-                ? "Savings Account"
+                ? `Savings ${termAccount}`
                 : type.includes("loan")
-                  ? "Loan Account"
+                  ? `Loan ${termAccount}`
                   : type.includes("crd") || type.includes("credit")
-                    ? "Credit Card"
-                    : "Account";
+                    ? `Credit ${termAccount}`
+                    : termAccount;
 
         // Show only basic account info — IBAN/SWIFT/routing are revealed only via "View Sensitive Account Details"
         return (
@@ -1005,7 +1009,7 @@ function formatResult(result) {
   }
   // Balance response
   if (r.balance !== undefined) {
-    return `Balance: ${formatCurrency(r.balance)}`;
+    return `${termBalance}: ${formatCurrency(r.balance)}`;
   }
   // Transaction confirmation (single transaction)
   if (r.transaction_id || r.transactionId || r.id) {
@@ -1038,15 +1042,39 @@ function formatResult(result) {
   return JSON.stringify(r, null, 2);
 }
 
+// ─── Exported terminology helpers (used in tests and internally) ──────────────
+
+/** Returns the appropriate results panel title using vertical terminology. */
+export function buildResultsPanelTitle(resultType, terminology) {
+  if (resultType === "accounts") return terminology?.accounts || "Accounts";
+  if (resultType === "transactions") return terminology?.transactions || "Recent Transactions";
+  if (resultType === "balance") return terminology?.balance || "Balance";
+  return resultType || "Results";
+}
+
+/** Returns the clarification question strings, adjusted for vertical terminology. */
+export function buildClarificationQuestions(terminology) {
+  const termAccounts  = terminology?.accounts       || "accounts";
+  const termHighValue = terminology?.highValueAction || "Transfer";
+  const termTypes     = terminology?.accountTypes    || ["checking", "savings"];
+  return {
+    transfer: `Which ${termAccounts} would you like to ${termHighValue.toLowerCase()} between? (e.g. ${termTypes[0] || "account"} to ${termTypes[1] || "account"})`,
+    accounts: `Which ${termAccounts} would you like to view?`,
+  };
+}
+
+
 // ─── Results Panel (side panel showing rich formatted data next to the agent) ──
 
-function AccountsTable({ accounts }) {
+export function AccountsTable({ accounts, terminology }) {
   if (!accounts?.length)
     return <p className="bar-rp-empty">No accounts found.</p>;
 
-  // Helper function to generate friendly account names
+  // Helper function to generate friendly account names.
+  // Skip account.name when vertical terminology is active — server-stored names
+  // are banking-flavoured and should not override the vertical's terminology.
   const getFriendlyAccountName = (account) => {
-    if (account.name && account.name !== account.id) {
+    if (!terminology && account.name && account.name !== account.id) {
       return account.name;
     }
 
@@ -1058,24 +1086,25 @@ function AccountsTable({ accounts }) {
     const accountNumber = account.account_number || account.id || "";
 
     // Create friendly name based on type and number
+    const accountLabel = terminology?.account || "Account";
     if (accountType === "checking" || accountType.includes("chk")) {
       return accountNumber
-        ? `Checking Account (${accountNumber.slice(-4)})`
-        : "Checking Account";
+        ? `Checking ${accountLabel} (${accountNumber.slice(-4)})`
+        : `Checking ${accountLabel}`;
     } else if (accountType === "savings" || accountType.includes("sav")) {
       return accountNumber
-        ? `Savings Account (${accountNumber.slice(-4)})`
-        : "Savings Account";
+        ? `Savings ${accountLabel} (${accountNumber.slice(-4)})`
+        : `Savings ${accountLabel}`;
     } else if (accountType === "credit" || accountType.includes("crd")) {
       return accountNumber
-        ? `Credit Card (${accountNumber.slice(-4)})`
-        : "Credit Card";
+        ? `Credit ${accountLabel} (${accountNumber.slice(-4)})`
+        : `Credit ${accountLabel}`;
     } else if (accountType === "investment" || accountType.includes("inv")) {
       return accountNumber
-        ? `Investment Account (${accountNumber.slice(-4)})`
-        : "Investment Account";
+        ? `Investment ${accountLabel} (${accountNumber.slice(-4)})`
+        : `Investment ${accountLabel}`;
     } else {
-      return accountNumber ? `Account (${accountNumber.slice(-4)})` : "Account";
+      return accountNumber ? `${accountLabel} (${accountNumber.slice(-4)})` : accountLabel;
     }
   };
 
@@ -1084,14 +1113,14 @@ function AccountsTable({ accounts }) {
       <thead>
         <tr>
           <th>Type</th>
-          <th>Account Name</th>
-          <th>Balance</th>
+          <th>{(terminology?.account || "Account")} Name</th>
+          <th>{terminology?.balance || "Balance"}</th>
         </tr>
       </thead>
       <tbody>
         {accounts.map((a, i) => (
           <tr key={a.account_number || a.id || i}>
-            <td>{a.account_type || a.type || "Account"}</td>
+            <td>{a.account_type || a.type || (terminology?.account || "Account")}</td>
             <td>
               <span className="bar-rp-account-name">
                 {getFriendlyAccountName(a)}
@@ -1260,7 +1289,7 @@ function ToolProgressChips({ steps }) {
   );
 }
 
-function MessageContent({ text, isTokenEvent }) {
+export function MessageContent({ text, isTokenEvent, terminology }) {
   // Detect and format account data as tables (remove emojis)
   const accountPattern = /🏦\s+([^(]+)\s*\(([^)]+)\)\s*—\s*([^\n]+)/gm;
   const accountMatches = [...text.matchAll(accountPattern)];
@@ -1276,9 +1305,9 @@ function MessageContent({ text, isTokenEvent }) {
       <table className="ba-msg-table">
         <thead>
           <tr>
-            <th>Account</th>
+            <th>{terminology?.accounts || "Account"}</th>
             <th>ID</th>
-            <th>Balance</th>
+            <th>{terminology?.balance || "Balance"}</th>
           </tr>
         </thead>
         <tbody>
@@ -1543,7 +1572,7 @@ function ResultsPanel({ panel, onClose, style }) {
 export function buildCustomerGreeting(u, manifestGreeting) {
   const name = (u && (u.firstName || (u.name && u.name.split(' ')[0]))) || 'there';
   if (manifestGreeting) return manifestGreeting.replace('{name}', name);
-  return `Hi ${name}! I can check your balances, move money between accounts, and explain the OAuth flows happening behind the scenes. What would you like to do?`;
+  return `Hi ${name}! I'm your AI assistant. I can help with your accounts, explain the OAuth flows behind the scenes, and more. What would you like to do?`;
 }
 
 function welcomeMessage(
@@ -2112,7 +2141,8 @@ export default function BankingAgent({
     );
     let groupsToRender = { ...ACTION_GROUPS, ...customGroupMap };
     if (isConfigEmbeddedFocus) {
-      groupsToRender = { admin: ACTION_GROUPS.admin || [] };
+      const logoutAction = ACTION_GROUPS.account?.filter((a) => a.id === "logout") || [];
+      groupsToRender = { admin: [...(ACTION_GROUPS.admin || []), ...logoutAction] };
     } else if (effectiveUser?.role !== "admin") {
       const { admin: _admin, ...rest } = groupsToRender;
       groupsToRender = rest;
@@ -2439,24 +2469,29 @@ export default function BankingAgent({
   // Auto-open when the user prop transitions from null → authenticated user
   // (fires on initial mount when App.js has already resolved the session,
   //  and again if the user changes while the component is mounted)
+  // Also replaces a sole initial greeting when themeAgent resolves asynchronously
+  // after the initial render (vertical manifest race condition).
   useEffect(() => {
     if (!user) return;
-    setMessages((prev) =>
-      prev.length === 0
-        ? [
-            {
-              id: Date.now().toString(),
-              role: "assistant",
-              content: welcomeMessage(
-                user,
-                embeddedFocus,
-                brandShortName,
-                themeAgent && themeAgent.greeting,
-              ),
-            },
-          ]
-        : prev,
-    );
+    setMessages((prev) => {
+      const isSoleGreeting =
+        prev.length === 1 &&
+        prev[0].role === "assistant" &&
+        !prev[0].tool;
+      if (prev.length > 0 && !isSoleGreeting) return prev;
+      return [
+        {
+          id: Date.now().toString(),
+          role: "assistant",
+          content: welcomeMessage(
+            user,
+            embeddedFocus,
+            brandShortName,
+            themeAgent && themeAgent.greeting,
+          ),
+        },
+      ];
+    });
   }, [user, embeddedFocus, brandShortName, industryPreset.id, themeAgent]);
 
   // Effective user: prefer prop (App.js state), fall back to self-detected session

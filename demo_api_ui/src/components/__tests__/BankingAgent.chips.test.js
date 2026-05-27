@@ -295,7 +295,6 @@ const CORE_ACTION_LABELS = [
   "Deposit",
   "Withdraw",
   "Transfer",
-  "MCP Tools",
   "Log Out",
 ];
 
@@ -304,7 +303,7 @@ describe("Action chips — logged-in customer", () => {
     renderAgent({ user: customerUser, mode: "inline" });
   });
 
-  it("renders all 8 core action items", () => {
+  it("renders all 7 core action items", () => {
     CORE_ACTION_LABELS.forEach((label) => {
       expect(screen.getByText(label)).toBeInTheDocument();
     });
