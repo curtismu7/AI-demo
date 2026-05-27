@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
+    "@ag-ui/client": "^0.0.53",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
@@ -80,7 +81,9 @@
           "paths": [
             {
               "name": "react-toastify",
-              "importNames": ["toast"],
+              "importNames": [
+                "toast"
+              ],
               "message": "Import notifyError/notifySuccess/notifyInfo/notifyWarning from utils/appToast instead. Direct toast() is only allowed in utils/appToast.js, utils/dashboardToast.js, and components/ErrorToast.js."
             }
           ]
