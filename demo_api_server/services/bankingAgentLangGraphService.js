@@ -711,7 +711,6 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
 
     const { resolveLlmProvider } = require('./llmProviderResolver');
     const { runReasonLoop } = require('./agentReasoningClient');
-    const { provider, model } = resolveLlmProvider(langchainConfig);
 
     // PingOne Admin path — tool schemas from pingone-mcp-server, no token exchange
     if (langchainConfig?.provider === 'pingone-admin') {
@@ -747,6 +746,12 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
         executeTool: async (name, args) => executePingOneTool(name, args),
       });
       if (p1LoopResult.ok) {
+        console.log('[processAgentMessage] PingOne Admin reason loop completed');
+        appEventService.logEvent('agent', 'info', 'PingOne Admin response ready', { tag: 'agent/complete' });
+        if (LOG_FULL_PROMPTS) {
+          appEventService.logEvent('agent_prompt', 'info', `LLM response: ${String(p1LoopResult.answer || '')}`,
+            { tag: 'agent_prompt/llm_complete', metadata: { userId, response: String(p1LoopResult.answer || ''), model: llmModel || undefined } });
+        }
         return {
           reply: p1LoopResult.answer,
           success: true,
@@ -771,6 +776,9 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
         error: p1LoopResult.reason || 'reasoning_unavailable',
       };
     }
+
+    // Resolve LLM provider for the banking reason loop (after pingone-admin early return)
+    const { provider, model } = resolveLlmProvider(langchainConfig);
 
     // If the resolved provider is Helix but no Helix credentials are configured,
     // fall back to the heuristics-only catalog message rather than attempting a
