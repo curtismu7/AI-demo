@@ -81,10 +81,10 @@ describe('BankingToolProvider', () => {
     it('should return all banking tools', () => {
       const tools = provider.getAvailableTools();
 
-      // Phase 210+: 17 tools (added admin agent tools: lookup_customer, get_customer_profile,
-      // get_customer_accounts, get_customer_transactions, freeze_account, reset_customer_password,
-      // adjust_balance, delete_customer).
-      expect(tools).toHaveLength(17);
+      // 22 tools: 17 banking/admin + 5 vertical feature tools (show_mortgage, show_health_record,
+      // show_gear_order, show_expense_report, show_large_purchase) registered for tools/list and
+      // scope checks; gateway intercepts them before BankingToolProvider executes them.
+      expect(tools).toHaveLength(22);
       expect(tools.map(t => t.name)).toEqual(expect.arrayContaining([
         'get_my_accounts',
         'get_account_balance',

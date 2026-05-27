@@ -23,6 +23,11 @@ describe('BankingToolRegistry', () => {
     'adjust_balance',
     'delete_customer',
     'sequential_think',
+    'show_mortgage',
+    'show_health_record',
+    'show_gear_order',
+    'show_expense_report',
+    'show_large_purchase',
   ];
 
   describe('getAllTools', () => {

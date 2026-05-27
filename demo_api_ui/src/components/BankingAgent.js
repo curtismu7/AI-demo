@@ -1070,13 +1070,42 @@ export function AccountsTable({ accounts, terminology }) {
   if (!accounts?.length)
     return <p className="bar-rp-empty">No accounts found.</p>;
 
+  // Helper function to generate friendly account names.
+  // Skip account.name when vertical terminology is active — server-stored names
+  // are banking-flavoured and should not override the vertical's terminology.
   const getFriendlyAccountName = (account) => {
     if (!terminology && account.name && account.name !== account.id) {
       return account.name;
     }
+
+    const accountType = (
+      account.account_type ||
+      account.type ||
+      ""
+    ).toLowerCase();
     const accountNumber = account.account_number || account.id || "";
+
+    // Create friendly name based on type and number
     const accountLabel = terminology?.account || "Account";
-    return accountNumber ? `${accountLabel} (${accountNumber.slice(-4)})` : accountLabel;
+    if (accountType === "checking" || accountType.includes("chk")) {
+      return accountNumber
+        ? `Checking ${accountLabel} (${accountNumber.slice(-4)})`
+        : `Checking ${accountLabel}`;
+    } else if (accountType === "savings" || accountType.includes("sav")) {
+      return accountNumber
+        ? `Savings ${accountLabel} (${accountNumber.slice(-4)})`
+        : `Savings ${accountLabel}`;
+    } else if (accountType === "credit" || accountType.includes("crd")) {
+      return accountNumber
+        ? `Credit ${accountLabel} (${accountNumber.slice(-4)})`
+        : `Credit ${accountLabel}`;
+    } else if (accountType === "investment" || accountType.includes("inv")) {
+      return accountNumber
+        ? `Investment ${accountLabel} (${accountNumber.slice(-4)})`
+        : `Investment ${accountLabel}`;
+    } else {
+      return accountNumber ? `${accountLabel} (${accountNumber.slice(-4)})` : accountLabel;
+    }
   };
 
   return (
@@ -1485,7 +1514,7 @@ function ResultsPanel({ panel, onClose, style }) {
         </button>
       </div>
       <div className="bar-rp-body">
-        {panel.type === "accounts" && <AccountsTable accounts={panel.data} terminology={panel.terminology} />}
+        {panel.type === "accounts" && <AccountsTable accounts={panel.data} />}
         {panel.type === "transactions" && (
           <TransactionsTable transactions={panel.data} />
         )}
@@ -1666,7 +1695,6 @@ export default function BankingAgent({
     effectiveAgentTheme,
     agent: themeAgent,
     manifest: themeManifest,
-    terminology,
   } = useTheme();
   // Always start collapsed on page load — never restore open state from localStorage.
   const [isOpen, setIsOpen] = useState(false);
@@ -4839,14 +4867,16 @@ export default function BankingAgent({
       }
 
       if (resultType) {
-        const title = resultType === "confirm"
-          ? `${label} confirmed`
-          : buildResultsPanelTitle(resultType, terminology);
+        const titleMap = {
+          accounts: "Accounts",
+          transactions: "Recent Transactions",
+          balance: "Balance",
+          confirm: `${label} confirmed`,
+        };
         setResultPanel({
           type: resultType,
-          title,
+          title: titleMap[resultType],
           data: resultData,
-          terminology,
         });
       }
 
@@ -6400,13 +6430,18 @@ export default function BankingAgent({
           if (!data?.accounts?.length) return;
           const fresh = data.accounts.map(normalizeAccountRow);
           setLiveAccounts(fresh);
-          if (currentPanel?.type === "accounts" || currentPanel?.type === "balance") {
+          if (currentPanel?.type === "accounts") {
+            setResultPanel({
+              type: "accounts",
+              title: "Accounts",
+              data: fresh,
+            });
+          } else if (currentPanel?.type === "balance") {
             // Switch to full accounts view so all updated balances are visible
             setResultPanel({
               type: "accounts",
-              title: buildResultsPanelTitle("accounts", terminology),
+              title: "Accounts",
               data: fresh,
-              terminology,
             });
           }
         })
