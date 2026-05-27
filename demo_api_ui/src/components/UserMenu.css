@@ -116,6 +116,13 @@
   text-overflow: ellipsis;
 }
 
+.user-menu-userid {
+  font-size: 11px;
+  color: #94a3b8;
+  font-family: monospace;
+  margin-top: 1px;
+}
+
 .user-menu-role {
   font-size: 11px;
   color: #ffffff;

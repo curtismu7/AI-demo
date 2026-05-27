@@ -165,7 +165,6 @@ jest.mock("../AdminSubPageShell", () => ({ children, lead }) => (
 jest.mock("./education/educationIds", () => ({ EDU: {} }), { virtual: true });
 jest.mock("../education/educationIds", () => ({ EDU: {} }));
 // Dashboard child components that can't render in jsdom
-jest.mock("../DashboardHeader", () => () => null);
 jest.mock("../SplitPaneLayout", () => ({ children }) => <div>{children}</div>);
 jest.mock("../ArchitectureTabsPanel", () => () => null);
 jest.mock("../ApiCallsModal", () => () => null);

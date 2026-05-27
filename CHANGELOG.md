@@ -18,6 +18,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 
 ### Added
 - `authorize_failover_mode` configStore key (default: `fallback_simulated`) — explicit policy for when PingOne Authorize is unreachable; `deny` (503 fail-closed), `permit` (fail-open), or `fallback_simulated` (switch to in-process engine)
+- **Agent reasoning token telemetry** — `agentReasoningClient` now passes `inputTokens` and `outputTokens` through to the caller, enabling client-side token accounting in agent invocations
 
 ### Changed
 - MCP Compliance Checklist: skipped (non-applicable) steps now show ☑️ (blue checkmark) instead of ○; executed steps keep ✅ (green)

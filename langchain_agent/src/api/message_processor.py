@@ -737,6 +737,127 @@ class MessageProcessor:
             "Token-bound identity established for session %s (Path A)", session_id
         )
 
+
+    async def process_agui_message(
+        self,
+        session_id: str,
+        message: str,
+        auth_token: str,
+        emitter,  # AGUIEventEmitter
+    ) -> None:
+        """Process one agent turn and emit AG-UI events via the provided emitter.
+
+        on_run_start / on_run_end are NOT called here -- the /run endpoint
+        handles those before and after this method.
+
+        Session identity is resolved from auth_token on every call so that
+        stateless /run requests work without a prior session_init handshake.
+        If the session is already identified (e.g. a second turn in the same
+        SSE connection) the call is a no-op because initialize_session_with_token
+        writes into conversation_memory which is idempotent on re-writes.
+
+        Args:
+            session_id: Conversation thread ID.
+            message: The user message text for this turn.
+            auth_token: PingOne access token (BFF-resolved; never browser-supplied).
+            emitter: AGUIEventEmitter instance owned by the /run endpoint.
+        """
+        from langchain_core.messages import HumanMessage, SystemMessage
+        from langchain_core.runnables import RunnableConfig
+
+        # 1. Establish token-derived identity (mirrors process_session_init_with_token).
+        if auth_token:
+            await self.agent.initialize_session_with_token(session_id, auth_token)
+        else:
+            logger.warning(
+                "[AG-UI] process_agui_message called without auth_token for session %s",
+                session_id,
+            )
+
+        # 2. Ensure the graph is initialised.
+        if not self.agent._graph:
+            await self.agent.initialize_tools()
+
+        # 3. Prepare the message list for LangGraph (inject SystemMessage only on
+        #    the first turn -- mirrors the pattern in process_message_with_tracing).
+        try:
+            graph_state = self.agent._graph.get_state(
+                {"configurable": {"thread_id": session_id}}
+            )
+            has_prior_history = bool(graph_state.values.get("messages"))
+        except Exception:
+            has_prior_history = False
+
+        if has_prior_history:
+            msgs_for_graph = [HumanMessage(content=message)]
+        else:
+            system_msg_text = await self.agent._build_system_message(session_id)
+            msgs_for_graph = [
+                SystemMessage(content=system_msg_text),
+                HumanMessage(content=message),
+            ]
+
+        # 4. Set session context for tools.
+        await self.agent.mcp_tool_provider.set_session_context(session_id)
+
+        config = RunnableConfig(
+            configurable={"thread_id": session_id},
+            recursion_limit=getattr(self.agent.config.langchain, "max_iterations", 25),
+        )
+        agent_input = {"messages": msgs_for_graph}
+
+        # 5. Stream events from LangGraph and route to the emitter.
+        #    We track whether an LLM text message is currently open so we can
+        #    call on_llm_start() exactly once per continuous token stream and
+        #    on_llm_end() when the stream pauses for a tool call or ends.
+        llm_streaming = False
+
+        async for event in self.agent._graph.astream_events(
+            agent_input, config=config, version="v2"
+        ):
+            event_name = event.get("event")
+            event_data = event.get("data") or {}
+
+            if event_name == "on_chat_model_stream":
+                chunk = event_data.get("chunk")
+                token = getattr(chunk, "content", "") if chunk is not None else ""
+                if token:
+                    if not llm_streaming:
+                        await emitter.on_llm_start()
+                        llm_streaming = True
+                    await emitter.on_llm_new_token(token)
+
+            elif event_name == "on_tool_start":
+                # Close any open LLM message before a tool call.
+                if llm_streaming:
+                    await emitter.on_llm_end()
+                    llm_streaming = False
+                serialized = {"name": event.get("name", "unknown_tool")}
+                tool_call_id = event.get("run_id")
+                await emitter.on_tool_start(
+                    serialized,
+                    tool_call_id=tool_call_id,
+                    inputs=event_data.get("input"),
+                )
+
+            elif event_name == "on_tool_end":
+                output = event_data.get("output", "")
+                tool_call_id = event.get("run_id")
+                await emitter.on_tool_end(output, tool_call_id=tool_call_id)
+
+            elif event_name == "on_chain_error":
+                error = event_data.get("error") or RuntimeError("Agent chain error")
+                if llm_streaming:
+                    await emitter.on_llm_end()
+                    llm_streaming = False
+                await emitter.on_error(error)
+
+        # 6. Close the LLM message if it was still open at stream end.
+        if llm_streaming:
+            await emitter.on_llm_end()
+
+        logger.info("[AG-UI] process_agui_message complete for session %s", session_id)
+
     def _sweep_pending_auth_requests(self) -> int:
         """Evict pending auth requests older than _pending_auth_ttl.
 

@@ -21,6 +21,7 @@
     "forceExit": true
   },
   "dependencies": {
+    "@ag-ui/core": "^0.0.53",
     "@anthropic-ai/sdk": "^0.97.1",
     "@langchain/core": "^1.1.44",
     "@langchain/langgraph": "^1.3.0",

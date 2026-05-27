@@ -98,6 +98,7 @@ const agentDelegationRoutes = require('./routes/agentDelegation');
 const adminDemoUsersRoutes = require('./routes/adminDemoUsers');
 const mcpDecisionPollingRoutes = require('./routes/mcpDecisionPolling');
 const bankingAgentRoutes = require('./routes/bankingAgentRoutes');
+const agentRunRoutes = require('./routes/agentRun');
 const bankingAgentNlRoutes = require('./routes/bankingAgentNl');
 const langchainConfigRoutes = require('./routes/langchainConfig');
 const lmstudioRoutes = require('./routes/lmstudio');
@@ -837,6 +838,7 @@ app.use('/api/mcp', mcpDecisionPollingRoutes);
 app.use('/api/banking-agent', bankingAgentNlRoutes);
 // Authenticated agent routes: /init, /message, /consent — require OAuth session.
 app.use('/api/banking-agent', bankingAgentRoutes);
+app.use('/api/agent', agentRunRoutes); // AG-UI Step 2: /api/agent/run
 app.use('/api/langchain', langchainConfigRoutes);
 app.use('/api/langchain/lmstudio', lmstudioRoutes);
 app.use('/api/authorize', authorizeRoutes);
@@ -950,6 +952,9 @@ app.use('/api/resource-server-cc', authenticateToken, resourceServerCCRoutes);
 // Internal gateway-only endpoint — NOT under /api/*; NOT exposed to the browser.
 // Phase 266: gateway reads the user's id_token server-to-server via shared secret.
 app.use('/internal', require('./routes/agentIdToken'));
+// AG-UI Step 8: BFF-internal tool execution endpoint (agent service → BFF → MCP).
+// NOT browser-facing; bound to loopback per REGRESSION_PLAN §3.
+app.use('/internal', require('./routes/agentTool'));
 
 // Phase 266 R2 — Path A info marker (session-cookie auth; no Bearer needed from SPA)
 app.use('/api/path', require('./routes/pathInfo'));

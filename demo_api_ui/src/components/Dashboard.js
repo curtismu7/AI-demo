@@ -20,12 +20,11 @@ import { toastAdminSessionError } from "../utils/dashboardToast";
 import "../styles/appShellPages.css";
 import "./Dashboard.css";
 import { useAgentUiMode } from "../context/AgentUiModeContext";
+import { useSessionToken } from '../context/SessionTokenContext';
 
 import ApiCallsModal from "./ApiCallsModal";
 
-import DashboardHeader from "./DashboardHeader";
 import FloatingPanel from "./FloatingPanel";
-import UserTokenStatusBar from "./UserTokenStatusBar";
 import OAuthTokenDisplayPage from "./OAuthTokenDisplayPage";
 import WebMcpPanel from "./WebMcpPanel";
 import ConfirmModal from "./ConfirmModal";
@@ -64,6 +63,11 @@ const Dashboard = ({ user, onLogout }) => {
   const [tokenData, setTokenData] = useState(null);
   const [tokenExpiresAt, setTokenExpiresAt] = useState(null);
   const [tokenSecondsLeft, setTokenSecondsLeft] = useState(null);
+  const { publishTokenState } = useSessionToken();
+
+  useEffect(() => {
+    publishTokenState(tokenSecondsLeft, () => setShowTokenModal(true));
+  }, [tokenSecondsLeft, publishTokenState]); // setShowTokenModal is stable
   const [resettingDemo, setResettingDemo] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmWriteSeed, setConfirmWriteSeed] = useState(false);
@@ -487,13 +491,6 @@ const Dashboard = ({ user, onLogout }) => {
       <a href="#admin-dashboard-main" className="dash-skip-link">
         Skip to admin content
       </a>
-      <DashboardHeader variant="admin" />
-      <UserTokenStatusBar
-        user={user}
-        tokenSecondsLeft={tokenSecondsLeft}
-        onOpenModal={() => setShowTokenModal(true)}
-      />
-
       <div
         className={`app-page-shell__body app-page-shell__body--wide ${agentPlacement === "bottom" ? "app-page-shell__body--embed-agent" : ""}`}
       >

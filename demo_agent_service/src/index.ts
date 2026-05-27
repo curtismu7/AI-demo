@@ -19,6 +19,7 @@ import express from 'express';
 import { loadConfig } from './config';
 import { loadVaultIntoEnv } from './vault';
 import { makeReasonHandler } from './reasonRoute';
+import { makeAgentRunHandler } from './agentRunHandler';
 
 // Vault load MUST run (and complete) BEFORE loadConfig() reads process.env.
 // loadVaultIntoEnv is async (Argon2id KDF), so — exactly like
@@ -71,6 +72,9 @@ if (process.env.NODE_ENV === 'production' && INTERNAL_SECRET === DEFAULT_INTERNA
   process.exit(1);
 }
 app.post('/api/agent/reason', express.json({ limit: '256kb' }), makeReasonHandler(INTERNAL_SECRET));
+
+// AG-UI streaming endpoint (Step 1 of AG-UI integration)
+app.post('/run', express.json({ limit: '512kb' }), makeAgentRunHandler(INTERNAL_SECRET));
 
 // ---------------------------------------------------------------------------
 // GET /health

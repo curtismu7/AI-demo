@@ -32,12 +32,11 @@ import ThresholdControls from "./ThresholdControls";
 import ExchangeModeToggle from "./ExchangeModeToggle";
 import Fido2Challenge from "./Fido2Challenge";
 import TokenChainDisplay from "./TokenChainDisplay";
+import { useSessionToken } from '../context/SessionTokenContext';
 import ConfirmModal from "./ConfirmModal";
 import TransactionConsentModal from "./TransactionConsentModal";
 import FloatingPanel from "./FloatingPanel";
 import "./UserDashboard.css";
-import DashboardHeader from "./DashboardHeader";
-import UserTokenStatusBar from "./UserTokenStatusBar";
 import OAuthTokenDisplayPage from "./OAuthTokenDisplayPage";
 import { useTheme } from "../context/ThemeContext";
 import RetailDashboard from "./RetailDashboard";
@@ -192,6 +191,11 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   const [showResetModal, setShowResetModal] = useState(false);
   const [tokenExpiresAt, setTokenExpiresAt] = useState(null);
   const [tokenSecondsLeft, setTokenSecondsLeft] = useState(null);
+  const { publishTokenState } = useSessionToken();
+
+  useEffect(() => {
+    publishTokenState(tokenSecondsLeft, () => setShowTokenModal(true));
+  }, [tokenSecondsLeft, publishTokenState]); // setShowTokenModal is stable
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedAccount, setSelectedAccount] = useState(null);
@@ -2520,12 +2524,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       <a href="#main-dashboard-content" className="dash-skip-link">
         Skip to main content
       </a>
-      <DashboardHeader variant="customer" />
-      <UserTokenStatusBar
-        user={user}
-        tokenSecondsLeft={tokenSecondsLeft}
-        onOpenModal={() => setShowTokenModal(true)}
-      />
       {/* ── Toolbar row with additional actions ────────────────────── */}
       <div className="dashboard-header-stack" style={{ marginTop: 0 }}>
         <div

@@ -85,7 +85,6 @@ import SecurityCenter from "./components/SecurityCenter";
 import SecuritySettings from "./components/SecuritySettings";
 import SelfServicePage from "./components/SelfServicePage";
 import ServerRestartModal from "./components/ServerRestartModal";
-import SessionExpiryTimer from "./components/SessionExpiryTimer";
 import SessionReauthBanner from "./components/SessionReauthBanner";
 import SetupPage from "./components/SetupPage";
 import SetupWizard from "./components/SetupWizard";
@@ -114,6 +113,7 @@ import { ExchangeModeProvider } from "./context/ExchangeModeContext";
 import { SpinnerProvider } from "./context/SpinnerContext";
 import { TokenChainProvider } from "./context/TokenChainContext";
 import { McpFieldProvider } from './context/McpFieldContext';
+import { SessionTokenProvider } from './context/SessionTokenContext';
 import LangChainPage from "./pages/LangChainPage";
 import { monitorApiHealth } from "./services/bankingRestartNotificationService";
 import { getCachedJson } from "./services/cachedStatusService";
@@ -630,14 +630,6 @@ function AppWithAuth() {
     <DemoTourProvider>
       <EducationUIProvider>
         <TokenChainProvider activePath={pathname}>
-          <SessionExpiryTimer
-            hideOnPaths={[
-              "/configure",
-              "/demo-data",
-              "/self-service",
-              "/onboarding",
-            ]}
-          />
           <div
             className={`App end-user-nano${isOnDashboard ? " App--on-dashboard" : ""}${sessionReauth ? " App--session-reauth" : ""}`}
           >
@@ -1507,18 +1499,20 @@ function AppWithAuth() {
 
 export default function App() {
   return (
-    <SpinnerProvider>
-      <AgentUiModeProvider>
-        <McpFieldProvider>
-          <ExchangeModeProvider>
-            <Router
-              future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-            >
-              <AppWithAuth />
-            </Router>
-          </ExchangeModeProvider>
-        </McpFieldProvider>
-      </AgentUiModeProvider>
-    </SpinnerProvider>
+    <SessionTokenProvider>
+      <SpinnerProvider>
+        <AgentUiModeProvider>
+          <McpFieldProvider>
+            <ExchangeModeProvider>
+              <Router
+                future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+              >
+                <AppWithAuth />
+              </Router>
+            </ExchangeModeProvider>
+          </McpFieldProvider>
+        </AgentUiModeProvider>
+      </SpinnerProvider>
+    </SessionTokenProvider>
   );
 }
