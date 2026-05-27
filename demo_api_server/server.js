@@ -1663,10 +1663,11 @@ if (require.main === module) {
         // calls at module scope which could fire before loadVaultIntoConfigStore
         // completed, causing false "credentials not configured" warnings.
         setImmediate(() => runBackgroundStartupTasks());
-        startLighthouseScheduler();
+        const lighthouseTask = startLighthouseScheduler();
 
         process.on('SIGTERM', () => {
             oauthMonitor.stop();
+            if (lighthouseTask) lighthouseTask.stop();
             server.close(() => process.exit(0));
         });
     })();

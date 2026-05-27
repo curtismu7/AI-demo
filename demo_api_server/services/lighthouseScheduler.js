@@ -19,7 +19,7 @@ function startScheduler() {
     console.warn(`[lighthouse-scheduler] Invalid cron expression "${schedule}" — using default "${DEFAULT_CRON}"`);
   }
 
-  cron.schedule(validSchedule, async () => {
+  const task = cron.schedule(validSchedule, async () => {
     console.log('[lighthouse-scheduler] Running scheduled audit...');
     try {
       const base = configStore.getEffective('PUBLIC_APP_URL') || 'https://api.ping.demo:4000';
@@ -31,6 +31,7 @@ function startScheduler() {
   });
 
   console.log(`[lighthouse-scheduler] Scheduled audit registered: "${validSchedule}"`);
+  return task;
 }
 
 module.exports = { startScheduler };
