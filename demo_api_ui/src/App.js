@@ -784,6 +784,16 @@ function AppWithAuth() {
                             )
                           }
                         />
+                        <Route
+                          path="activity-log"
+                          element={
+                            user ? (
+                              <ActivityLogPage />
+                            ) : (
+                              <Navigate to="/" replace />
+                            )
+                          }
+                        />
                       </Routes>
                     </main>
                   </>
