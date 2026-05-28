@@ -62,6 +62,10 @@ export class ErrorBoundary extends React.Component {
     });
   };
 
+  componentWillUnmount() {
+    clearTimeout(this._copyTimer);
+  }
+
   handleCopyError = () => {
     const { error, errorInfo } = this.state;
     const text = [
@@ -70,7 +74,9 @@ export class ErrorBoundary extends React.Component {
     ].filter(Boolean).join('\n\n');
     navigator.clipboard.writeText(text).then(() => {
       this.setState({ copied: true });
-      setTimeout(() => this.setState({ copied: false }), 2000);
+      this._copyTimer = setTimeout(() => this.setState({ copied: false }), 2000);
+    }).catch(() => {
+      this.setState({ copied: false });
     });
   };
 
@@ -90,7 +96,7 @@ export class ErrorBoundary extends React.Component {
                   <button
                     type="button"
                     className="btn btn-copy-error"
-                    onClick={(e) => { e.preventDefault(); this.handleCopyError(); }}
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); this.handleCopyError(); }}
                     aria-label="Copy error details to clipboard"
                   >
                     {this.state.copied ? '✅ Copied' : 'Copy'}

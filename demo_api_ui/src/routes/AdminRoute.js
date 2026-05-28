@@ -1,15 +1,19 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import { notifyWarning } from "../utils/appToast";
 
+let _accessDeniedToasted = false;
+
 export default function AdminRoute({ user, children }) {
-  const toastedRef = useRef(false);
   const isAdmin = user?.role === "admin";
 
   useEffect(() => {
-    if (!isAdmin && !toastedRef.current) {
-      toastedRef.current = true;
+    if (!isAdmin && !_accessDeniedToasted) {
+      _accessDeniedToasted = true;
       notifyWarning("This page is restricted to admin users.");
+    }
+    if (isAdmin) {
+      _accessDeniedToasted = false;
     }
   }, [isAdmin]);
 

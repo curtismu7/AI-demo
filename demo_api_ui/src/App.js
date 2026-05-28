@@ -39,6 +39,15 @@ import AccessIdTokenPathPage from "./components/AccessIdTokenPathPage";
 import ApiTrafficPage from "./components/ApiTrafficPage";
 import AuditPage from "./components/AuditPage";
 import AdminRoute from "./routes/AdminRoute";
+import PublicRoutes, {
+  ConfigurePage,
+  SelfServicePageRoute,
+  PingOneTestPageRoute,
+  MFATestPageRoute,
+  AuthzTestPageRoute,
+  OnboardingRoute,
+  AgentPageRoute,
+} from "./routes/PublicRoutes";
 import BankingAdminOps from "./components/BankingAdminOps";
 import BankingAgent from "./components/BankingAgent";
 import { resolveEmbeddedFocus } from "./components/demoAgentSafety";

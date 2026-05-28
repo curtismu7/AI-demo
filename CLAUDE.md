@@ -200,6 +200,7 @@ Browser → (cookie) → BFF (agentMcpTokenService.js)
 5. **Default host:** `api.ping.demo` is the canonical local host (BFF `https://api.ping.demo:3001`, UI `https://api.ping.demo:4000`, HTTPS via `mkcert`). Use it in all skills, docs, examples, and PingOne app Redirect URIs. Users can override via the `/setup` page (writes configStore) or `.env` (`PUBLIC_APP_URL`, `REACT_APP_CLIENT_URL`, `CORS_ORIGIN`). Code **must not** hardcode `localhost:3001` / `localhost:4000` in `routes/oauth*.js` — read the configured host (REGRESSION_PLAN §1 "OAuth redirect origin").
 6. **Bug fixes:** add an entry to `REGRESSION_PLAN.md` §4 (Bug Fix Log) per the template in the regression-guard rule.
 7. **Do not** edit marketing-only pages unless the task explicitly says so (user preference: `/marketing` stability).
+8. **After any commit or merge touching `demo_api_ui/src/App.js`:** run `npx jest App.structure --no-coverage` from `demo_api_ui/`. This catches the class of merge regression where one side of a conflict resolution silently drops imports or JSX panel placements (e.g. `AuthorizeRulesPanel` dropped in merge `3d2cf092`). All 13 tests must pass before the change is considered complete.
 
 ---
 
