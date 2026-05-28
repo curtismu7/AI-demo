@@ -57,7 +57,6 @@ import ClientCredentialsResourcePage from "./components/ClientCredentialsResourc
 import ClientRegistrationPage from "./components/ClientRegistrationPage";
 import ComplianceModalPopout from "./components/ComplianceModalPopout";
 import DemoGuidePopout from "./components/DemoGuidePopout";
-import UnifiedConfigurationPage from "./components/Configuration/UnifiedConfigurationPage";
 import Dashboard from "./components/Dashboard";
 import DelegatedAccessPage from "./components/DelegatedAccessPage";
 import DelegationPage from "./components/DelegationPage";
@@ -77,14 +76,9 @@ import McpInspector from "./components/McpInspector";
 import McpGatewayConfig from "./components/McpGatewayConfig";
 import McpTrafficPage from "./components/McpTrafficPage";
 import AuthorizeConfigPage from "./components/AuthorizeConfigPage";
-import AuthzTestPage from "./components/AuthzTestPage";
-import MFATestPage from "./components/MFATestPage";
 import MissingCredentialsModal from "./components/MissingCredentialsModal";
 import OAuthDebugLogViewer from "./components/OAuthDebugLogViewer";
 import OAuthTokenDisplayPage from "./components/OAuthTokenDisplayPage";
-import Onboarding from "./components/Onboarding";
-import PingOneSetupGuidePage from "./components/PingOneSetupGuidePage";
-import PingOneTestPage from "./components/PingOneTestPage";
 import PostmanCollectionsPage from "./components/PostmanCollectionsPage";
 import Profile from "./components/Profile";
 import ResourceServerPage from "./components/ResourceServerPage";
@@ -92,12 +86,9 @@ import ScopeAuditPage from "./components/ScopeAuditPage";
 import ScopeReferencePage from "./components/ScopeReferencePage";
 import SecurityCenter from "./components/SecurityCenter";
 import SecuritySettings from "./components/SecuritySettings";
-import SelfServicePage from "./components/SelfServicePage";
 import ServerRestartModal from "./components/ServerRestartModal";
 import SessionExpiryTimer from "./components/SessionExpiryTimer";
 import SessionReauthBanner from "./components/SessionReauthBanner";
-import SetupPage from "./components/SetupPage";
-import SetupWizard from "./components/SetupWizard";
 import SpinnerHost from "./components/shared/SpinnerHost";
 import TokenChainDisplay from "./components/TokenChainDisplay";
 import TokenDiffPanel from "./components/TokenDiffPanel";
@@ -351,96 +342,17 @@ function AppWithAuth() {
               />
             )}
             <Routes>
-              <Route
-                path="/setup/pingone"
-                element={<PingOneSetupGuidePage />}
-              />
-              <Route path="/setup/wizard" element={<SetupWizard />} />
-              <Route path="/setup" element={<SetupPage />} />
-              {/* Demo config accessible without login - needed to configure flags before PingOne is set up */}
-              <Route
-                path="/configure"
-                element={
-                  <>
-                    <AdminSideNav user={user} />
-
-                    <TopNav user={user} onLogout={logout} />
-                    <main className="main-content">
-                      <UnifiedConfigurationPage user={user} onLogout={logout} />
-                    </main>
-                  </>
-                }
-              />
-              <Route
-                path="/demo-data"
-                element={
-                  <Navigate to="/configure?tab=demo-management" replace />
-                }
-              />
-              {/* Self-service user provisioning — accessible without login */}
-              <Route
-                path="/self-service"
-                element={
-                  <>
-                    <AdminSideNav user={user} />
-
-                    <TopNav user={user} onLogout={logout} />
-                    <main className="main-content">
-                      <SelfServicePage />
-                    </main>
-                  </>
-                }
-              />
-              {/* Test & educational pages — accessible without login */}
-              <Route
-                path="/pingone-test"
-                element={
-                  <>
-                    <AdminSideNav user={user} />
-
-                    <TopNav user={user} onLogout={logout} />
-                    <main className="main-content">
-                      <PingOneTestPage />
-                    </main>
-                  </>
-                }
-              />
-              <Route
-                path="/mfa-test"
-                element={
-                  <>
-                    <AdminSideNav user={user} />
-
-                    <TopNav user={user} onLogout={logout} />
-                    <main className="main-content">
-                      <MFATestPage />
-                    </main>
-                  </>
-                }
-              />
-              <Route
-                path="/authz-test"
-                element={
-                  <>
-                    <AdminSideNav user={user} />
-
-                    <TopNav user={user} onLogout={logout} />
-                    <main className="main-content">
-                      <AuthzTestPage />
-                    </main>
-                  </>
-                }
-              />
-              <Route
-                path="/onboarding"
-                element={
-                  user && user.role !== "admin" ? (
-                    <Navigate to="/" replace />
-                  ) : (
-                    <Onboarding />
-                  )
-                }
-              />
+              {/* /setup/* sub-routes — no auth required */}
+              <Route path="/setup/*" element={<PublicRoutes user={user} logout={logout} />} />
+              {/* Demo config accessible without login */}
+              <Route path="/configure" element={<ConfigurePage user={user} logout={logout} />} />
+              <Route path="/demo-data" element={<Navigate to="/configure?tab=demo-management" replace />} />
+              {/* Self-service + test pages — accessible without login */}
+              <Route path="/self-service" element={<SelfServicePageRoute user={user} logout={logout} />} />
+              <Route path="/pingone-test" element={<PingOneTestPageRoute user={user} logout={logout} />} />
+              <Route path="/mfa-test" element={<MFATestPageRoute user={user} logout={logout} />} />
+              <Route path="/authz-test" element={<AuthzTestPageRoute user={user} logout={logout} />} />
+              <Route path="/onboarding" element={<OnboardingRoute user={user} />} />
               {/* Monitoring outer routes — explicit so customers navigating from /dashboard don't hit
 							    the path="*" inner-Routes catch-all which redirects back to /dashboard */}
               <Route
@@ -622,21 +534,8 @@ function AppWithAuth() {
               {/* /login is not a real route — redirect to home so stale links or misdirected post-logout URIs land cleanly */}
               <Route path="/login" element={<Navigate to="/" replace />} />
               <Route path="/logout" element={<LogoutPage />} />
-              <Route
-                path="/agent"
-                element={
-                  <BankingAgent
-                    user={user}
-                    onLogout={logout}
-                    mode="inline"
-                    distinctFloatingChrome
-                  />
-                }
-              />
-              <Route
-                path="/compliance-modal-popout"
-                element={<ComplianceModalPopout />}
-              />
+              <Route path="/agent" element={<AgentPageRoute user={user} logout={logout} />} />
+              <Route path="/compliance-modal-popout" element={<ComplianceModalPopout />} />
               <Route path="/demo-guide-popout" element={<DemoGuidePopout />} />
 
               <Route
