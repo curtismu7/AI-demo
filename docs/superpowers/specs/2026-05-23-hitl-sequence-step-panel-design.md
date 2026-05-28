@@ -76,7 +76,7 @@ Self-contained component. Contains:
   - 4 vertical dashed lifelines with participant label boxes at top
   - Arrows: solid stroke for `request`, dashed stroke for `response`
   - `note` steps render as a labelled box spanning the relevant participant columns
-  - Coloured background rects for each path section (matching existing legend chip colours): green `#e8f5e9` / Path 1, blue `#e8f0ff` / Path 2, orange `#fff3e0` / Path 3
+  - Coloured background rects for each path section (matching existing legend chip colours): green `#bbf7d0` / Path 1, blue `#bfdbfe` / Path 2, orange `#fed7aa` / Path 3
   - Active step: arrow and step-number badge highlighted in `#1d4ed8`; all other arrows dimmed to 25% opacity
   - Zoom: `viewBox` scale controlled by a zoom state (50 / 75 / 100 / 150 / 200%)
 
@@ -92,7 +92,7 @@ Self-contained component. Contains:
 
 - Remove: `import mermaid`, `MERMAID_SOURCE` string constant, the `useEffect` render block, `containerRef`
 - Remove: `renderError` state (no longer needed)
-- Keep: page `<header>` (title, subtitle, config flag reference), path legend chips (`PATHS` array + chip row)
+- Keep: page header (title, subtitle, config flag reference), path legend chips (`HITL_PATHS` array + chip row)
 - Add: `import HitlSequenceDiagram from './HitlSequenceDiagram'`
 - Render `<HitlSequenceDiagram />` in place of the old `<div ref={containerRef} />`
 
