@@ -7,7 +7,7 @@ const { requireAdmin, requireScopes, authenticateToken } = require('../middlewar
 const runtimeSettings = require('../config/runtimeSettings');
 const {
   resolvePingOneUserForLookup,
-  phoneLast4Matches,
+  fetchPingOneUsersWithPhone,
 } = require('../services/pingOneUserLookupService');
 const pingOneAuthorizeService = require('../services/pingOneAuthorizeService');
 const {
@@ -69,50 +69,72 @@ router.get('/stats', requireAdmin, requireScopes(['admin']), (req, res) => {
   }
 });
 
+/**
+ * GET /users/hints — up to 5 users with a phone on file, for the customer lookup hint panel.
+ * Tries PingOne (mobilePhone pr filter) first; falls back to local store.
+ * Returns [{ username, phoneLast4 }].
+ */
+router.get('/users/hints', requireAdmin, requireScopes(['admin']), async (req, res) => {
+  try {
+    const { hints: p1Hints, error } = await fetchPingOneUsersWithPhone(5);
+    if (p1Hints && p1Hints.length > 0) {
+      return res.json({ hints: p1Hints, source: 'pingone' });
+    }
+    if (error) {
+      console.warn('[admin] users/hints PingOne failed, using local fallback:', error);
+    }
+    const users = dataStore.getAllUsers();
+    const hints = users
+      .filter((u) => u.username && u.phone)
+      .slice(0, 5)
+      .map((u) => ({
+        username: u.username,
+        phoneLast4: String(u.phone).replace(/\D/g, '').slice(-4),
+      }));
+    res.json({ hints, source: 'local' });
+  } catch (err) {
+    console.error('[admin] users/hints error:', err.message);
+    res.status(500).json({ error: 'hints_failed' });
+  }
+});
+
 const TX_LOOKUP_LIMIT = 100;
 
 /**
- * POST body: { username, phoneLast4 } — verify last 4 digits against PingOne mobile and/or local phone,
- * return merged profile (PingOne where available), accounts with balances, and recent transactions.
+ * POST body: { username } — look up by username (PingOne first, local store fallback),
+ * return merged profile, accounts with balances, and recent transactions. No phone verification.
  */
 router.post('/transactions/lookup', requireAdmin, requireScopes(['admin']), async (req, res) => {
   try {
     const username = typeof req.body.username === 'string' ? req.body.username.trim() : '';
-    const phoneLast4 = typeof req.body.phoneLast4 === 'string' ? req.body.phoneLast4.trim() : '';
-    if (!username || !phoneLast4) {
-      return res.status(400).json({ error: 'username and phoneLast4 are required' });
-    }
-    const want = phoneLast4.replace(/\D/g, '').slice(-4);
-    if (want.length !== 4) {
-      return res.status(400).json({ error: 'phoneLast4 must be 4 digits' });
+    if (!username) {
+      return res.status(400).json({ error: 'username is required' });
     }
 
-    const users = dataStore.getAllUsers();
-    const user = users.find((u) => String(u.username || '').toLowerCase() === username.toLowerCase());
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    let pingOneResolved;
+    // Try PingOne first; fall back to local store
+    let pingOneResolved = { user: null, matchedBy: null, error: null };
     try {
-      pingOneResolved = await resolvePingOneUserForLookup(user);
+      pingOneResolved = await resolvePingOneUserForLookup({ username });
     } catch (e) {
       console.warn('Admin lookup: PingOne resolve error:', e.message);
       pingOneResolved = { user: null, matchedBy: null, error: e.message || 'lookup_failed' };
     }
 
-    const p1 = pingOneResolved?.user || null;
-    if (!phoneLast4Matches(want, user, p1)) {
-      return res.status(403).json({ error: 'Phone verification failed' });
+    const users = dataStore.getAllUsers();
+    const user = users.find((u) => String(u.username || '').toLowerCase() === username.toLowerCase());
+    if (!user && !pingOneResolved.user) {
+      return res.status(404).json({ error: 'User not found' });
     }
+    const localUser = user || { id: username, username };
+    const p1 = pingOneResolved?.user || null;
 
-    const firstName = p1?.givenName || user.firstName || '';
-    const lastName = p1?.familyName || user.lastName || '';
-    const fullName = (p1?.fullName || `${firstName} ${lastName}`.trim() || user.username).trim();
-    const email = p1?.email || user.email || '';
-    const phoneOnRecord = p1?.mobilePhone || user.phone || '';
+    const firstName = p1?.givenName || localUser.firstName || '';
+    const lastName = p1?.familyName || localUser.lastName || '';
+    const fullName = (p1?.fullName || `${firstName} ${lastName}`.trim() || localUser.username).trim();
+    const email = p1?.email || localUser.email || '';
+    const phoneOnRecord = p1?.mobilePhone || localUser.phone || '';
 
-    let transactions = dataStore.getTransactionsByUserId(user.id);
+    let transactions = dataStore.getTransactionsByUserId(localUser.id);
     transactions = [...transactions].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     const slice = transactions.slice(0, TX_LOOKUP_LIMIT);
 
@@ -128,11 +150,11 @@ router.post('/transactions/lookup', requireAdmin, requireScopes(['admin']), asyn
       return {
         ...tx,
         accountInfo,
-        performedBy: fullName || user.username,
+        performedBy: fullName || localUser.username,
       };
     });
 
-    const accounts = dataStore.getAccountsByUserId(user.id).map((a) => ({
+    const accounts = dataStore.getAccountsByUserId(localUser.id).map((a) => ({
       id: a.id,
       accountNumber: a.accountNumber,
       accountType: a.accountType,
@@ -156,8 +178,8 @@ router.post('/transactions/lookup', requireAdmin, requireScopes(['admin']), asyn
 
     res.json({
       user: {
-        id: user.id,
-        username: user.username,
+        id: localUser.id,
+        username: localUser.username,
         firstName,
         lastName,
         fullName,

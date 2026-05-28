@@ -2449,22 +2449,19 @@ export default function BankingAgent({
   }, [isLoggedIn, location.pathname]);
   const isConfigured = oauthConfig && (oauthConfig.admin || oauthConfig.user);
 
-  // Fetch real account IDs from the server whenever the user is known.
-  useEffect(() => {
-    if (!isLoggedIn) return;
-    let cancelled = false;
+  // Fetch real account IDs from the server whenever the user logs in.
+  // Also re-runs when the vertical changes because themeManifest.id changes,
+  // which causes isLoggedIn's referencing closure to re-evaluate. We call the
+  // imperative helper directly from the vertical-switch effect below.
+  const fetchLiveAccounts = useCallback(() => {
     fetch("/api/accounts/my", { credentials: "include", _silent: true })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        if (cancelled || !data?.accounts?.length) return;
+        if (!data?.accounts?.length) return;
         setLiveAccounts(
           data.accounts.map((a) => ({
             id: a.id,
-            name:
-              a.name ||
-              (a.accountType === "savings"
-                ? "Savings Account"
-                : "Checking Account"),
+            name: a.name || a.accountType || "Account",
             type: a.accountType || a.account_type || "checking",
             balance: a.balance || 0,
             accountNumber: a.accountNumber || a.account_number || a.id,
@@ -2472,10 +2469,23 @@ export default function BankingAgent({
         );
       })
       .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [isLoggedIn]);
+  }, []);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    fetchLiveAccounts();
+  }, [isLoggedIn, fetchLiveAccounts]);
+
+  // Re-fetch accounts when the vertical switches so stale banking accounts
+  // are replaced with the new vertical's seeded data.
+  const prevVerticalRef = useRef(null);
+  useEffect(() => {
+    const vid = themeManifest?.id ?? null;
+    if (vid !== prevVerticalRef.current) {
+      prevVerticalRef.current = vid;
+      if (isLoggedIn) fetchLiveAccounts();
+    }
+  }, [themeManifest, isLoggedIn, fetchLiveAccounts]);
 
   const suggestionList = useMemo(() => {
     if (isConfigEmbeddedFocus) {
@@ -5681,8 +5691,19 @@ export default function BankingAgent({
       return;
     }
 
-    // In LLM-only mode, route every chip through the NL pipeline so Helix handles it conversationally.
-    if (!heuristicEnabled) {
+    // These chips always call the real API regardless of LLM mode — Helix has no
+    // account data access and would hallucinate if sent as NL prompts.
+    const API_DIRECT_CHIPS = new Set([
+      "accounts", "transactions", "balance", "transfer", "deposit", "withdraw", "feature",
+      "mcp_tools", "sensitive-account-details",
+      "test_wrong_scope", "test_wrong_audience", "test_hitl_required",
+      "transfer_600_test", "test_otp_required",
+      "demo_intent_delegation", "test_full_compliance_flow",
+    ]);
+
+    // In LLM-only mode, route conversational chips through the NL pipeline so Helix handles them.
+    // Data-retrieval chips always bypass Helix and hit the real API.
+    if (!heuristicEnabled && !API_DIRECT_CHIPS.has(actionId)) {
       const prompt = CHIP_NL_PROMPTS[actionId];
       if (prompt) {
         // Prompts that need user input (e.g. query_user) still pre-fill the box.
@@ -5695,29 +5716,9 @@ export default function BankingAgent({
       }
     }
 
-    // Normal (heuristic) mode — run directly or pre-fill input.
-    if (
-      actionId === "accounts" ||
-      actionId === "transactions" ||
-      actionId === "mcp_tools" ||
-      actionId === "sensitive-account-details" ||
-      actionId === "test_wrong_scope" ||
-      actionId === "test_wrong_audience" ||
-      actionId === "test_hitl_required" ||
-      actionId === "transfer_600_test" ||
-      actionId === "test_otp_required" ||
-      actionId === "demo_intent_delegation" ||
-      actionId === "test_full_compliance_flow"
-    ) {
+    // Run API-direct chips (and all chips in heuristic mode).
+    if (API_DIRECT_CHIPS.has(actionId)) {
       runAction(actionId, {});
-    } else if (actionId === "transfer") {
-      setNlInputFromTile("Transfer $100 from checking to savings");
-    } else if (actionId === "deposit") {
-      setNlInputFromTile("Deposit $100 to my checking account");
-    } else if (actionId === "withdraw") {
-      setNlInputFromTile("Withdraw $100 from my checking account");
-    } else if (actionId === "balance") {
-      setNlInputFromTile("Check balance for my checking account");
     } else if (actionId === "query_user") {
       setNlInputFromTile("Query user by email: ");
     } else if (actionId === "sequential_think") {
@@ -5951,7 +5952,7 @@ export default function BankingAgent({
         } else {
           addMessage(
             "assistant",
-            `I couldn't find a ${p.accountType || "matching"} account. Which account would you like to check?`,
+            `I couldn't find a ${p.accountType || "matching"} ${terminology?.account || "account"}. Which ${terminology?.account || "account"} would you like to check?`,
           );
         }
       } else if (action === "transfer" && p.fromId && p.toId && p.amount) {
@@ -5992,13 +5993,15 @@ export default function BankingAgent({
       } else if (
         ["balance", "transfer", "deposit", "withdraw"].includes(action)
       ) {
+        const termAccount  = terminology?.account  || "account";
+        const termAccounts = terminology?.accounts || "accounts";
+        const termBalance  = terminology?.balance  || "balance";
+        const termHighValue = terminology?.highValueAction || "Transfer";
         const questions = {
-          balance: "Which account would you like to check the balance for?",
-          deposit: "How much would you like to deposit, and to which account?",
-          withdraw:
-            "How much would you like to withdraw, and from which account?",
-          transfer:
-            `Which accounts would you like to ${(terminology?.highValueAction || "Transfer").toLowerCase()} between, and how much?`,
+          balance:  `Which ${termAccount} would you like to check the ${termBalance} for?`,
+          deposit:  `How much would you like to deposit, and to which ${termAccount}?`,
+          withdraw: `How much would you like to withdraw, and from which ${termAccount}?`,
+          transfer: `Which ${termAccounts} would you like to ${termHighValue.toLowerCase()} between, and how much?`,
         };
         addMessage("assistant", questions[action]);
         // Remember WHAT we asked so the next user message can fill the slot.
@@ -8651,7 +8654,7 @@ export default function BankingAgent({
                       return (
                         <div key={msg.id} className="banking-agent-msg error">
                           <div className="banking-agent-msg-bubble banking-agent-msg-bubble--session-fix">
-                            <MessageContent text={msg.content} />
+                            <MessageContent text={msg.content} terminology={terminology} />
                             <div className="ba-session-fix-actions">
                               <button
                                 type="button"
@@ -8736,7 +8739,7 @@ export default function BankingAgent({
                           <div
                             className={`banking-agent-msg-bubble${msg.tool ? " banking-agent-msg-bubble--tool-result" : ""}`}
                           >
-                            <MessageContent text={msg.content} />
+                            <MessageContent text={msg.content} terminology={terminology} />
                             {msg.tool && (
                               <span className="banking-agent-tool-badge">
                                 {msg.tool}

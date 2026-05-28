@@ -14,4 +14,8 @@ describe('isBankingAgentFloatingDefaultOpen', () => {
     expect(isBankingAgentFloatingDefaultOpen('/mcp-inspector')).toBe(true);
     expect(isBankingAgentFloatingDefaultOpen('/demo-data')).toBe(true);
   });
+
+  it('defaults closed on activity-log page so agent does not obscure the panel', () => {
+    expect(isBankingAgentFloatingDefaultOpen('/monitoring/activity-log')).toBe(false);
+  });
 });

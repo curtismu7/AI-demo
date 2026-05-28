@@ -22,7 +22,7 @@ const EventRow = React.memo(function EventRow({ event }) {
   const ts = new Date(event.timestamp);
   const timeStr = isNaN(ts.getTime())
     ? '--:--:--'
-    : ts.toTimeString().slice(0, 8); // HH:mm:ss
+    : ts.toTimeString().slice(0, 8);
 
   const detail =
     event.metadata != null
@@ -32,25 +32,24 @@ const EventRow = React.memo(function EventRow({ event }) {
       : null;
 
   return (
-    <div
-      className={`alp-row${detail ? ' alp-row--expandable' : ''}${expanded ? ' alp-row--expanded' : ''}`}
-      onClick={() => detail && setExpanded((v) => !v)}
-    >
-      <div className="alp-row-main">
-        <span className="alp-row-time">{timeStr}</span>
-        <span className="alp-row-cat">
-          <span className={`alp-pill alp-cat--${event.category || 'unknown'}`}>
-            {event.category || 'unknown'}
-          </span>
+    <div className={`alp-card alp-cat-border--${event.category || 'unknown'}`}>
+      <button
+        type="button"
+        className={`alp-card-header${detail ? ' alp-card-header--expandable' : ''}`}
+        onClick={() => detail && setExpanded((v) => !v)}
+      >
+        <span className={`alp-pill alp-cat--${event.category || 'unknown'}`}>
+          {event.category || 'unknown'}
         </span>
         <span className="alp-row-sev">{severityIcon(event.severity)}</span>
-        <span className="alp-row-msg" title={event.message}>
+        <span className="alp-card-msg" title={event.message}>
           {event.message}
         </span>
+        <span className="alp-row-time">{timeStr}</span>
         {detail && (
-          <span className="alp-row-expand-icon">▶</span>
+          <span className={`alp-row-expand-icon${expanded ? ' alp-row-expand-icon--open' : ''}`}>▶</span>
         )}
-      </div>
+      </button>
       {expanded && detail && (
         <div className="alp-row-detail">
           <pre>{detail}</pre>

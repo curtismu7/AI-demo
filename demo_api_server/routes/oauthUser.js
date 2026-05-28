@@ -57,6 +57,15 @@ function redirectEndUserOAuthSpaFailure(req, res, params, pathOverride) {
   res.redirect(`${origin}${path}?${q.toString()}`);
 }
 
+// Primary accountType for each vertical's seed — used to detect stale seed data.
+const VERTICAL_PRIMARY_TYPE = {
+  banking:          'CHECKING',
+  healthcare:       'Primary Care',
+  retail:           'Rewards Points',
+  'sporting-goods': 'Pro Member',
+  workforce:        'PTO Balance',
+};
+
 /**
  * Create sample accounts and transactions for new customers
  */
@@ -68,6 +77,37 @@ async function createSampleDataForCustomer(userId, firstName, lastName) {
   } catch (error) {
     console.error('Error creating sample data for customer:', error);
     throw error;
+  }
+}
+
+/**
+ * Reseed a customer's accounts if they don't match the active vertical.
+ * Called on every login so switching verticals between sessions is reflected immediately.
+ */
+async function reseedIfVerticalMismatch(userId, firstName, lastName) {
+  const activeVertical = configStore.getEffective('active_vertical') || 'banking';
+  const expectedType = VERTICAL_PRIMARY_TYPE[activeVertical];
+  const existing = dataStore.getAccountsByUserId(userId);
+
+  if (existing.length === 0) {
+    // No accounts yet — seed fresh
+    return createSampleDataForCustomer(userId, firstName, lastName);
+  }
+
+  const primaryType = existing[0]?.accountType;
+  if (expectedType && primaryType !== expectedType) {
+    console.debug(`[reseed] User ${userId} has "${primaryType}" accounts but vertical is "${activeVertical}" (expected "${expectedType}") — reseeding`);
+    // Wipe existing accounts/transactions for this user
+    const acctIds = new Set();
+    for (const [id, acct] of dataStore.accounts) {
+      if (acct.userId === userId) { acctIds.add(id); dataStore.accounts.delete(id); }
+    }
+    for (const [id, tx] of dataStore.transactions) {
+      if (tx.userId === userId || acctIds.has(tx.fromAccountId) || acctIds.has(tx.toAccountId)) {
+        dataStore.transactions.delete(id);
+      }
+    }
+    return createSampleDataForCustomer(userId, firstName, lastName);
   }
 }
 
@@ -340,27 +380,16 @@ router.get('/callback', async (req, res) => {
         ...oauthUser,
         password: null // OAuth users don't have passwords
       });
-      
-      // Create sample data for new customers (only if they have no accounts yet)
+
       if (user.role === 'customer') {
         try {
-          const existingAccounts = dataStore.getAccountsByUserId(user.id);
-          if (existingAccounts.length === 0) {
-            await createSampleDataForCustomer(user.id, user.firstName, user.lastName);
-          } else {
-          }
+          await reseedIfVerticalMismatch(user.id, user.firstName, user.lastName);
         } catch (error) {
           console.error('Failed to create sample data for new customer:', error);
-          // Don't fail the login if sample data creation fails
         }
       }
     } else {
       // Update existing user with OAuth data
-      
-      // Check if user exists in data store
-      const existingUser = dataStore.getUserById(user.id);
-      console.log('User found in data store:', existingUser);
-      
       user = await dataStore.updateUser(user.id, {
         email: oauthUser.email,
         firstName: oauthUser.firstName,
@@ -369,7 +398,15 @@ router.get('/callback', async (req, res) => {
         oauthProvider: oauthUser.oauthProvider,
         oauthId: oauthUser.oauthId
       });
-      console.log('Updated user:', user);
+
+      // Reseed if the active vertical changed since last login
+      if (user.role === 'customer') {
+        try {
+          await reseedIfVerticalMismatch(user.id, user.firstName, user.lastName);
+        } catch (error) {
+          console.error('Failed to reseed accounts on login:', error);
+        }
+      }
     }
     
     if (!tokenData.refresh_token) {

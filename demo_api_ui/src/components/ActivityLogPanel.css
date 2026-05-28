@@ -132,6 +132,7 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  padding: 4px 0;
 }
 
 .alp-empty {
@@ -145,43 +146,37 @@
   text-align: center;
 }
 
-/* ─── Event row ────────────────────────────────────────────────────────────── */
-.alp-row {
-  display: flex;
-  flex-direction: column;
-  border-bottom: 1px solid #f1f5f9;
-  cursor: default;
-  transition: background 0.1s;
+/* ─── Event card ───────────────────────────────────────────────────────────── */
+.alp-card {
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  border-left-width: 3px;
+  margin: 4px 8px;
+  overflow: hidden;
+  background: #ffffff;
 }
-.alp-row--expandable { cursor: pointer; }
-.alp-row--expandable:hover { background: #f8fafc; }
-.alp-row--expanded { background: #f8fafc; }
 
-.alp-row-main {
+.alp-card-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 12px;
+  padding: 7px 10px;
+  width: 100%;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: default;
 }
 
-.alp-row-time {
-  font-family: "SF Mono", "Fira Code", "Fira Mono", monospace;
-  font-size: 11px;
-  color: #94a3b8;
-  flex-shrink: 0;
-  width: 62px;
+.alp-card-header--expandable {
+  cursor: pointer;
 }
 
-.alp-row-cat {
-  flex-shrink: 0;
+.alp-card-header--expandable:hover {
+  background: #f8fafc;
 }
 
-.alp-row-sev {
-  flex-shrink: 0;
-  font-size: 12px;
-}
-
-.alp-row-msg {
+.alp-card-msg {
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -191,15 +186,45 @@
   color: #1e293b;
 }
 
+.alp-row-time {
+  font-family: "SF Mono", "Fira Code", "Fira Mono", monospace;
+  font-size: 11px;
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.alp-row-sev {
+  flex-shrink: 0;
+  font-size: 12px;
+}
+
 .alp-row-expand-icon {
   flex-shrink: 0;
   font-size: 10px;
   color: #94a3b8;
   transition: transform 0.15s;
 }
-.alp-row--expanded .alp-row-expand-icon {
+.alp-row-expand-icon--open {
   transform: rotate(90deg);
 }
+
+/* ─── Per-category left border colours ─────────────────────────────────────── */
+.alp-cat-border--oauth          { border-left-color: #3b82f6; }
+.alp-cat-border--mcp            { border-left-color: #7c3aed; }
+.alp-cat-border--token_exchange { border-left-color: #9333ea; }
+.alp-cat-border--delegation     { border-left-color: #d946ef; }
+.alp-cat-border--hitl           { border-left-color: #f59e0b; }
+.alp-cat-border--authorize      { border-left-color: #f97316; }
+.alp-cat-border--gateway_path   { border-left-color: #14b8a6; }
+.alp-cat-border--threshold      { border-left-color: #f43f5e; }
+.alp-cat-border--introspection  { border-left-color: #06b6d4; }
+.alp-cat-border--helix          { border-left-color: #22c55e; }
+.alp-cat-border--agent          { border-left-color: #0ea5e9; }
+.alp-cat-border--agent_prompt   { border-left-color: #84cc16; }
+.alp-cat-border--session        { border-left-color: #94a3b8; }
+.alp-cat-border--jwks           { border-left-color: #a1a1aa; }
+.alp-cat-border--auth_lifecycle { border-left-color: #9ca3af; }
+.alp-cat-border--unknown        { border-left-color: #cbd5e1; }
 
 /* ─── Metadata expand ──────────────────────────────────────────────────────── */
 .alp-row-detail {

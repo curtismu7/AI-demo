@@ -43,18 +43,61 @@
   },
   "dashboard": {
     "kind": "sporting-goods",
+    "chips": [
+      { "key": "balance",      "label": "Reward Points"    },
+      { "key": "accounts",     "label": "My Gear"          },
+      { "key": "transactions", "label": "Purchase History" },
+      { "key": "transfer",     "label": "Place Order"      },
+      { "key": "feature",      "label": "Show Gear Order"  }
+    ],
+    "hero": {
+      "cards": [
+        { "label": "Gear Value",     "dataKey": "heroStats.gearValue",     "format": "money" },
+        { "label": "Active Rentals", "dataKey": "heroStats.activeRentals", "format": "count" },
+        { "label": "Loyalty Tier",   "dataKey": "heroStats.loyaltyTier",   "format": "tier"  },
+        { "label": "Last Purchase",  "dataKey": "heroStats.lastPurchase",  "format": "date"  }
+      ]
+    },
+    "llmChipGroups": {
+      "Gear": [
+        { "id": "sg_rentals",     "label": "Active rentals",    "message": "Show my active equipment rentals" },
+        { "id": "sg_due",         "label": "Due back this week", "message": "What gear is due back this week?" }
+      ],
+      "Purchases": [
+        { "id": "sg_last_season", "label": "Last season buys",  "message": "What did I buy last season?" },
+        { "id": "sg_top_sport",   "label": "Top sport category","message": "Show my most purchased sport category" }
+      ],
+      "Loyalty": [
+        { "id": "sg_tier",        "label": "My loyalty tier",   "message": "What's my current loyalty tier?" },
+        { "id": "sg_next_reward", "label": "Next reward level", "message": "How far am I from the next reward level?" }
+      ],
+      "Recommendations": [
+        { "id": "sg_match",       "label": "Gear matches",      "message": "What gear matches my recent purchases?" },
+        { "id": "sg_trail",       "label": "Trail-ready gear",  "message": "Show trail-ready equipment for this season" }
+      ]
+    },
     "mockData": {
+      "heroStats": {
+        "gearValue":     644.00,
+        "activeRentals": 2,
+        "loyaltyTier":   "Gold",
+        "lastPurchase":  "2026-04-27"
+      },
       "products": [
-        { "id": "p1", "sku": "SS-NK-RUN",  "name": "Nike Pegasus 41",       "price": 140, "stock": "In Stock",  "category": "Running"  },
-        { "id": "p2", "sku": "SS-UA-HVY",  "name": "Under Armour Hoodie",   "price": 75,  "stock": "In Stock",  "category": "Apparel"  },
-        { "id": "p3", "sku": "SS-TW-GOLF", "name": "Titleist Pro V1 (12)",  "price": 55,  "stock": "Low Stock", "category": "Golf"     },
-        { "id": "p4", "sku": "SS-YNX-MAT", "name": "Yonex Badminton Racket","price": 120, "stock": "In Stock",  "category": "Racket"   },
-        { "id": "p5", "sku": "SS-GRM-WCH", "name": "Garmin Forerunner 265", "price": 449, "stock": "In Stock",  "category": "Wearable" }
+        { "id": "p1", "sku": "SS-NK-RUN",  "name": "Nike Pegasus 41",        "price": 140, "stock": "In Stock",  "category": "Running"  },
+        { "id": "p2", "sku": "SS-UA-HVY",  "name": "Under Armour Hoodie",    "price": 75,  "stock": "In Stock",  "category": "Apparel"  },
+        { "id": "p3", "sku": "SS-TW-GOLF", "name": "Titleist Pro V1 (12)",   "price": 55,  "stock": "Low Stock", "category": "Golf"     },
+        { "id": "p4", "sku": "SS-YNX-MAT", "name": "Yonex Badminton Racket", "price": 120, "stock": "In Stock",  "category": "Racket"   },
+        { "id": "p5", "sku": "SS-GRM-WCH", "name": "Garmin Forerunner 265",  "price": 449, "stock": "In Stock",  "category": "Wearable" }
       ],
       "orders": [
         { "id": "o1", "product": "Nike Pegasus 41",       "sku": "SS-NK-RUN",  "amount": 140, "status": "Delivered",  "date": "2026-04-18" },
         { "id": "o2", "product": "Garmin Forerunner 265", "sku": "SS-GRM-WCH", "amount": 449, "status": "Shipped",    "date": "2026-04-25" },
         { "id": "o3", "product": "Titleist Pro V1",       "sku": "SS-TW-GOLF", "amount": 55,  "status": "Processing", "date": "2026-04-27" }
+      ],
+      "rentals": [
+        { "id": "r1", "item": "Trek Marlin 8 Mountain Bike", "sku": "SS-TREK-MB8", "dueDate": "2026-05-30", "dailyRate": 45.00, "status": "Active" },
+        { "id": "r2", "item": "Rossignol Ski Set",           "sku": "SS-RS-SKI",   "dueDate": "2026-06-01", "dailyRate": 60.00, "status": "Active" }
       ]
     }
   },

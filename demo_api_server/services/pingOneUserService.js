@@ -27,8 +27,8 @@ class PingOneUserService {
   initialize() {
     const region = process.env.PINGONE_REGION || configStore.getEffective('PINGONE_REGION') || 'com';
     const environmentId = process.env.PINGONE_ENVIRONMENT_ID || configStore.getEffective('PINGONE_ENVIRONMENT_ID');
-    const workerAppClientId = process.env.PINGONE_WORKER_TOKEN_CLIENT_ID || configStore.getEffective('PINGONE_MGMT_CLIENT_ID') || configStore.getEffective('PINGONE_MANAGEMENT_CLIENT_ID');
-    const workerAppClientSecret = process.env.PINGONE_WORKER_TOKEN_CLIENT_SECRET || configStore.getEffective('PINGONE_MGMT_CLIENT_SECRET') || configStore.getEffective('PINGONE_MANAGEMENT_CLIENT_SECRET');
+    const workerAppClientId = process.env.PINGONE_WORKER_TOKEN_CLIENT_ID || process.env.PINGONE_WORKER_CLIENT_ID || configStore.getEffective('pingone_worker_token_client_id') || configStore.getEffective('PINGONE_MGMT_CLIENT_ID') || configStore.getEffective('PINGONE_MANAGEMENT_CLIENT_ID');
+    const workerAppClientSecret = process.env.PINGONE_WORKER_TOKEN_CLIENT_SECRET || process.env.PINGONE_WORKER_CLIENT_SECRET || configStore.getEffective('pingone_worker_token_client_secret') || configStore.getEffective('PINGONE_MGMT_CLIENT_SECRET') || configStore.getEffective('PINGONE_MANAGEMENT_CLIENT_SECRET');
     const adminPopulationId = configStore.getEffective('admin_population_id');
 
     if (!environmentId || !workerAppClientId || !workerAppClientSecret) {

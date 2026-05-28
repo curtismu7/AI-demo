@@ -14,8 +14,8 @@ import { isBankingAgentDashboardRoute } from './embeddedAgentFabVisibility';
 export function isBankingAgentFloatingDefaultOpen(pathname) {
   if (pathname == null || typeof pathname !== 'string') return false;
   const p = pathname.replace(/\/$/, '') || '/';
-  // Architecture diagram pages: start collapsed so the FAB button is visible.
-  // Users click the FAB to open the agent when they want to interact with the diagram.
+  // Pages where the agent overlaps content — start collapsed so the page is visible.
   if (p.startsWith('/architecture')) return false;
+  if (p === '/monitoring/activity-log') return false;
   return !isBankingAgentDashboardRoute(pathname);
 }

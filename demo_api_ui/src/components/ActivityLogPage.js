@@ -1,57 +1,58 @@
 // demo_api_ui/src/components/ActivityLogPage.js
-/**
- * Full-page wrapper for ActivityLogPanel.
- * Mounted at /monitoring/activity-log in App.js.
- * The SSE stream is always enabled on this page.
- */
-import React from 'react';
 import ActivityLogPanel from './ActivityLogPanel';
 
-const pageStyle = {
+const wrapStyle = {
   display: 'flex',
-  flexDirection: 'column',
+  justifyContent: 'center',
+  alignItems: 'flex-start',
+  padding: '24px',
   flex: 1,
   minHeight: 0,
+  background: '#f1f5f9',
+};
+
+const cardStyle = {
+  width: '700px',
+  height: '720px',
+  maxWidth: '100%',
+  maxHeight: 'calc(100vh - 80px)',
+  display: 'flex',
+  flexDirection: 'column',
+  background: '#ffffff',
+  borderRadius: '10px',
+  boxShadow: '0 4px 24px rgba(0,0,0,0.13)',
   overflow: 'hidden',
 };
 
 const headerStyle = {
-  padding: '16px 20px 12px',
+  padding: '12px 16px 10px',
   borderBottom: '1px solid #e2e8f0',
-  background: '#ffffff',
   flexShrink: 0,
 };
 
 const titleStyle = {
-  fontSize: '1.1rem',
+  fontSize: '14px',
   fontWeight: 700,
   color: '#0f172a',
   margin: 0,
 };
 
 const subtitleStyle = {
-  fontSize: '12px',
+  fontSize: '11px',
   color: '#64748b',
   marginTop: '2px',
 };
 
-const panelWrapStyle = {
-  flex: 1,
-  minHeight: 0,
-  display: 'flex',
-  flexDirection: 'column',
-};
-
 export default function ActivityLogPage() {
   return (
-    <div style={pageStyle}>
-      <div style={headerStyle}>
-        <p style={titleStyle}>Activity Log</p>
-        <p style={subtitleStyle}>
-          Live event stream — oauth · mcp · delegation · hitl · token_exchange · gateway_path · and more
-        </p>
-      </div>
-      <div style={panelWrapStyle}>
+    <div style={wrapStyle}>
+      <div style={cardStyle}>
+        <div style={headerStyle}>
+          <p style={titleStyle}>Activity Log</p>
+          <p style={subtitleStyle}>
+            Live event stream — oauth · mcp · delegation · hitl · token_exchange · gateway_path · and more
+          </p>
+        </div>
         <ActivityLogPanel enabled />
       </div>
     </div>

@@ -137,10 +137,41 @@ function phoneLast4Matches(want4, localUser, pingOneUser) {
   });
 }
 
+/**
+ * GET /environments/{envId}/users?filter=mobilePhone pr — users with a mobile phone set.
+ * Returns up to `limit` entries as [{ username, phoneLast4 }].
+ */
+async function fetchPingOneUsersWithPhone(limit = 5) {
+  const envId = configStore.getEffective('PINGONE_ENVIRONMENT_ID');
+  const region = configStore.getEffective('PINGONE_REGION') || 'com';
+  if (!envId) return { hints: null, error: 'not_configured' };
+  try {
+    const token = await getManagementToken();
+    const url = `https://api.pingone.${region}/v1/environments/${envId}/users`;
+    const { data } = await axios.get(url, {
+      params: { filter: 'mobilePhone pr', limit },
+      headers: { Authorization: `Bearer ${token}` },
+      timeout: 12000,
+    });
+    const users = data?._embedded?.users || [];
+    const hints = users
+      .filter((u) => u.username && u.mobilePhone)
+      .map((u) => ({
+        username: u.username,
+        phoneLast4: digitsOnly(u.mobilePhone).slice(-4),
+      }));
+    return { hints, error: null };
+  } catch (err) {
+    console.warn('[PingOneUserLookup] fetchUsersWithPhone failed:', err.response?.status, err.message);
+    return { hints: null, error: err.message || 'request_failed' };
+  }
+}
+
 module.exports = {
   normalizePingOneUser,
   resolvePingOneUserForLookup,
   phoneLast4Matches,
   fetchPingOneUserById,
   fetchPingOneUserByUsername,
+  fetchPingOneUsersWithPhone,
 };

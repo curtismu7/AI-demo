@@ -9,7 +9,117 @@ import { setDashboardLayout } from "../utils/dashboardLayout";
 import { EDU } from "./education/educationIds";
 import ConfirmModal from "./ConfirmModal";
 import KillSwitchConfirmModal from "./KillSwitchConfirmModal";
+import {
+  MdHome,
+  MdDashboard,
+  MdDescription,
+  MdPeople,
+  MdBarChart,
+  MdAltRoute,
+  MdLock,
+  MdSettings,
+  MdSearch,
+  MdSwapHoriz,
+  MdAccountBalance,
+  MdReceipt,
+  MdEdit,
+  MdNetworkCheck,
+  MdApi,
+  MdLink,
+  MdTimeline,
+  MdBugReport,
+  MdMobileFriendly,
+  MdArchitecture,
+  MdViewQuilt,
+  MdPlayArrow,
+  MdRoute,
+  MdList,
+  MdSecurity,
+  MdKey,
+  MdManageAccounts,
+  MdFlag,
+  MdBuild,
+  MdSmartToy,
+  MdTune,
+  MdEmail,
+  MdSafetyCheck,
+  MdPolicy,
+  MdShield,
+  MdCode,
+  MdBook,
+  MdStar,
+  MdPublic,
+  MdComputer,
+  MdChat,
+  MdLightbulb,
+  MdOpenInNew,
+  MdSyncAlt,
+  MdStop,
+  MdDarkMode,
+  MdRefresh,
+  MdLogout,
+  MdLogin,
+  MdOutlineChat,
+  MdStorage,
+  MdCollections,
+} from "react-icons/md";
+import { HiOutlineUsers } from "react-icons/hi";
 import "./AdminSideNav.css";
+
+const ICON_MAP = {
+  home: MdHome,
+  dashboard: MdDashboard,
+  doc: MdDescription,
+  usr: HiOutlineUsers,
+  rpt: MdBarChart,
+  log: MdList,
+  edt: MdEdit,
+  srch: MdSearch,
+  mcp: MdNetworkCheck,
+  api: MdApi,
+  lnk: MdLink,
+  dbg: MdBugReport,
+  flw: MdTimeline,
+  arc: MdArchitecture,
+  bld: MdViewQuilt,
+  ">": MdPlayArrow,
+  rte: MdRoute,
+  sec: MdSecurity,
+  cfg: MdSettings,
+  key: MdKey,
+  dlg: MdManageAccounts,
+  pol: MdPolicy,
+  shld: MdShield,
+  flag: MdFlag,
+  tool: MdBuild,
+  agt: MdSmartToy,
+  fix: MdTune,
+  msg: MdEmail,
+  find: MdSearch,
+  txn: MdSwapHoriz,
+  acc: MdAccountBalance,
+  lck: MdLock,
+  tst: MdCode,
+  mbl: MdMobileFriendly,
+  syn: MdSyncAlt,
+  demo: MdLightbulb,
+  ref: MdBook,
+  web: MdPublic,
+  clk: MdComputer,
+  ai: MdSmartToy,
+  file: MdDescription,
+  "*": MdStar,
+  "|": MdViewQuilt,
+  _: MdViewQuilt,
+  chat: MdOutlineChat,
+  "<>": MdSyncAlt,
+  drk: MdDarkMode,
+  out: MdLogout,
+  "sign-in": MdLogin,
+  stp: MdStop,
+  vault: MdStorage,
+  msg2: MdCollections,
+};
 
 /**
  * AdminSideNav — PingIdentity-style persistent left sidebar for navigation.
@@ -225,7 +335,6 @@ export default function AdminSideNav({ user }) {
           path: "/client-registration",
           icon: "edt",
         },
-        { label: "Scope Audit", path: "/scope-audit", icon: "find" },
         { label: "Scope Reference", path: "/scope-reference", icon: "doc" },
         { label: "User Delegation", path: "/delegation", icon: "dlg" },
         { label: "Error Audit Log", path: "/error-audit", icon: "log" },
@@ -236,6 +345,7 @@ export default function AdminSideNav({ user }) {
       icon: "cfg",
       adminOnly: true,
       children: [
+        { label: "Scope Audit", path: "/scope-audit", icon: "find" },
         { label: "Authorize Rules", path: "/authorize-config", icon: "pol" },
         { label: "MCP Gateway", path: "/mcp-gateway", icon: "shld" },
       ],
@@ -638,6 +748,12 @@ export default function AdminSideNav({ user }) {
     [navigate],
   );
 
+  const NavIcon = ({ name }) => {
+    const IconComponent = ICON_MAP[name];
+    if (IconComponent) return <IconComponent size={16} className="admin-side-nav__icon" />;
+    return null;
+  };
+
   const renderNavItem = (item, sectionKey, index) => {
     const itemKey = `${sectionKey}-${index}`;
     const isExpanded = expandedSections[itemKey];
@@ -651,7 +767,7 @@ export default function AdminSideNav({ user }) {
             onClick={() => toggleSection(itemKey)}
             title={collapsed ? item.label : undefined}
           >
-            <span className="admin-side-nav__icon">{item.icon}</span>
+            <NavIcon name={item.icon} />
             {!collapsed && (
               <>
                 <span className="admin-side-nav__label">{item.label}</span>
@@ -676,7 +792,7 @@ export default function AdminSideNav({ user }) {
                       title={child.label}
                       onClick={child.action}
                     >
-                      <span className="admin-side-nav__icon">{child.icon}</span>
+                      <NavIcon name={child.icon} />
                       <span className="admin-side-nav__label">
                         {child.label}
                       </span>
@@ -688,7 +804,7 @@ export default function AdminSideNav({ user }) {
                       className={`admin-side-nav__item admin-side-nav__item--child ${isActive(child.path) ? "admin-side-nav__item--active" : ""}`}
                       title={child.label}
                     >
-                      <span className="admin-side-nav__icon">{child.icon}</span>
+                      <NavIcon name={child.icon} />
                       <span className="admin-side-nav__label">
                         {child.label}
                       </span>
@@ -710,7 +826,7 @@ export default function AdminSideNav({ user }) {
           title={collapsed ? item.label : undefined}
           onClick={() => handleAction(item.action)}
         >
-          <span className="admin-side-nav__icon">{item.icon}</span>
+          <NavIcon name={item.icon} />
           {!collapsed && (
             <span className="admin-side-nav__label">{item.label}</span>
           )}
@@ -725,7 +841,7 @@ export default function AdminSideNav({ user }) {
         className={`admin-side-nav__item ${isActive(item.path) ? "admin-side-nav__item--active" : ""}`}
         title={collapsed ? item.label : undefined}
       >
-        <span className="admin-side-nav__icon">{item.icon}</span>
+        <NavIcon name={item.icon} />
         {!collapsed && (
           <span className="admin-side-nav__label">{item.label}</span>
         )}
@@ -826,7 +942,7 @@ export default function AdminSideNav({ user }) {
               onClick={() => toggleSection("agent-ui-placement")}
               title={collapsed ? "Agent UI Placement" : undefined}
             >
-              <span className="admin-side-nav__icon">agt</span>
+              <NavIcon name="agt" />
               {!collapsed && (
                 <>
                   <span className="admin-side-nav__label">Agent UI</span>
@@ -847,7 +963,7 @@ export default function AdminSideNav({ user }) {
                     className={`admin-side-nav__item admin-side-nav__item--child${placement === opt.key ? " admin-side-nav__item--active" : ""}`}
                     title={opt.label}
                   >
-                    <span className="admin-side-nav__icon">{opt.icon}</span>
+                    <NavIcon name={opt.icon} />
                     <span className="admin-side-nav__label">{opt.label}</span>
                   </button>
                 ))}
@@ -880,7 +996,7 @@ export default function AdminSideNav({ user }) {
                 : "Stop agent (emergency control)"
             }
           >
-            <span className="admin-side-nav__icon">stp</span>
+            <NavIcon name="stp" />
             {!collapsed && (
               <span className="admin-side-nav__label">
                 {agentRevoked ? "AGENT REVOKED" : "STOP AGENT"}
@@ -898,7 +1014,7 @@ export default function AdminSideNav({ user }) {
               onClick={() => toggleSection("learn")}
               title={collapsed ? "Learn" : undefined}
             >
-              <span className="admin-side-nav__icon">doc</span>
+              <NavIcon name="doc" />
               {!collapsed && (
                 <>
                   <span className="admin-side-nav__label">Learn</span>
@@ -919,7 +1035,7 @@ export default function AdminSideNav({ user }) {
                     className="admin-side-nav__item admin-side-nav__item--child"
                     title={item.label}
                   >
-                    <span className="admin-side-nav__icon">{item.icon}</span>
+                    <NavIcon name={item.icon} />
                     <span className="admin-side-nav__label">{item.label}</span>
                   </button>
                 ))}
@@ -940,7 +1056,7 @@ export default function AdminSideNav({ user }) {
               className="admin-side-nav__item admin-side-nav__item--action"
               title={collapsed ? item.label : undefined}
             >
-              <span className="admin-side-nav__icon">{item.icon}</span>
+              <NavIcon name={item.icon} />
               {!collapsed && (
                 <span className="admin-side-nav__label">{item.label}</span>
               )}

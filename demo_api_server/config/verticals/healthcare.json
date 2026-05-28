@@ -43,7 +43,57 @@
   },
   "dashboard": {
     "kind": "healthcare",
-    "mockData": null
+    "chips": [
+      { "key": "balance", "label": "Check Coverage" },
+      { "key": "accounts", "label": "My Records" },
+      { "key": "transactions", "label": "Appointments" },
+      { "key": "transfer", "label": "Release Records" },
+      { "key": "feature", "label": "Show Health Record" }
+    ],
+    "hero": {
+      "cards": [
+        { "label": "Next Appointment",       "dataKey": "heroStats.nextAppointment",      "format": "date"  },
+        { "label": "Active Prescriptions",   "dataKey": "heroStats.activePrescriptions",  "format": "count" },
+        { "label": "Outstanding Balance",    "dataKey": "heroStats.outstandingBalance",   "format": "money" },
+        { "label": "Coverage Status",        "dataKey": "heroStats.coverageStatus",       "format": "text"  }
+      ]
+    },
+    "llmChipGroups": {
+      "Appointments": [
+        { "id": "hc_next_appt",    "label": "Next appointment",     "message": "When is my next appointment?" },
+        { "id": "hc_specialists",  "label": "Specialist visits",    "message": "Show upcoming specialist visits" }
+      ],
+      "Prescriptions": [
+        { "id": "hc_active_rx",    "label": "Active prescriptions", "message": "List my active prescriptions" },
+        { "id": "hc_refills",      "label": "Refills due",          "message": "What prescription refills are due this week?" }
+      ],
+      "Billing": [
+        { "id": "hc_balance",      "label": "What do I owe?",       "message": "What do I owe from my last visit?" },
+        { "id": "hc_pending",      "label": "Pending claims",       "message": "Show claims pending insurance review" }
+      ],
+      "Coverage": [
+        { "id": "hc_deductible",   "label": "Deductible status",    "message": "What's my deductible status this year?" },
+        { "id": "hc_covered",      "label": "Is this covered?",     "message": "Is a specialist referral covered under my plan?" }
+      ]
+    },
+    "mockData": {
+      "heroStats": {
+        "nextAppointment":      "2026-06-03",
+        "activePrescriptions":  3,
+        "outstandingBalance":   142.50,
+        "coverageStatus":       "Active"
+      },
+      "patientRecords": [
+        { "id": "pr1", "name": "Alex Johnson",   "dob": "1985-04-12", "provider": "Dr. Sarah Chen",   "coverageType": "PPO",  "coverageStatus": "Active"   },
+        { "id": "pr2", "name": "Alex Johnson",   "dob": "1985-04-12", "provider": "Dr. Marcus Webb",  "coverageType": "HMO",  "coverageStatus": "Active"   },
+        { "id": "pr3", "name": "Alex Johnson",   "dob": "1985-04-12", "provider": "Dr. Priya Nair",   "coverageType": "PPO",  "coverageStatus": "Inactive" }
+      ],
+      "billingHistory": [
+        { "id": "b1", "procedureCode": "99213", "date": "2026-04-10", "insurer": "BlueCross",   "amountBilled": 220.00, "status": "Paid"    },
+        { "id": "b2", "procedureCode": "90837", "date": "2026-04-22", "insurer": "BlueCross",   "amountBilled": 180.00, "status": "Pending" },
+        { "id": "b3", "procedureCode": "93000", "date": "2026-05-01", "insurer": "BlueCross",   "amountBilled": 95.00,  "status": "Denied"  }
+      ]
+    }
   },
   "scopes": {
     "read": "read",

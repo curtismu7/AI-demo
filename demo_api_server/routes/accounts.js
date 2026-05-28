@@ -5,6 +5,16 @@ const { authenticateToken, requireScopes, requireNotBankDelegate } = require('..
 const { blockInDemoMode } = require('../middleware/demoMode');
 const demoScenarioStore = require('../services/demoScenarioStore');
 const posthog = require('../services/posthog');
+const configStore = require('../services/configStore');
+
+// Expected primary accountType per vertical — used to detect stale seed data on page load.
+const VERTICAL_PRIMARY_TYPE = {
+  banking:          'CHECKING',
+  healthcare:       'Primary Care',
+  retail:           'Rewards Points',
+  'sporting-goods': 'Pro Member',
+  workforce:        'PTO Balance',
+};
 
 /**
  * Rebuild a user's accounts from a snapshot saved in demoScenarioStore (Redis/KV).
@@ -224,21 +234,35 @@ router.get('/my', authenticateToken, async (req, res) => {
   res.set({ 'Cache-Control': 'private, no-store' });
   try {
     let userAccounts = dataStore.getAccountsByUserId(req.user.id);
-    // Check completeness even when accounts exist — a runtimeData with only a loan (no checking/savings)
-    // skips provisioning under the old length===0 guard, leaving the user with no usable accounts.
-    const hasChecking = () => userAccounts.some(a => (a.accountType || a.type) === 'checking');
-    const hasSavings  = () => userAccounts.some(a => (a.accountType || a.type) === 'savings');
+
+    const activeVertical = configStore.getEffective('active_vertical') || 'banking';
+    const expectedPrimaryType = VERTICAL_PRIMARY_TYPE[activeVertical];
+
+    // For the banking vertical, also check the legacy loan completeness guard.
+    const hasChecking = () => userAccounts.some(a => (a.accountType || a.type) === 'CHECKING' || (a.accountType || a.type) === 'checking');
+    const hasSavings  = () => userAccounts.some(a => (a.accountType || a.type) === 'SAVINGS'  || (a.accountType || a.type) === 'savings');
     const hasLoan     = () => userAccounts.some(a => (a.accountType || a.type) === 'loan');
-    if (req.user.id && (userAccounts.length === 0 || !hasChecking() || !hasSavings())) {
+
+    // Detect vertical mismatch: existing accounts belong to a different vertical's seed.
+    const primaryType = userAccounts[0]?.accountType;
+    const verticalMismatch = userAccounts.length > 0 && expectedPrimaryType && primaryType !== expectedPrimaryType;
+
+    if (req.user.id && (userAccounts.length === 0 || verticalMismatch)) {
       if (userAccounts.length === 0) {
-        // On cold-start the in-memory store is empty.  Try to restore from the persisted
+        // On cold-start the in-memory store is empty. Try to restore from the persisted
         // account snapshot (Redis/KV) before falling back to fresh provisioning.
         userAccounts = await restoreAccountsFromSnapshot(req.user.id);
       }
-      // Validate completeness — must include at least one checking AND one savings account.
-      if (!hasChecking() || !hasSavings()) {
-        userAccounts = await provisionDemoAccounts(req.user.id);
-        // Persist the freshly provisioned accounts so future cold-starts can restore them.
+
+      // After restore, re-check for vertical mismatch.
+      const restoredPrimaryType = userAccounts[0]?.accountType;
+      const stillMismatched = userAccounts.length === 0 ||
+        (expectedPrimaryType && restoredPrimaryType !== expectedPrimaryType);
+
+      if (stillMismatched) {
+        // Wipe stale accounts and reseed for the active vertical.
+        await dataStore.reseedAllCustomersForVertical(activeVertical);
+        userAccounts = dataStore.getAccountsByUserId(req.user.id);
         const snapshot = userAccounts.map(a => ({
           id: a.id, accountType: a.accountType, accountNumber: a.accountNumber,
           name: a.name || '', balance: a.balance, currency: a.currency || 'USD', isActive: true,
@@ -246,8 +270,9 @@ router.get('/my', authenticateToken, async (req, res) => {
         await demoScenarioStore.save(req.user.id, { accountSnapshot: snapshot });
       }
     }
-    // Add car loan if missing without wiping existing accounts/balances.
-    if (req.user.id && hasChecking() && hasSavings() && !hasLoan()) {
+
+    // For the banking vertical only: add car loan if missing without wiping existing accounts/balances.
+    if (req.user.id && activeVertical === 'banking' && hasChecking() && hasSavings() && !hasLoan()) {
       userAccounts = await addMissingLoanAccount(req.user.id, userAccounts);
     }
     res.json({

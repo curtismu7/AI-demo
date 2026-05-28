@@ -42,7 +42,59 @@
     "systemPromptFlavor": "You are a WX Workforce HR assistant. Help employees check PTO balances, submit expense reports, review benefits, and track reimbursements. Use HR language: accounts are PTO balances, benefits allowances, or expense budgets, transactions are requests or submissions, balance is PTO or budget balance. Be professional and direct."
   },
   "dashboard": {
-    "kind": "workforce"
+    "kind": "workforce",
+    "chips": [
+      { "key": "balance",      "label": "PTO Balance"         },
+      { "key": "accounts",     "label": "My Benefits"         },
+      { "key": "transactions", "label": "Request History"     },
+      { "key": "transfer",     "label": "Submit Request"      },
+      { "key": "feature",      "label": "Show Expense Report" }
+    ],
+    "hero": {
+      "cards": [
+        { "label": "Next Pay Date",    "dataKey": "heroStats.nextPayDate",      "format": "date"  },
+        { "label": "PTO Balance",      "dataKey": "heroStats.ptoBalance",       "format": "count" },
+        { "label": "Open Enrollments", "dataKey": "heroStats.openEnrollments",  "format": "count" },
+        { "label": "Team Size",        "dataKey": "heroStats.teamSize",         "format": "count" }
+      ]
+    },
+    "llmChipGroups": {
+      "Pay": [
+        { "id": "wf_payday",    "label": "Next payday",      "message": "When is my next payday?" },
+        { "id": "wf_paystubs",  "label": "Recent pay stubs", "message": "Show my last 3 pay stubs" }
+      ],
+      "Benefits": [
+        { "id": "wf_enrolled",   "label": "My benefits",     "message": "What benefits am I enrolled in?" },
+        { "id": "wf_enrollment", "label": "Open enrollment", "message": "When does open enrollment close?" }
+      ],
+      "Time Off": [
+        { "id": "wf_pto",     "label": "PTO balance",      "message": "How much PTO do I have left?" },
+        { "id": "wf_pending", "label": "Pending requests", "message": "Show my pending time-off requests" }
+      ],
+      "Team": [
+        { "id": "wf_schedules", "label": "Team schedules", "message": "Show my direct reports' schedules" },
+        { "id": "wf_out",       "label": "Who's out?",     "message": "Who is out of office this week?" }
+      ]
+    },
+    "mockData": {
+      "heroStats": {
+        "nextPayDate":     "2026-06-06",
+        "ptoBalance":      14,
+        "openEnrollments": 2,
+        "teamSize":        8
+      },
+      "benefits": [
+        { "id": "ben1", "name": "Medical",  "planType": "PPO",  "enrollmentStatus": "Enrolled",     "coverageTier": "Employee + Family", "nextRenewal": "2027-01-01" },
+        { "id": "ben2", "name": "Dental",   "planType": "DPPO", "enrollmentStatus": "Enrolled",     "coverageTier": "Employee Only",     "nextRenewal": "2027-01-01" },
+        { "id": "ben3", "name": "Vision",   "planType": "VSP",  "enrollmentStatus": "Not Enrolled", "coverageTier": "—",                 "nextRenewal": "2027-01-01" },
+        { "id": "ben4", "name": "401(k)",   "planType": "Roth", "enrollmentStatus": "Enrolled",     "coverageTier": "6% contribution",   "nextRenewal": "—"         }
+      ],
+      "payrollHistory": [
+        { "id": "pay1", "payPeriod": "2026-05-01 – 2026-05-15", "grossPay": 4166.67, "deductions": 1041.67, "netPay": 3125.00, "paymentMethod": "Direct Deposit" },
+        { "id": "pay2", "payPeriod": "2026-04-16 – 2026-04-30", "grossPay": 4166.67, "deductions": 1041.67, "netPay": 3125.00, "paymentMethod": "Direct Deposit" },
+        { "id": "pay3", "payPeriod": "2026-04-01 – 2026-04-15", "grossPay": 4166.67, "deductions": 1041.67, "netPay": 3125.00, "paymentMethod": "Direct Deposit" }
+      ]
+    }
   },
   "scopes": {
     "read": "read",

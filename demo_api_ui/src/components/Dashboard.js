@@ -71,14 +71,14 @@ const Dashboard = ({ user, onLogout }) => {
   const [resettingDemo, setResettingDemo] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmWriteSeed, setConfirmWriteSeed] = useState(false);
-  const [txLookupUsername, setTxLookupUsername] = useState("bankuser");
-  const [txLookupPhone4, setTxLookupPhone4] = useState("1586");
+  const [txLookupUsername, setTxLookupUsername] = useState("demoUser");
   const [txLookupTx, setTxLookupTx] = useState([]);
   const [txLookupMeta, setTxLookupMeta] = useState(null);
   const [txLookupAccounts, setTxLookupAccounts] = useState([]);
   const [txLookupPingOne, setTxLookupPingOne] = useState(null);
   const [txLookupTotalTx, setTxLookupTotalTx] = useState(0);
   const [txLookupLoading, setTxLookupLoading] = useState(false);
+  const [txLookupHints, setTxLookupHints] = useState([]);
   const [apiCallsModalOpen, setApiCallsModalOpen] = useState(false);
   const fetchingRef = React.useRef(false);
   const [scopeInjectionEnabled, setScopeInjectionEnabled] = useState(false);
@@ -373,7 +373,6 @@ const Dashboard = ({ user, onLogout }) => {
       try {
         const { data } = await bffAxios.post("/api/admin/transactions/lookup", {
           username: txLookupUsername.trim(),
-          phoneLast4: txLookupPhone4.trim(),
         });
         setTxLookupTx(data.transactions || []);
         setTxLookupMeta(data.user || null);
@@ -396,7 +395,7 @@ const Dashboard = ({ user, onLogout }) => {
         setTxLookupLoading(false);
       }
     },
-    [txLookupUsername, txLookupPhone4],
+    [txLookupUsername],
   );
 
   // Function to decode JWT token
@@ -472,10 +471,16 @@ const Dashboard = ({ user, onLogout }) => {
         setScopeInjectionEnabled(
           cfg.ff_inject_scopes === "true" || cfg.ff_inject_scopes === true,
         );
+        const configuredUsername = cfg.config?.demo_username;
+        if (configuredUsername) setTxLookupUsername(configuredUsername);
       })
       .catch(() => {
         /* non-critical */
       });
+    bffAxios
+      .get("/api/admin/users/hints")
+      .then((res) => setTxLookupHints(res.data.hints || []))
+      .catch(() => {/* non-critical */});
   }, []);
 
   if (loading) {
@@ -601,19 +606,36 @@ const Dashboard = ({ user, onLogout }) => {
                 </h2>
                 <p
                   style={{
-                    margin: "0 0 1rem",
+                    margin: "0 0 0.5rem",
                     fontSize: "0.9rem",
                     color: "var(--dash-muted, #64748b)",
                     lineHeight: 1.5,
                   }}
                 >
-                  Enter banking username and last 4 digits of the phone on file
-                  (matches PingOne mobile phone when linked, otherwise local
-                  seed data). Profile fields are merged from PingOne where the
-                  worker app can read the directory. Demo seed:{" "}
-                  <code>bankuser</code> + <code>1586</code> (phone{" "}
-                  <code>+15551231586</code>).
+                  Enter a username and the last 4 digits of their phone on file.
                 </p>
+                {txLookupHints.length > 0 && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem", marginBottom: "1rem" }}>
+                    {txLookupHints.map((h) => (
+                      <button
+                        key={h.username}
+                        type="button"
+                        onClick={() => setTxLookupUsername(h.username)}
+                        style={{
+                          padding: "0.2rem 0.6rem",
+                          fontSize: "0.8rem",
+                          background: "var(--dash-surface2, #f1f5f9)",
+                          border: "1px solid var(--dash-border, #e2e8f0)",
+                          borderRadius: "4px",
+                          cursor: "pointer",
+                          color: "var(--dash-text, #1e293b)",
+                        }}
+                      >
+                        {h.username}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <form
                   onSubmit={handleLookupUserTransactions}
                   style={{
@@ -645,39 +667,6 @@ const Dashboard = ({ user, onLogout }) => {
                       className="form-control"
                       style={{
                         minWidth: "160px",
-                        padding: "0.5rem 0.65rem",
-                        borderRadius: "8px",
-                        border: "1px solid #e2e8f0",
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="tx-lookup-phone"
-                      style={{
-                        display: "block",
-                        fontSize: "0.75rem",
-                        fontWeight: 600,
-                        marginBottom: "0.25rem",
-                      }}
-                    >
-                      Last 4 of phone
-                    </label>
-                    <input
-                      id="tx-lookup-phone"
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={4}
-                      autoComplete="off"
-                      value={txLookupPhone4}
-                      onChange={(ev) =>
-                        setTxLookupPhone4(
-                          ev.target.value.replace(/\D/g, "").slice(0, 4),
-                        )
-                      }
-                      className="form-control"
-                      style={{
-                        width: "88px",
                         padding: "0.5rem 0.65rem",
                         borderRadius: "8px",
                         border: "1px solid #e2e8f0",

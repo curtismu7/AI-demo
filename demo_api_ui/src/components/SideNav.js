@@ -57,6 +57,7 @@ const ADMIN_NAV = [
   {
     group: "Configuration",
     items: [
+      { to: "/scope-audit", label: "Scope Audit", icon: "MdSecurity" },
       { to: "/configure", label: "Configure", icon: "MdTune" },
       { to: "/config", label: "App Config", icon: "MdSettings" },
       { to: "/settings", label: "Security", icon: "MdLock" },
@@ -71,18 +72,6 @@ const ADMIN_NAV = [
   {
     group: "User Management",
     items: [{ to: "/self-service", label: "Create Account", icon: "MdPerson" }],
-  },
-  {
-    group: "Developer Tools",
-    items: [
-      { to: "/pingone-test", label: "Test Page", icon: "MdSettings" },
-      { to: "/mcp-inspector", label: "MCP Inspector", icon: "MdPlug" },
-      { label: "MCP Tracking", icon: "MdSwapCalls", action: "openMcpTracking" },
-      { to: "/oauth-debug-logs", label: "OAuth Logs", icon: "MdSearch" },
-      { to: "/scope-audit", label: "Scope Audit", icon: "MdSecurity" },
-      { to: "/client-registration", label: "Client Reg.", icon: "MdFileText" },
-      { to: "/scope-reference", label: "Scope Ref.", icon: "MdMenuBook" },
-    ],
   },
 ];
 
