@@ -205,12 +205,7 @@ Browser → (cookie) → BFF (agentMcpTokenService.js)
 
 ## Agent behavior (always active)
 
-These four rules apply to every task — trivial or complex, planning or execution:
-
-1. **Don't assume. Surface confusion.** If requirements are unclear, a tradeoff exists, or you're unsure whether something is in scope — say so before acting. Never silently pick one path when two are plausible.
-2. **Minimum code that solves the problem.** Nothing speculative, no "while I'm here" additions, no future-proofing. If it isn't required by the task, it doesn't exist.
-3. **Touch only what you must. Clean up only your own mess.** Leave unrelated code exactly as you found it. Fix pre-existing issues only if they're in a file you already had to change and the fix is small and scoped.
-4. **Define success criteria. Loop until verified.** Before starting non-trivial work, state what "done" looks like. Don't mark work complete without evidence that the criteria are met.
+Global rules from `~/.claude/CLAUDE.md` apply (don't assume, minimum code, touch only what you must, define success criteria). Project-specific additions: none beyond the workflow orchestration section below.
 
 ---
 
@@ -295,7 +290,7 @@ PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_ID=<uuid>
 PINGONE_MCP_TOKEN_EXCHANGER_CLIENT_SECRET="<secret>"  # Quote secrets with special chars (~, -, .)
 PINGONE_MCP_TOKEN_EXCHANGER_CC_AUTH_METHOD=post       # PingOne AI_AGENT apps use 'post'
 PINGONE_RESOURCE_MCP_SERVER_URI=https://mcp-server.pingdemo.com
-MCP_TOKEN_EXCHANGE_SCOPES=banking:read banking:write banking:mcp:invoke
+MCP_TOKEN_EXCHANGE_SCOPES=read write
 ```
 
 **Why `act` claim might be absent:**
