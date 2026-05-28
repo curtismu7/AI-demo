@@ -38,9 +38,10 @@ import ApiKeyPathPage from "./components/ApiKeyPathPage";
 import AccessIdTokenPathPage from "./components/AccessIdTokenPathPage";
 import ApiTrafficPage from "./components/ApiTrafficPage";
 import AuditPage from "./components/AuditPage";
+import AdminRoute from "./routes/AdminRoute";
 import BankingAdminOps from "./components/BankingAdminOps";
 import BankingAgent from "./components/BankingAgent";
-import { resolveEmbeddedFocus } from "./components/bankingAgentSafety";
+import { resolveEmbeddedFocus } from "./components/demoAgentSafety";
 import CIBAPanel from "./components/CIBAPanel";
 import CimdSimPanel from "./components/CimdSimPanel";
 import ClientCredentialsResourcePage from "./components/ClientCredentialsResourcePage";
@@ -101,6 +102,7 @@ import UserDashboard from "./components/UserDashboard";
 import Users from "./components/Users";
 import UserTransactions from "./components/UserTransactions";
 import WebMcpPanel from "./components/WebMcpPanel";
+import AuthorizeRulesPanel from "./components/AuthorizeRulesPanel";
 import {
   AgentUiModeProvider,
   useAgentUiMode,
@@ -109,6 +111,7 @@ import { DemoTourProvider } from "./context/DemoTourContext";
 import { EducationUIProvider } from "./context/EducationUIContext";
 import { ExchangeModeProvider } from "./context/ExchangeModeContext";
 import { IndustryBrandingProvider } from "./context/IndustryBrandingContext";
+import { SessionTokenProvider } from "./context/SessionTokenContext";
 import { SpinnerProvider } from "./context/SpinnerContext";
 import { TokenChainProvider } from "./context/TokenChainContext";
 import { VerticalProvider } from "./context/VerticalContext";
@@ -202,21 +205,6 @@ function AgentFlowPage() {
       </p>
     </div>
   );
-}
-
-function AdminRoute({ user, children }) {
-  const toastedRef = useRef(false);
-  const isAdmin = user?.role === "admin";
-
-  useEffect(() => {
-    if (!isAdmin && !toastedRef.current) {
-      toastedRef.current = true;
-      notifyWarning("This page is restricted to admin users.");
-    }
-  }, [isAdmin]);
-
-  if (isAdmin) return children;
-  return <Navigate to="/" replace />;
 }
 
 /** Prevents re-auth after logout when effects re-run (matches f8393a7 session guard). */
@@ -894,6 +882,7 @@ function AppWithAuth() {
                       <main className="main-content">
                         <UserDashboard user={null} onLogout={logout} />
                         <WebMcpPanel />
+                        <AuthorizeRulesPanel />
                       </main>
                     </>
                   ) : (
@@ -903,6 +892,7 @@ function AppWithAuth() {
                       <main className="main-content">
                         <UserDashboard user={user} onLogout={logout} />
                         <WebMcpPanel />
+                        <AuthorizeRulesPanel />
                       </main>
                     </>
                   )
@@ -1481,7 +1471,9 @@ export default function App() {
           >
             <IndustryBrandingProvider>
               <VerticalProvider>
-                <AppWithAuth />
+                <SessionTokenProvider>
+                  <AppWithAuth />
+                </SessionTokenProvider>
               </VerticalProvider>
             </IndustryBrandingProvider>
           </Router>
