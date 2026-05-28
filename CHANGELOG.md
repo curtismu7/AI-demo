@@ -17,6 +17,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 ## [Unreleased]
 
 ### Added
+- `openai_agent/src/bff_tool_adapter.py` — BFF tool adapter that wraps BFF `/internal/agent-tool` calls as OpenAI Agents SDK `FunctionTool` objects (3 tests)
 - MCP Results tab now populated when tools are called via LLM agent path (`executeBffTool`) — was only recorded on the chip/HTTP path before
 - `ff_use_pinggateway` feature flag + `mcp_pinggateway_url` configStore key — route MCP traffic through PingGateway instead of Node gateway
 - `anthropic_api_key` configStore key with `ANTHROPIC_API_KEY` env fallback
