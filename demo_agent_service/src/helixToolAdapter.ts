@@ -15,13 +15,15 @@ export interface HelixModelResult {
 
 type HelixClientFn = (cfg: Record<string, string | undefined>, messages: ReasonMessage[]) => Promise<string>;
 
-function buildSystemPreamble(tools: ReasonToolSchema[]): string {
+function buildSystemPreamble(tools: ReasonToolSchema[], systemPrompt?: string): string {
   const toolLines = tools.map((t) => {
     const fields = Object.keys((t.inputSchema as any)?.properties || {});
     return `- ${t.name} — ${t.description} — args: {${fields.join(', ')}}`;
   }).join('\n');
-  return [
-    'You can call banking tools. Available tools:',
+  const lines = [];
+  if (systemPrompt) lines.push(systemPrompt, '');
+  lines.push(
+    'You can call tools. Available tools:',
     toolLines,
     '',
     'RULES:',
@@ -29,7 +31,8 @@ function buildSystemPreamble(tools: ReasonToolSchema[]): string {
     '  TOOL_CALL: {"name":"<exact tool name>","args":{...}}',
     '- Otherwise, answer the user normally in plain prose. Do NOT mention tools.',
     '- Never wrap the TOOL_CALL line in code fences or add text around it.',
-  ].join('\n');
+  );
+  return lines.join('\n');
 }
 
 function withPreamble(messages: ReasonMessage[], preamble: string): ReasonMessage[] {
@@ -108,9 +111,10 @@ export async function helixReason(
   messages: ReasonMessage[],
   tools: ReasonToolSchema[],
   client: HelixClientFn,
+  systemPrompt?: string,
 ): Promise<HelixModelResult> {
   const toolNames = new Set(tools.map((t) => t.name));
-  const preamble = buildSystemPreamble(tools);
+  const preamble = buildSystemPreamble(tools, systemPrompt);
   const folded = foldToolResultsForHelix(messages);
   const primed = withPreamble(folded, preamble);
 

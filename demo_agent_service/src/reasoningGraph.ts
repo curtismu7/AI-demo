@@ -76,6 +76,7 @@ export async function reasonOnce(req: ReasonRequest): Promise<ReasonResponse> {
         max_tokens: 4096,
         tools,
         messages: anthropicMessages,
+        ...(req.systemPrompt ? { system: req.systemPrompt } : {}),
       });
       if (response.stop_reason === 'tool_use') {
         const toolUseBlocks = response.content.filter(
@@ -106,7 +107,7 @@ export async function reasonOnce(req: ReasonRequest): Promise<ReasonResponse> {
 
   if (req.provider === 'helix') {
     try {
-      const r = await helixReason(req.helixConfig || {}, req.messages, req.tools, callHelix);
+      const r = await helixReason(req.helixConfig || {}, req.messages, req.tools, callHelix, req.systemPrompt);
       if (r.tool_calls && r.tool_calls.length > 0) {
         return { type: 'tool_calls', calls: r.tool_calls, messages: [...req.messages, { role: 'assistant', content: '', tool_calls: r.tool_calls }] };
       }
@@ -127,7 +128,10 @@ export async function reasonOnce(req: ReasonRequest): Promise<ReasonResponse> {
   const bound = (model as any).bindTools(req.tools.map((t) => ({
     name: t.name, description: t.description, input_schema: t.inputSchema,
   })));
-  const resp: any = await bound.invoke(req.messages);
+  const ollamaMessages = req.systemPrompt
+    ? [{ role: 'system', content: req.systemPrompt }, ...req.messages]
+    : req.messages;
+  const resp: any = await bound.invoke(ollamaMessages);
   if (resp.tool_calls && resp.tool_calls.length > 0) {
     return {
       type: 'tool_calls',

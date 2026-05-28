@@ -19,6 +19,8 @@ export interface ReasonRequest {
   tools: ReasonToolSchema[];
   provider: 'helix' | 'ollama' | 'anthropic'; // already resolved by the BFF
   model?: string;
+  // Vertical system prompt injected by the BFF from manifest.agent.systemPromptFlavor
+  systemPrompt?: string;
   // Helix connection config (BFF-owned; passed through, never a token)
   helixConfig?: Record<string, string | undefined>;
   ollamaBaseUrl?: string;

@@ -19,6 +19,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { logDelegationEvent } = require('../middleware/delegationAuditLogger');
 const { getActiveManifest, getActiveVertical } = require('./verticalConfigService');
+const { recordToolCall: recordMcpToolCall } = require('./mcpToolAuditStore');
 
 /**
  * IN-04: agent chat content is PII-equivalent in a banking context. The
@@ -443,20 +444,6 @@ function buildToolSchemasForAgentForVertical(manifest) {
 }
 
 /**
- * Tool SCHEMAS for :3006 — derived from the SAME tool list agentBuilder builds
- * (`getBankingToolDefinitions()` → `createMcpToolRegistry()`), with executors
- * stripped. Zod `schema` → JSON Schema so :3006's helixToolAdapter can read
- * `.properties`. No hand-duplicated schemas.
- *
- * Descriptions are overridden with the active vertical's terminology for the 4
- * shared core tools; all other tools keep their original descriptions.
- */
-function buildToolSchemasForAgent() {
-  const manifest = getActiveManifest();
-  return buildToolSchemasForAgentForVertical(manifest);
-}
-
-/**
  * Execute a tool the SAME way agentBuilder's tool node did:
  * `tool.invoke(args, { configurable: { agentContext: { agentToken, userId, tokenEvents } } })`.
  * Token custody stays BFF-side — the MCP/agent token is resolved HERE via
@@ -500,6 +487,7 @@ async function executeBffTool({ name, args, userId, userToken, req = null, token
   // HITL/consent denial surfaces as a generic error (same as the
   // pre-consolidation in-process graph path — never a clean 428 here). Do NOT
   // assume the LLM path yields a 428; do NOT remove the heuristic floor.
+  const _toolStart = Date.now();
   const result = await tool.invoke(args, {
     configurable: {
       agentContext: {
@@ -509,7 +497,21 @@ async function executeBffTool({ name, args, userId, userToken, req = null, token
       },
     },
   });
-  return typeof result === 'string' ? result : JSON.stringify(result);
+  const _duration = Date.now() - _toolStart;
+  const resultStr = typeof result === 'string' ? result : JSON.stringify(result);
+  try {
+    const parsed = typeof result === 'object' && result !== null ? result : JSON.parse(resultStr);
+    const success = !parsed?.error && !parsed?.isError;
+    recordMcpToolCall({
+      userId: userId || 'agent',
+      toolName: name,
+      success,
+      duration: _duration,
+      summary: success ? `${name} completed` : `${name} failed`,
+      isDelegated: !!agentToken,
+    });
+  } catch (_) {}
+  return resultStr;
 }
 
 /**
@@ -754,7 +756,9 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
       } catch (e) { /* audit must never break the request path */ }
     }
 
-    const toolSchemas = buildToolSchemasForAgent();
+    const activeManifest = getActiveManifest();
+    const toolSchemas = buildToolSchemasForAgentForVertical(activeManifest);
+    const systemPrompt = activeManifest?.agent?.systemPromptFlavor;
     // HITL/consent note: real transfer-consent enforcement is the deterministic
     // heuristic, which runs and returns BEFORE this LLM/reason path
     // (ARCHITECTURE-TRUTHS T-3) and is unchanged. On THIS LLM/tool path a
@@ -767,6 +771,7 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
       tools: toolSchemas,
       provider,
       model,
+      systemPrompt,
       helixConfig: extractHelixConfig(langchainConfig),
       ollamaBaseUrl: langchainConfig && langchainConfig.ollama_base_url,
       anthropicApiKey: process.env.ANTHROPIC_API_KEY,
