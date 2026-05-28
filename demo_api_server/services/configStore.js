@@ -169,6 +169,7 @@ const FIELD_DEFS = {
 ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic fast path for chips; when false, all queries go through LLM
   ff_agent_results_panel:    { public: true, default: 'false' }, // Floating Results Panel in Banking Agent (off by default)
   ff_agui_enabled:           { public: true, default: 'true'  }, // AG-UI streaming agent via POST /api/agent/run
+  llm_framework:             { public: true, default: 'langchain' }, // Agent framework: langchain | openai_agents | mastra | pydantic_ai
   // Feature-flag registry IDs that were missing from FIELD_DEFS — without an
   // entry getEffective() can't resolve them and the env-override fallback below
   // never applies. defaults MUST match routes/featureFlags.js FLAG_REGISTRY.

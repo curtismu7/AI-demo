@@ -31,10 +31,19 @@ router.use(agentSessionMiddleware);
 // Helpers
 // ---------------------------------------------------------------------------
 
-function getAgentServiceTarget() {
+const FRAMEWORK_PORTS = {
+  langchain:     8889,
+  openai_agents: 8891,
+  mastra:        8892,
+  pydantic_ai:   8893,
+};
+
+function resolveAgentTarget() {
+  const framework = configStore.getEffective('llm_framework') || 'langchain';
+  const port = FRAMEWORK_PORTS[framework] ?? FRAMEWORK_PORTS.langchain;
   return {
     hostname: process.env.AGENT_SERVICE_HOST || '127.0.0.1',
-    port: parseInt(process.env.AGENT_SERVICE_PORT || '3006', 10),
+    port,
   };
 }
 
@@ -181,7 +190,7 @@ router.post('/run', async (req, res) => {
   res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders();
 
-  const { hostname: agentHost, port: agentPort } = getAgentServiceTarget();
+  const { hostname: agentHost, port: agentPort } = resolveAgentTarget();
   const agentPath = '/run';
 
   const bodyStr = JSON.stringify(agentPayload);
