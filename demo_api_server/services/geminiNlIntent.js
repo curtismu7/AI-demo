@@ -161,6 +161,21 @@ async function parseNaturalLanguage(message, context = {}, provider = 'auto', la
     return { source: 'heuristic', result: heuristicResult };
   }
 
+  // provider:"pingone-admin" = PingOne MCP Admin chip — skip heuristic, go straight to Helix.
+  if (provider === 'pingone-admin') {
+    const { resolveLlmProvider } = require('./llmProviderResolver');
+    const { provider: llmProvider } = resolveLlmProvider(langchainConfig);
+    if (llmProvider !== 'helix') {
+      return {
+        source: 'heuristic',
+        result: { kind: 'none', message: 'PingOne Admin tools require Helix to be configured. Open the Helix tab in the agent and add base_url + api_key + agent_id.' },
+        llm_attempted: false,
+        llm_not_configured: true,
+      };
+    }
+    // Fall through with selectedProvider forced to 'helix' below.
+  }
+
   // agent_mode controls heuristicRouting per the five-mode spec.
   // When mode is helix_google (Helix only), bypass the heuristic fast-return
   // so the LLM path is always taken — matching heuristicRouting:false in agentModeResolver.
@@ -173,14 +188,14 @@ async function parseNaturalLanguage(message, context = {}, provider = 'auto', la
     ? resolvedAgentMode.heuristicRouting
     : heuristicEnabled;
 
-  if (heuristicRoutingEnabled && heuristicResult && heuristicResult.kind !== 'none') {
+  if (provider !== 'pingone-admin' && heuristicRoutingEnabled && heuristicResult && heuristicResult.kind !== 'none') {
     return { source: 'heuristic', result: heuristicResult };
   }
 
   // 2. FALLBACK TO LLM — when heuristic doesn't recognize the input
   // Use configured provider (Helix, Ollama, etc.) based on langchainConfig
   const { resolveLlmProvider } = require('./llmProviderResolver');
-  const selectedProvider = provider === 'auto'
+  const selectedProvider = (provider === 'auto' || provider === 'pingone-admin')
     ? resolveLlmProvider(langchainConfig).provider
     : provider;
 
