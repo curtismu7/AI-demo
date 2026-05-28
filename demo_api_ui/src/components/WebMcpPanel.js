@@ -45,9 +45,9 @@ function interpretResult(result) {
         threshold != null
           ? `Transactions above $${threshold} require explicit human approval before the MCP server will execute them. ` +
             `This is a security control — the agent cannot bypass it. ` +
-            `To approve this action, use the Banking Agent on the dashboard: it will present a consent dialog before executing the tool.`
+            `To approve this action, use the AI agent on the dashboard: it will present a consent dialog before executing the tool.`
           : `Transfers always require explicit human approval regardless of amount. ` +
-            `Use the Banking Agent on the dashboard to complete this action through the consent screen.`,
+            `Use the AI agent on the dashboard to complete this action through the consent screen.`,
     };
   }
 
@@ -58,7 +58,7 @@ function interpretResult(result) {
       title: "Step-up MFA verification required",
       detail:
         `This tool requires elevated authentication (${method} OTP or MFA challenge) before the MCP server will execute it. ` +
-        `Complete a step-up challenge via the Banking Agent on the dashboard — once verified, ` +
+        `Complete a step-up challenge via the AI agent on the dashboard — once verified, ` +
         `your session will be elevated and this tool will execute.`,
     };
   }
@@ -464,7 +464,7 @@ export default function WebMcpPanel() {
                 {STEPUP_TOOLS.has(selectedTool.name) && (
                   <GateNotice kind="stepup" title="Step-up MFA required">
                     This tool requires elevated authentication. Complete a step-up challenge
-                    via the Banking Agent on the dashboard first.
+                    via the AI agent on the dashboard first.
                     You can still call it here to see the server response.
                   </GateNotice>
                 )}
@@ -538,7 +538,15 @@ export default function WebMcpPanel() {
                         );
                       }
 
-                      // Default: plain text input with label + hint
+                      // Default: plain text input with label + hint.
+                      // Infer a richer HTML input type from the JSON Schema so
+                      // dates/amounts get native pickers instead of free-text.
+                      const isDate =
+                        schema.format === 'date' ||
+                        (schema.type === 'string' && /date$/i.test(key));
+                      const isNumber = schema.type === 'number' || schema.type === 'integer';
+                      const inputType = isDate ? 'date' : isNumber ? 'number' : 'text';
+                      const step = schema.type === 'integer' ? '1' : isNumber ? 'any' : undefined;
                       return (
                         <McpParamText
                           key={key}
@@ -549,6 +557,8 @@ export default function WebMcpPanel() {
                           placeholder={schema.type || ''}
                           hint={hint}
                           required={isRequired}
+                          inputType={inputType}
+                          step={step}
                         />
                       );
                     })}

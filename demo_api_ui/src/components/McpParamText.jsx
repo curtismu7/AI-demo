@@ -12,8 +12,10 @@ import React from 'react';
  *   placeholder {string}   — Input placeholder
  *   hint       {string}    — Optional description
  *   required   {boolean}   — Whether this param is required
+ *   inputType  {string}    — HTML input type (e.g. "text", "date", "number"). Default "text".
+ *   step       {string}    — HTML step attribute (for number inputs)
  */
-export default function McpParamText({ paramKey, label, value, onChange, placeholder, hint, required }) {
+export default function McpParamText({ paramKey, label, value, onChange, placeholder, hint, required, inputType = 'text', step }) {
   const labelStyle = {
     display: 'block',
     fontSize: 12,
@@ -72,7 +74,8 @@ export default function McpParamText({ paramKey, label, value, onChange, placeho
       {hint && <div style={hintStyle}>{hint}</div>}
       <input
         id={`param-${paramKey}`}
-        type="text"
+        type={inputType}
+        step={step}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
