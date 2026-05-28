@@ -1,0 +1,21 @@
+services:
+  ping-gateway:
+    image: us-docker.pkg.dev/forgeops-public/images-base/ig:latest
+    container_name: ping-gateway
+    ports:
+      - "3006:8080"
+    volumes:
+      - gateway-instance:/var/gateway
+      - ./config/admin.json:/var/gateway/config/admin.json:ro
+      - ./config/routes/01-mcp-olb.json:/var/gateway/config/routes/01-mcp-olb.json:ro
+      - ./config/routes/02-mcp-invest.json:/var/gateway/config/routes/02-mcp-invest.json:ro
+      - ./scripts/groovy:/var/gateway/scripts/groovy:ro
+    env_file:
+      - .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+volumes:
+  # Writable instance directory required by PingGateway at runtime.
+  gateway-instance:
