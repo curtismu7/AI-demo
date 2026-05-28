@@ -143,6 +143,15 @@
   padding-top: 0;
 }
 
+/* Portal host: fills dock flex parent so portaled content's height:100%
+   resolves correctly in Safari/Firefox as well as Chrome. */
+.embedded-agent-dock-host {
+  flex: 1 1 0%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 /* Collapsed: host stays mounted (portal target / agent React subtree
    preserved) but is hidden. React keeps the portaled subtree mounted
    regardless of CSS, so in-flight chat state survives collapse/expand. */
