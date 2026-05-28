@@ -17,6 +17,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 ## [Unreleased]
 
 ### Added
+- **WebMCP discovery-phase streaming** — `GET /api/mcp/inspector/tools` accepts an optional `?trace=<uuid>` and publishes phase events (`config_load → token_resolve → ws_connect → tools_list`) to a new `GET /api/mcp/inspector/tools/events` SSE channel (reuses `mcpFlowSseHub`). `WebMcpPanel` renders the streamed phases as a live timeline with short label + technical sub-line, replacing the static "Loading tools…" text that read as a hang while the BFF ran PingOne RFC 7662 introspection + RFC 8693 exchange + WebSocket connect. `?trace=` is optional; existing callers unaffected.
 - `openai_agent/src/bff_tool_adapter.py` — BFF tool adapter that wraps BFF `/internal/agent-tool` calls as OpenAI Agents SDK `FunctionTool` objects (3 tests)
 - MCP Results tab now populated when tools are called via LLM agent path (`executeBffTool`) — was only recorded on the chip/HTTP path before
 - `ff_use_pinggateway` feature flag + `mcp_pinggateway_url` configStore key — route MCP traffic through PingGateway instead of Node gateway
