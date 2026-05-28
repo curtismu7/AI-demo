@@ -32,6 +32,7 @@ Versions use calendar dates: `YYYY.MM.DD`.
 - `authorize.parity.test.js` — parity contract tests asserting simulated ≡ PingOne enforcement flags for same inputs (14 tests)
 
 ### Fixed
+- `CLAUDE.md`: corrected `MCP_TOKEN_EXCHANGE_SCOPES` from stale `banking:*` prefixed names to plain `read write`; collapsed duplicate agent behavior rules to a reference to global `~/.claude/CLAUDE.md`
 - `test-evaluate` API now returns both `consentRequired` and `hitlRequired` fields regardless of active engine (was returning only one per engine)
 - Unrecognised PingOne Authorize obligation types now log a `console.warn` instead of silently being discarded
 
