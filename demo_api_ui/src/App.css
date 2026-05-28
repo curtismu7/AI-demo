@@ -129,6 +129,21 @@
   margin: 0;
 }
 
+.embedded-agent-dock__framework-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 7px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  background: #e8f0fb;
+  color: #1e3a5f;
+  border: 1px solid #c0d0ea;
+  border-radius: 10px;
+  vertical-align: middle;
+}
+
 .global-embedded-agent-dock-wrap .embedded-agent-dock {
   margin: 0;
   max-width: none;

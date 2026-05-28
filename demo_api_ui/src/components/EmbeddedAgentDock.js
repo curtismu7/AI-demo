@@ -32,10 +32,18 @@ function readStoredCollapsed() {
 /**
  * Bottom embedded AI agent: content-width strip, collapsible, vertically resizable.
  */
+const FRAMEWORK_LABELS = {
+  langchain:     'LangChain',
+  openai_agents: 'OpenAI Agents',
+  mastra:        'Mastra',
+  pydantic_ai:   'Pydantic AI',
+};
+
 export default function EmbeddedAgentDock({ user, agentPlacement }) {
   const { pathname } = useLocation();
   const { setSurfaceHostEl } = useAgentUiMode();
   const [hostEl, setHostEl] = useState(null);
+  const [frameworkLabel, setFrameworkLabel] = useState(null);
   const hostRefCb = useCallback((el) => setHostEl(el), []);
   useEffect(() => {
     setSurfaceHostEl(hostEl);
@@ -76,6 +84,16 @@ export default function EmbeddedAgentDock({ user, agentPlacement }) {
   useEffect(() => {
     if (pathname.replace(/\/$/, '') === '/config') setCollapsed(false);
   }, [pathname]);
+
+  useEffect(() => {
+    fetch('/api/admin/feature-flags', { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        const flag = data?.flags?.find((f) => f.id === 'llm_framework');
+        if (flag?.value) setFrameworkLabel(FRAMEWORK_LABELS[flag.value] ?? flag.value);
+      })
+      .catch(() => {});
+  }, []);
 
   const onResizeMouseDown = useCallback(
     (e) => {
@@ -147,6 +165,9 @@ export default function EmbeddedAgentDock({ user, agentPlacement }) {
         <div className="embedded-agent-dock__head">
           <h2 className="embedded-agent-dock__title">
             {isConfigPage ? 'Application setup assistant' : 'AI banking assistant'}
+            {!isConfigPage && frameworkLabel && (
+              <span className="embedded-agent-dock__framework-badge">{frameworkLabel}</span>
+            )}
           </h2>
         </div>
         <button
