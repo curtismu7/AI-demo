@@ -107,6 +107,12 @@ PID_INVEST=/tmp/demo-invest.pid
 LOG_INVEST=/tmp/demo-invest.log
 PID_MORTGAGE=/tmp/demo-mortgage.pid
 LOG_MORTGAGE=/tmp/demo-mortgage.log
+PID_OASDK=/tmp/demo-openai-agent.pid
+LOG_OASDK=/tmp/demo-openai-agent.log
+PID_MASTRA=/tmp/demo-mastra-agent.pid
+LOG_MASTRA=/tmp/demo-mastra-agent.log
+PID_PYDANTIC=/tmp/demo-pydantic-agent.pid
+LOG_PYDANTIC=/tmp/demo-pydantic-agent.log
 LOG_AUTH=/tmp/demo-authorize.log
 LOG_HELIX=/tmp/demo-helix.log
 
@@ -355,7 +361,7 @@ kill_process_tree() {
 # Stop anything still listening on Banking ports (orphaned node/python after PID file lost).
 stop_listeners_on_banking_ports() {
   local port pid pids
-  for port in 3001 4000 8080 8888 8889 8890 3005 3006 3009 8081 8082; do
+  for port in 3001 4000 8080 8888 8889 8890 3005 3006 3009 8081 8082 8891 8892 8893; do
     pids=$(lsof -nP -iTCP:"$port" -sTCP:LISTEN -t 2>/dev/null || true)
     for pid in $pids; do
       [[ -z "$pid" ]] && continue
@@ -367,7 +373,7 @@ stop_listeners_on_banking_ports() {
 
 force_kill_listeners_on_banking_ports() {
   local port pid pids
-  for port in 3001 4000 8080 8888 8889 8890 3005 3006 3009 8081 8082; do
+  for port in 3001 4000 8080 8888 8889 8890 3005 3006 3009 8081 8082 8891 8892 8893; do
     pids=$(lsof -nP -iTCP:"$port" -sTCP:LISTEN -t 2>/dev/null || true)
     for pid in $pids; do
       [[ -z "$pid" ]] && continue
@@ -511,7 +517,7 @@ print_status_table() {
 cmd_stop() {
   echo "[STOP] Stopping Demo services (run.sh)..."
   set +e
-  for pid_file in "$PID_API" "$PID_MCP" "$PID_GW" "$PID_HITL" "$PID_AGENT_SVC" "$PID_INVEST" "$PID_MORTGAGE" "$PID_AGENT" "$PID_UI"; do
+  for pid_file in "$PID_API" "$PID_MCP" "$PID_GW" "$PID_HITL" "$PID_AGENT_SVC" "$PID_INVEST" "$PID_MORTGAGE" "$PID_AGENT" "$PID_UI" "$PID_OASDK" "$PID_MASTRA" "$PID_PYDANTIC"; do
     if [[ -f "$pid_file" ]]; then
       PID=$(cat "$pid_file" 2>/dev/null || true)
       rm -f "$pid_file"
@@ -522,7 +528,7 @@ cmd_stop() {
     fi
   done
   sleep 1
-  echo "   Sweeping ports (API :${API_PORT}, UI :${UI_PORT}, MCP :8080, LangChain :8888/8889/8890, GW :3005, Agent :3006, HITL :3009, Invest :8081, Mortgage :8082)…"
+  echo "   Sweeping ports (API :${API_PORT}, UI :${UI_PORT}, MCP :8080, LangChain :8888/8889/8890, GW :3005, Agent :3006, HITL :3009, Invest :8081, Mortgage :8082, OASDK :8891, Mastra :8892, Pydantic :8893)…"
   stop_listeners_on_banking_ports
   sleep 1
   force_kill_listeners_on_banking_ports
@@ -705,7 +711,7 @@ done
 if [[ "$_any_running" == "true" ]]; then
   echo -e "${YELLOW}  [SPIN]  Stopping existing Demo services…${RESET}"
   set +e
-  for _pf in "$PID_API" "$PID_MCP" "$PID_GW" "$PID_HITL" "$PID_AGENT_SVC" "$PID_INVEST" "$PID_AGENT" "$PID_UI"; do
+  for _pf in "$PID_API" "$PID_MCP" "$PID_GW" "$PID_HITL" "$PID_AGENT_SVC" "$PID_INVEST" "$PID_AGENT" "$PID_UI" "$PID_OASDK" "$PID_MASTRA" "$PID_PYDANTIC"; do
     if [[ -f "$_pf" ]]; then
       _pid=$(cat "$_pf" 2>/dev/null || true)
       rm -f "$_pf"
@@ -998,9 +1004,9 @@ if [[ -f "$BASEDIR/openai_agent/src/main.py" ]]; then
     else
       PY="python3"
     fi
-    "$PY" -m src.main >> /tmp/demo-openai-agent.log 2>&1
+    "$PY" -m src.main >> "$LOG_OASDK" 2>&1
   ) &
-  echo $! > /tmp/demo-openai-agent.pid
+  echo $! > "$PID_OASDK"
 fi
 
 # ── Mastra Agent (port 8892) ─────────────────────────────────────────────────
@@ -1008,9 +1014,20 @@ if [[ -f "$BASEDIR/mastra_agent/dist/index.js" ]]; then
   echo "[MASTRA] Starting Mastra Agent (:8892)..."
   (
     cd "$BASEDIR/mastra_agent"
-    node dist/index.js >> /tmp/demo-mastra-agent.log 2>&1
+    node dist/index.js >> "$LOG_MASTRA" 2>&1
   ) &
-  echo $! > /tmp/demo-mastra-agent.pid
+  echo $! > "$PID_MASTRA"
+fi
+
+# ── Pydantic AI Agent (port 8893) ────────────────────────────────────────────
+if [[ -f "$BASEDIR/pydantic_agent/src/main.py" ]]; then
+  echo "[PYDANTIC] Starting Pydantic AI Agent (:8893)..."
+  (
+    cd "$BASEDIR/pydantic_agent"
+    PY=".venv/bin/python"
+    "$PY" -m src.main >> "$LOG_PYDANTIC" 2>&1
+  ) &
+  echo $! > "$PID_PYDANTIC"
 fi
 
 # ── LM Studio auto-configure ─────────────────────────────────────────────────
