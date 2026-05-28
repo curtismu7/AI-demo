@@ -42,14 +42,7 @@
     "systemPromptFlavor": "You are a WX Workforce HR assistant. Help employees check PTO balances, submit expense reports, review benefits, and track reimbursements. Use HR language: accounts are PTO balances, benefits allowances, or expense budgets, transactions are requests or submissions, balance is PTO or budget balance. Be professional and direct."
   },
   "dashboard": {
-    "kind": "workforce",
-    "chips": [
-      { "key": "balance", "label": "PTO Balance" },
-      { "key": "accounts", "label": "My Benefits" },
-      { "key": "transactions", "label": "Request History" },
-      { "key": "transfer", "label": "Submit Request" },
-      { "key": "feature", "label": "Show Expense Report" }
-    ]
+    "kind": "workforce"
   },
   "scopes": {
     "read": "read",

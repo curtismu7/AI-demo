@@ -207,6 +207,7 @@ export default function BankingChips({
   const [expandedCategory, setExpandedCategory] = useState(null);
   const { dashboard } = useTheme();
   const heuristicChips = applyChipLabels(HEURISTIC_CHIPS, dashboard && dashboard.chips);
+  const llmChipGroups = dashboard?.llmChipGroups || LLM_CHIPS;
 
   const customHeuristic = customChips.filter((c) => c.type === "heuristic");
   const customLlm = customChips.filter((c) => c.type === "llm");
@@ -298,7 +299,7 @@ export default function BankingChips({
       <div className="banking-chips-dropdown__section">
         <div className="banking-chips-dropdown__label">Advanced Analysis</div>
         <div className="banking-chips-dropdown__categories">
-          {Object.entries(LLM_CHIPS).map(([category, chips]) => (
+          {Object.entries(llmChipGroups).map(([category, chips]) => (
             <div key={category} className="banking-chips-dropdown__category">
               <button
                 type="button"

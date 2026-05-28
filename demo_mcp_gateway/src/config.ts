@@ -88,6 +88,17 @@ export function isInternalSecretUsable(secret: string | undefined | null): boole
   return (secret ?? '').trim().length >= MIN_INTERNAL_SECRET_LEN;
 }
 
+/**
+ * Returns true when P1AZ live policy decisions are active:
+ * the feature flag is on AND both endpoint vars are present.
+ * All three sites that gate P1AZ calls (PingOneAuthorizeClient,
+ * guardToolsList, guardToolCall) use this predicate so the condition
+ * stays in one place.
+ */
+export function isP1AZActive(config: GatewayConfig): boolean {
+  return config.p1azEnabled && !!config.pingAuthorizeEndpoint && !!config.pingAuthorizeWorkerId;
+}
+
 function required(name: string, stub = 'dev-bypass-placeholder'): string {
   const v = process.env[name];
   if (!v) {

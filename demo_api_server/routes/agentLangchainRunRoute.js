@@ -1,7 +1,7 @@
 'use strict';
 
 const express = require('express');
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('node:crypto');
 const { requireSession } = require('../middleware/auth');
 const { resolveMcpAccessTokenWithEvents } = require('../services/agentMcpTokenService');
 const { buildTokenChainEvents, proxyAgentSse } = require('../services/aguiSseProxy');
@@ -22,8 +22,8 @@ router.post('/run', requireSession, async (req, res) => {
     return res.status(400).json({ error: 'message is required' });
   }
 
-  const runId = `run_${uuidv4().replace(/-/g, '').slice(0, 12)}`;
-  const sid = sessionId || req.session?.id || `sess_${uuidv4().slice(0, 8)}`;
+  const runId = `run_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
+  const sid = sessionId || req.session?.id || `sess_${randomUUID().slice(0, 8)}`;
 
   // Set SSE headers before any writes
   res.setHeader('Content-Type', 'text/event-stream');

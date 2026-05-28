@@ -23,6 +23,7 @@ async function runReasonLoop(p) {
         REASON_URL,
         {
           messages, tools: p.tools, provider: p.provider, model: p.model,
+          systemPrompt: p.systemPrompt,
           helixConfig: p.helixConfig, ollamaBaseUrl: p.ollamaBaseUrl,
           // Anthropic API key forwarded from BFF env; never a user token
           anthropicApiKey: p.anthropicApiKey,

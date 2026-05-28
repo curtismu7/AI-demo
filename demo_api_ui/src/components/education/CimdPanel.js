@@ -310,7 +310,7 @@ export default function CimdPanel({ isOpen, onClose, initialTabId }) {
               </a>
             </li>
             <li>
-              <a href="https://apidocs.pingidentity.com/pingone/platform/v1/api/#post-create-application" target="_blank" rel="noopener noreferrer">
+              <a href="https://developer.pingidentity.com/pingone-api/platform/applications/applications-1/create-application-oidc-protocol---web-app.html" target="_blank" rel="noopener noreferrer">
                 PingOne API — Create Application
               </a>
             </li>

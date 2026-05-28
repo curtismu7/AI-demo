@@ -43,13 +43,6 @@
   },
   "dashboard": {
     "kind": "healthcare",
-    "chips": [
-      { "key": "balance", "label": "Check Coverage" },
-      { "key": "accounts", "label": "My Records" },
-      { "key": "transactions", "label": "Appointments" },
-      { "key": "transfer", "label": "Release Records" },
-      { "key": "feature", "label": "Show Health Record" }
-    ],
     "mockData": null
   },
   "scopes": {

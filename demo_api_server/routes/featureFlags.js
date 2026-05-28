@@ -330,6 +330,22 @@ const FLAG_REGISTRY = [
     type:         'boolean',
     defaultValue: true,
   },
+  {
+    id:           'ff_use_pinggateway',
+    name:         'Use PingGateway',
+    category:     'MCP / Agent',
+    description:
+      'When **ON**, the BFF routes MCP traffic through PingGateway (port 3006) instead of ' +
+      'the Node.js MCP gateway (port 3005). PingGateway performs inbound token introspection ' +
+      'via McpProtectionFilter, optional P1AZ policy decisions via PingAuthorizeFilter, and ' +
+      'RFC 8693 token exchange to the backend MCP servers directly. ' +
+      'When **OFF** (default), traffic goes through demo_mcp_gateway as normal.',
+    impact:
+      'OFF (default) = Node.js gateway path unchanged. ' +
+      'ON = PingGateway is the MCP enforcement point; demo_mcp_gateway P1AZ flag should be OFF to avoid double-evaluation.',
+    type:         'boolean',
+    defaultValue: false,
+  },
 
 ];
 

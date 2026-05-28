@@ -3,6 +3,41 @@ const path = require('path');
 const configStore = require('./configStore');
 
 const VERTICALS_DIR = path.join(__dirname, '..', 'config', 'verticals');
+const SEEDS_DIR     = path.join(__dirname, '..', 'data', 'seeds');
+
+// Cache of seed file modules (avoids re-requiring on every call)
+const seedCache = {};
+
+/**
+ * Load the seed file for a vertical. Returns {} if none exists.
+ * Seed files own: seed (account data), chips, llmChipGroups, toolDescriptions.
+ */
+function getSeedFile(verticalId) {
+  if (!seedCache[verticalId]) {
+    const seedPath = path.join(SEEDS_DIR, `${verticalId}.js`);
+    try {
+      seedCache[verticalId] = require(seedPath);
+    } catch {
+      seedCache[verticalId] = {};
+    }
+  }
+  return seedCache[verticalId];
+}
+
+/**
+ * Merge seed file chip/llmChipGroups into a manifest clone so the browser
+ * receives a single complete manifest without duplicating data in JSON files.
+ * The seed file is authoritative; JSON fallback applies when no seed exists.
+ */
+function mergeSeedIntoManifest(manifest) {
+  if (!manifest) return manifest;
+  const seed = getSeedFile(manifest.id);
+  if (!seed.chips && !seed.llmChipGroups) return manifest;
+  const merged = { ...manifest, dashboard: { ...(manifest.dashboard || {}) } };
+  if (seed.chips)         merged.dashboard.chips         = seed.chips;
+  if (seed.llmChipGroups) merged.dashboard.llmChipGroups = seed.llmChipGroups;
+  return merged;
+}
 
 // In-memory cache of loaded vertical configs
 let verticalCache = null;
@@ -86,16 +121,21 @@ async function setActiveVertical(verticalId) {
     active_vertical: verticalId,
     ui_industry_preset: verticalId
   });
+  // Wipe and re-seed all customer accounts/transactions for the new vertical
+  // so demo data matches the industry context (e.g. Patient Records for healthcare).
+  const dataStore = require('../data/store');
+  await dataStore.reseedAllCustomersForVertical(verticalId);
   return all[verticalId];
 }
 
 /**
  * Get the full config for a specific vertical, or the active one.
+ * Chip data is merged from the seed file so the caller always gets a complete manifest.
  */
 function getVerticalConfig(verticalId) {
   const all = loadVerticals();
   const id = verticalId || getActiveVertical();
-  return all[id] || all.banking || null;
+  return mergeSeedIntoManifest(all[id] || all.banking || null);
 }
 
 /**
@@ -117,16 +157,17 @@ function reloadVerticals() {
 }
 
 /**
- * Return the full v2 manifest for the active vertical.
- * Falls back to the banking manifest if the active id is missing/invalid.
+ * Return the full v2 manifest for the active vertical, with chip data merged
+ * from the seed file. Falls back to the banking manifest if active id is missing.
  */
 function getActiveManifest() {
   const all = loadVerticals();
   const activeId = getActiveVertical();
-  return all[activeId] || all.banking || null;
+  return mergeSeedIntoManifest(all[activeId] || all.banking || null);
 }
 
 module.exports = {
+  getSeedFile,
   listVerticals,
   getActiveVertical,
   setActiveVertical,

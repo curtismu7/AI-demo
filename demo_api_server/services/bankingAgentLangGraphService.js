@@ -12,6 +12,7 @@ const { parseHeuristic, buildCatalogMessage } = require('./nlIntentParser');
 const { resolveAgentMode } = require('./agentModeResolver');
 const configStore = require('./configStore');
 const dataStore = require('../data/store');
+const { getActiveManifest, getSeedFile } = require('./verticalConfigService');
 const axios = require('axios');
 const https = require('https');
 const fs = require('fs');
@@ -402,6 +403,9 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null, su
  * `.properties`. No hand-duplicated schemas.
  */
 function buildToolSchemasForAgent() {
+  const manifest = getActiveManifest();
+  const verticalId = manifest?.id || 'banking';
+  const verticalDescs = getSeedFile(verticalId).toolDescriptions || {};
   const tools = getBankingToolDefinitions();
   return tools.map((tool) => {
     let inputSchema;
@@ -412,7 +416,7 @@ function buildToolSchemasForAgent() {
     }
     return {
       name: tool.name,
-      description: tool.description || '',
+      description: verticalDescs[tool.name] || tool.description || '',
       inputSchema,
     };
   });

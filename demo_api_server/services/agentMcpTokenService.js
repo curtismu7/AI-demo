@@ -1651,7 +1651,13 @@ async function _resolveFinalMcpAudience(gatewayAud, mcpServerAud) {
   // Direct mode: gateway not configured — always use mcp-server aud.
   // Use configStore.get() (not getEffective) so a FIELD_DEFS default doesn't
   // falsely trigger gateway mode when the gateway isn't deployed.
-  const gatewayBaseUrl = process.env.MCP_GATEWAY_HTTP_URL || configStore.get('mcp_gateway_http_url');
+  //
+  // ff_use_pinggateway: when on, route to PingGateway (mcp_pinggateway_url)
+  // instead of the Node gateway (mcp_gateway_http_url).
+  const usePingGateway = configStore.getEffective('ff_use_pinggateway') === 'true';
+  const gatewayBaseUrl = usePingGateway
+    ? (configStore.getEffective('mcp_pinggateway_url') || process.env.MCP_PINGGATEWAY_URL)
+    : (process.env.MCP_GATEWAY_HTTP_URL || configStore.get('mcp_gateway_http_url'));
   if (!gatewayBaseUrl) {
     return mcpServerAud;
   }

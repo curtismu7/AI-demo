@@ -5,61 +5,11 @@ const bcrypt = require('bcryptjs');
 const { sampleUsers, sampleAccounts, sampleTransactions, sampleActivityLogs, sampleSubscriptions } = require('./sampleData');
 
 const SEED_PROFILES = {
-  banking: {
-    primary:   { accountType: 'CHECKING', name: 'Primary Checking', balanceBase: 2500, balanceRange: 700 },
-    secondary: { accountType: 'SAVINGS',  name: 'Savings Account',  balanceBase: 8500, balanceRange: 6500 },
-    transactions: [
-      { description: 'Payroll Deposit',     type: 'deposit',  toSecondary: false },
-      { description: 'Grocery Store',       type: 'purchase', toSecondary: false },
-      { description: 'Transfer to Savings', type: 'transfer', toSecondary: true  },
-      { description: 'Coffee Shop',         type: 'purchase', toSecondary: false },
-      { description: 'Utility Bill',        type: 'purchase', toSecondary: false },
-    ],
-  },
-  'sporting-goods': {
-    primary:   { accountType: 'Pro Member',   name: 'Pro Member Account', balanceBase: 1200, balanceRange: 800 },
-    secondary: { accountType: 'Elite Member', name: 'Elite Rewards',      balanceBase: 4500, balanceRange: 3000 },
-    transactions: [
-      { description: 'Nike Running Shoes — In-Store',  type: 'In-Store',   toSecondary: false },
-      { description: 'Patagonia Jacket — Online',      type: 'Online',     toSecondary: false },
-      { description: 'Team Jersey Bulk Order',         type: 'Team Order', toSecondary: true  },
-      { description: 'Titleist Golf Balls — In-Store', type: 'In-Store',   toSecondary: false },
-      { description: 'Gear Return — Faulty Helmet',    type: 'Return',     toSecondary: false },
-    ],
-  },
-  healthcare: {
-    primary:   { accountType: 'Primary Care',   name: 'Primary Care Record',  balanceBase: 500,  balanceRange: 300 },
-    secondary: { accountType: 'HSA',            name: 'Health Savings (HSA)', balanceBase: 3200, balanceRange: 1800 },
-    transactions: [
-      { description: 'Annual Physical — Dr. Patel',        type: 'Visit',       toSecondary: false },
-      { description: 'Prescription Refill — Metformin',    type: 'Prescription', toSecondary: false },
-      { description: 'HSA Contribution',                   type: 'Contribution', toSecondary: true  },
-      { description: 'Lab Work — Quest Diagnostics',       type: 'Lab',          toSecondary: false },
-      { description: 'Specialist Referral — Cardiology',   type: 'Referral',     toSecondary: false },
-    ],
-  },
-  retail: {
-    primary:   { accountType: 'Rewards Points', name: 'Rewards Account',    balanceBase: 4200, balanceRange: 2000 },
-    secondary: { accountType: 'Store Credit',   name: 'Store Credit Wallet', balanceBase: 150,  balanceRange: 100 },
-    transactions: [
-      { description: 'TV Purchase — Great Buy Store',      type: 'In-Store',  toSecondary: false },
-      { description: 'Laptop Online Order',                type: 'Online',    toSecondary: false },
-      { description: 'Rewards Redemption',                 type: 'Redemption', toSecondary: true },
-      { description: 'Headphones — In-Store',              type: 'In-Store',  toSecondary: false },
-      { description: 'Extended Warranty — Refrigerator',   type: 'Service',   toSecondary: false },
-    ],
-  },
-  workforce: {
-    primary:   { accountType: 'PTO Balance',   name: 'PTO Account',       balanceBase: 120, balanceRange: 80 },
-    secondary: { accountType: 'Sick Leave',    name: 'Sick Leave Balance', balanceBase: 40,  balanceRange: 20 },
-    transactions: [
-      { description: 'Annual PTO Accrual',         type: 'Accrual',  toSecondary: false },
-      { description: 'Vacation — Summer Trip',     type: 'Usage',    toSecondary: false },
-      { description: 'Sick Leave — Flu',           type: 'Usage',    toSecondary: true  },
-      { description: 'Holiday Bonus Hours',        type: 'Accrual',  toSecondary: false },
-      { description: 'PTO Carryover',              type: 'Transfer', toSecondary: false },
-    ],
-  },
+  banking:          require('./seeds/banking'),
+  'sporting-goods': require('./seeds/sporting-goods'),
+  healthcare:       require('./seeds/healthcare'),
+  retail:           require('./seeds/retail'),
+  workforce:        require('./seeds/workforce'),
 };
 
 const DEFAULT_BOOTSTRAP_PATH = path.join(__dirname, 'bootstrapData.json');
@@ -539,7 +489,8 @@ class DataStore {
   async seedAccountsForUser(userId) {
     const configStore = require('../services/configStore');
     const vertical = configStore.getEffective('active_vertical') || 'banking';
-    const profile = SEED_PROFILES[vertical] || SEED_PROFILES.banking;
+    const seedFile = SEED_PROFILES[vertical] || SEED_PROFILES.banking;
+    const profile  = seedFile.seed || seedFile; // backwards compat
 
     const rand = (base, range) => Math.round((base + Math.random() * range) * 100) / 100;
     const primaryId   = uuidv4();
@@ -583,6 +534,70 @@ class DataStore {
     }
 
     return { primary, secondary, vertical };
+  }
+
+  async reseedAllCustomersForVertical(verticalId) {
+    const seedFile = SEED_PROFILES[verticalId] || SEED_PROFILES.banking;
+    const profile  = seedFile.seed || seedFile; // backwards compat
+    const rand = (base, range) => Math.round((base + Math.random() * range) * 100) / 100;
+
+    const customers = Array.from(this.users.values()).filter(u => u.role === 'customer');
+
+    // Wipe all accounts and transactions for customer users in a single pass each
+    const customerIds = new Set(customers.map(u => u.id));
+    const acctIds = new Set();
+    for (const [id, acct] of this.accounts) {
+      if (customerIds.has(acct.userId)) { acctIds.add(id); this.accounts.delete(id); }
+    }
+    for (const [id, tx] of this.transactions) {
+      if (customerIds.has(tx.userId) || acctIds.has(tx.fromAccountId) || acctIds.has(tx.toAccountId)) {
+        this.transactions.delete(id);
+      }
+    }
+
+    // Re-seed each customer with the new vertical's profile
+    const now = new Date();
+    for (const user of customers) {
+      const primaryId   = uuidv4();
+      const secondaryId = uuidv4();
+
+      this.accounts.set(primaryId, {
+        id: primaryId, userId: user.id,
+        accountType: profile.primary.accountType,
+        name: profile.primary.name,
+        balance: rand(profile.primary.balanceBase, profile.primary.balanceRange),
+        currency: 'USD', createdAt: now, isActive: true,
+      });
+      this.accounts.set(secondaryId, {
+        id: secondaryId, userId: user.id,
+        accountType: profile.secondary.accountType,
+        name: profile.secondary.name,
+        balance: rand(profile.secondary.balanceBase, profile.secondary.balanceRange),
+        currency: 'USD', createdAt: now, isActive: true,
+      });
+
+      for (let i = 0; i < profile.transactions.length; i++) {
+        const txDef = profile.transactions[i];
+        const targetId = txDef.toSecondary ? secondaryId : primaryId;
+        const amount   = rand(20, 480);
+        const txId     = uuidv4();
+        this.transactions.set(txId, {
+          id: txId, userId: user.id,
+          fromAccountId: txDef.type === 'deposit' || txDef.type === 'Accrual' ? null : targetId,
+          toAccountId:   txDef.type === 'deposit' || txDef.type === 'Accrual' ? targetId : null,
+          accountId: targetId,
+          description: txDef.description,
+          type: txDef.type,
+          amount,
+          date: new Date(now.getTime() - i * 24 * 60 * 60 * 1000),
+          createdAt: now, status: 'completed',
+        });
+      }
+    }
+
+    await this.persistAllData();
+    console.log(`[DataStore] Reseeded ${customers.length} customer(s) for vertical: ${verticalId}`);
+    return customers.length;
   }
 }
 

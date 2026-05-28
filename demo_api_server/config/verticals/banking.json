@@ -43,13 +43,6 @@
   },
   "dashboard": {
     "kind": "banking",
-    "chips": [
-      { "key": "balance", "label": "Check Balance" },
-      { "key": "accounts", "label": "My Accounts" },
-      { "key": "transactions", "label": "Transactions" },
-      { "key": "transfer", "label": "Transfer Funds" },
-      { "key": "feature", "label": "Show Mortgage Data" }
-    ],
     "mockData": null
   },
   "scopes": {

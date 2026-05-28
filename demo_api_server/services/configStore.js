@@ -179,6 +179,9 @@ ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic 
   step_up_enabled:                 { public: true, default: 'true'  }, // Step-up MFA gate; mirrored into runtimeSettings.stepUpEnabled (runtimeKey)
   ff_trat_mode:                    { public: true, default: 'false' }, // Enrich RFC 8693 exchange with Transaction Token (TraT) claims — draft-oauth-transaction-tokens-for-agents-00
   ff_agent_restrictions:           { public: true, default: 'false' }, // P1AZ resource server gate + AgentRestrictions attribute
+  ff_use_pinggateway:              { public: true, default: 'false' }, // Route MCP traffic through PingGateway (port 3006) instead of Node gateway (port 3005)
+  // URL of the PingGateway MCP endpoint — used when ff_use_pinggateway is true.
+  mcp_pinggateway_url:             { public: true, default: 'https://api.ping.demo:3006' },
   ff_admin_token_exchange:         { public: true, default: 'false' }, // Use token exchange for admin sessions (RFC 8693 with admin app as subject)
   // MCP Gateway passthrough mode — when true the gateway forwards MCP requests
   // directly to the MCP server without performing a downstream token exchange.
@@ -934,6 +937,7 @@ class ConfigStore {
 
       // MCP gateway HTTP URL
       mcp_gateway_http_url:                 ['MCP_GATEWAY_HTTP_URL'],
+      mcp_pinggateway_url:                  ['MCP_PINGGATEWAY_URL'],
 
       // CIBA additional config fields
       ciba_token_delivery_mode:             ['CIBA_TOKEN_DELIVERY_MODE'],

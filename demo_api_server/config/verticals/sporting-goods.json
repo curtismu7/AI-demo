@@ -43,13 +43,6 @@
   },
   "dashboard": {
     "kind": "sporting-goods",
-    "chips": [
-      { "key": "balance",      "label": "Reward Points" },
-      { "key": "accounts",     "label": "My Gear" },
-      { "key": "transactions", "label": "Purchase History" },
-      { "key": "transfer",     "label": "Place Order" },
-      { "key": "feature",      "label": "Show Gear Order" }
-    ],
     "mockData": {
       "products": [
         { "id": "p1", "sku": "SS-NK-RUN",  "name": "Nike Pegasus 41",       "price": 140, "stock": "In Stock",  "category": "Running"  },

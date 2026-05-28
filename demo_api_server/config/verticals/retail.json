@@ -47,13 +47,6 @@
   },
   "dashboard": {
     "kind": "retail",
-    "chips": [
-      { "key": "balance", "label": "Rewards Points" },
-      { "key": "accounts", "label": "List My Orders" },
-      { "key": "transactions", "label": "Purchase History" },
-      { "key": "transfer", "label": "Checkout" },
-      { "key": "feature", "label": "Show Large Purchase" }
-    ],
     "mockData": {
       "products": [
         { "id": "p1",  "sku": "BB-65QLED",  "name": "Samsung 65\" QLED TV",    "price": 1299, "stock": "In Stock",      "category": "TV" },

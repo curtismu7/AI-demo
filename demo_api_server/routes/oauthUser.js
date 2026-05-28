@@ -7,7 +7,6 @@ const oauthUserConfig = require('../config/oauthUser');
 const configStore = require('../services/configStore');
 const dataStore = require('../data/store');
 const { determineClientType } = require('../middleware/auth');
-const { randomUUID: uuidv4 } = require('node:crypto');
 const { getFrontendOrigin, getUserRedirectUri, validateRedirectUriOrigin, getExpectedFrontendOrigin } = require('../services/oauthRedirectUris');
 const { setPkceCookie, readPkceCookie, clearPkceCookie } = require('../services/pkceStateCookie');
 const { setAuthCookie, clearAuthCookie } = require('../services/authStateCookie');
@@ -63,97 +62,9 @@ function redirectEndUserOAuthSpaFailure(req, res, params, pathOverride) {
  */
 async function createSampleDataForCustomer(userId, firstName, lastName) {
   try {
-    // Create sample accounts with deterministic starting balances.
-    // Random values were used previously but produced confusing totals;
-    // fixed balances keep the demo consistent and predictable.
-    const checkingAccount = await dataStore.createAccount({
-      id: uuidv4(),
-      userId: userId,
-      accountNumber: `100${Math.floor(Math.random() * 9000) + 1000}-${Math.floor(Math.random() * 9000) + 1000}-${Math.floor(Math.random() * 9000) + 1000}`,
-      accountType: 'checking',
-      balance: 3000.00,
-      currency: 'USD',
-      createdAt: new Date(),
-      isActive: true
-    });
-
-    const savingsAccount = await dataStore.createAccount({
-      id: uuidv4(),
-      userId: userId,
-      accountNumber: `100${Math.floor(Math.random() * 9000) + 1000}-${Math.floor(Math.random() * 9000) + 1000}-${Math.floor(Math.random() * 9000) + 1000}`,
-      accountType: 'savings',
-      balance: 2000.00,
-      currency: 'USD',
-      createdAt: new Date(),
-      isActive: true
-    });
-
-    // Create sample transactions
-    const transactions = [
-      {
-        id: uuidv4(),
-        fromAccountId: null,
-        toAccountId: checkingAccount.id,
-        amount: Math.floor(Math.random() * 2000) + 1000,
-        type: 'deposit',
-        description: 'Initial account funding',
-        status: 'completed',
-        createdAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000), // Random date within last 30 days
-        userId: userId
-      },
-      {
-        id: uuidv4(),
-        fromAccountId: null,
-        toAccountId: savingsAccount.id,
-        amount: Math.floor(Math.random() * 5000) + 2000,
-        type: 'deposit',
-        description: 'Savings account opening bonus',
-        status: 'completed',
-        createdAt: new Date(Date.now() - Math.random() * 25 * 24 * 60 * 60 * 1000),
-        userId: userId
-      },
-      {
-        id: uuidv4(),
-        fromAccountId: checkingAccount.id,
-        toAccountId: savingsAccount.id,
-        amount: Math.floor(Math.random() * 500) + 100,
-        type: 'transfer',
-        description: 'Monthly savings transfer',
-        status: 'completed',
-        createdAt: new Date(Date.now() - Math.random() * 20 * 24 * 60 * 60 * 1000),
-        userId: userId
-      },
-      {
-        id: uuidv4(),
-        fromAccountId: checkingAccount.id,
-        toAccountId: null,
-        amount: Math.floor(Math.random() * 200) + 50,
-        type: 'withdrawal',
-        description: 'ATM withdrawal',
-        status: 'completed',
-        createdAt: new Date(Date.now() - Math.random() * 15 * 24 * 60 * 60 * 1000),
-        userId: userId
-      },
-      {
-        id: uuidv4(),
-        fromAccountId: null,
-        toAccountId: checkingAccount.id,
-        amount: Math.floor(Math.random() * 1000) + 500,
-        type: 'deposit',
-        description: 'Salary deposit',
-        status: 'completed',
-        createdAt: new Date(Date.now() - Math.random() * 10 * 24 * 60 * 60 * 1000),
-        userId: userId
-      }
-    ];
-
-    // Create all transactions
-    for (const transaction of transactions) {
-      await dataStore.createTransaction(transaction);
-    }
-
-    console.debug(`Created sample data for customer ${firstName} ${lastName}: 2 accounts, ${transactions.length} transactions`);
-    return { checkingAccount, savingsAccount, transactions };
+    const result = await dataStore.seedAccountsForUser(userId);
+    console.debug(`Created sample data for customer ${firstName} ${lastName} (vertical: ${result.vertical})`);
+    return result;
   } catch (error) {
     console.error('Error creating sample data for customer:', error);
     throw error;
