@@ -10,9 +10,9 @@ import ActivityLogPanel from './ActivityLogPanel';
 const pageStyle = {
   display: 'flex',
   flexDirection: 'column',
-  height: '100%',
+  flex: 1,
   minHeight: 0,
-  padding: '0',
+  overflow: 'hidden',
 };
 
 const headerStyle = {
