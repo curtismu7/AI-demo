@@ -19,25 +19,28 @@ const {
 const { callToolLocal, listLocalInspectorTools } = require('../services/mcpLocalTools');
 const archEmit = require('../services/archEventEmitter');
 const mcpFlowSseHub = require('../services/mcpFlowSseHub');
+const { buildSsePayload } = require('../services/sseCorrelation');
+const { requireSession } = require('../middleware/auth');
 
 /**
- * Discovery phase publisher. Emits a {phase, label, detail, status} event to
- * the SSE hub if a trace id was provided by the client; no-op otherwise so
- * tests and non-SSE callers behave exactly as before.
+ * Discovery phase publisher. Emits a {type, phase, label, technical, status}
+ * event to the SSE hub when the trace has been claimed by this session;
+ * no-op otherwise so tests and non-SSE callers behave exactly as before, and
+ * so phases never land in an unclaimed buffer that a different session could
+ * later attach to.
  *
- * Phase shape mirrors the existing tool-call SSE payload shape so the UI can
- * reuse one parser.
+ * Uses buildSsePayload so discovery events carry the same request-scoped
+ * correlation_id as the existing token-event / mcp-result publishers.
  */
 function publishDiscoveryPhase(traceId, phase, label, technical, status = 'active', extra = null) {
   if (!traceId) return;
-  mcpFlowSseHub.publish(traceId, {
-    type: 'discovery-phase',
+  mcpFlowSseHub.publish(traceId, buildSsePayload('discovery-phase', {
     phase,
     label,
     technical,
     status,
-    ...(extra ? { extra } : {}),
-  });
+    extra: extra || null,
+  }));
 }
 
 const MCP_SESSION_NEEDED_MSG =
@@ -143,7 +146,13 @@ router.get('/context', async (req, res) => {
 // GET /api/mcp/inspector/tools/events?trace=<uuid> — SSE stream of discovery
 // phases (introspect → exchange → ws-connect → tools/list). Client opens this
 // BEFORE calling GET /tools?trace=<same-uuid>, mirroring the tool-call pattern.
-router.get('/tools/events', (req, res) => {
+//
+// requireSession gates the route so an anonymous visitor (whose express-session
+// id is auto-populated) cannot attach to a trace and receive another session's
+// discovery telemetry. There is no useful local-catalog meaning for an SSE
+// stream — auth is the right contract here even though the sibling /tools
+// route falls back to local catalog when unauthenticated.
+router.get('/tools/events', requireSession, (req, res) => {
   mcpFlowSseHub.handleSseGet(req, res);
 });
 
@@ -153,21 +162,36 @@ router.get('/tools', async (req, res) => {
   const mcpUrl = getMcpServerUrl();
   const isLocalDefault = mcpUrl === 'ws://localhost:8080' && !process.env.MCP_SERVER_URL;
 
-  // Optional trace id for streaming discovery phases via SSE. The hub treats
-  // unknown trace ids as no-ops, so this stays backwards-compatible with the
-  // existing test suite (which doesn't pass ?trace=).
-  const traceId = typeof req.query.trace === 'string' ? req.query.trace.trim() : '';
-  if (traceId && req.sessionID) {
-    mcpFlowSseHub.ensurePostTrace(traceId, req.sessionID);
+  // Optional trace id for streaming discovery phases via SSE. The trace must
+  // be owned by this session before we publish anything to it — otherwise a
+  // different session could later attach to ?trace= and replay our phases.
+  // `traceClaimed` flips true only after ensurePostTrace returns 'ok', and
+  // publishDiscoveryPhase short-circuits when traceClaimed is false (i.e. we
+  // pass an empty traceId for the publish calls).
+  const rawTrace = typeof req.query.trace === 'string' ? req.query.trace.trim() : '';
+  let traceClaimed = false;
+  if (rawTrace && req.sessionID) {
+    traceClaimed = mcpFlowSseHub.ensurePostTrace(rawTrace, req.sessionID) === 'ok';
+    if (!traceClaimed && rawTrace) {
+      // Forbidden — the trace belongs to another session. Refuse rather than
+      // silently no-op so the client doesn't think streaming worked.
+      return res.status(403).json({
+        error: 'invalid_flow_trace',
+        message: 'flowTraceId is not valid for this session.',
+      });
+    }
   }
+  const traceId = traceClaimed ? rawTrace : '';
   let traceEnded = false;
   const endTrace = () => {
     if (traceEnded || !traceId) return;
     traceEnded = true;
     mcpFlowSseHub.endTrace(traceId);
   };
-  res.on('finish', endTrace);
-  res.on('close', endTrace);
+  if (traceId) {
+    res.on('finish', endTrace);
+    res.on('close', endTrace);
+  }
 
   const respondLocalCatalog = (reason) => {
     publishDiscoveryPhase(
@@ -203,6 +227,16 @@ router.get('/tools', async (req, res) => {
     );
 
     if (!getSessionBearerForMcp(req)) {
+      // Surface this as the token_resolve phase so the UI's progressive
+      // disclosure tells the user the actionable reason (sign-out/sign-in)
+      // rather than jumping straight to "local catalog" with no context.
+      publishDiscoveryPhase(
+        traceId,
+        'token_resolve',
+        'No MCP bearer in session — sign in to verify and exchange a token',
+        'getSessionBearerForMcp(req) returned falsy (cookie-only or restored session)',
+        'warning'
+      );
       return respondLocalCatalog('no_mcp_bearer_cookie_only_or_missing_token');
     }
 
@@ -275,6 +309,13 @@ router.get('/tools', async (req, res) => {
     try {
       const result = await mcpListTools(agentToken, userSub);
       const durationMs = Date.now() - started;
+      publishDiscoveryPhase(
+        traceId,
+        'ws_connect',
+        'Connected to MCP server',
+        'WebSocket JSON-RPC: initialize + notifications/initialized OK',
+        'success'
+      );
       publishDiscoveryPhase(
         traceId,
         'tools_list',

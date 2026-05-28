@@ -61,26 +61,50 @@ export function openMcpDiscoveryStream(traceId, onPhase) {
     }
   };
   es.addEventListener('message', handle);
-  es.onerror = () => { try { es.close(); } catch (_) {} };
+  // EventSource fires `error` both on transient network blips (readyState ===
+  // CONNECTING, auto-reconnect will kick in) and on the server's clean stream
+  // close via res.end (readyState === CLOSED). Only force-close on the
+  // already-closed case — letting transient errors live lets the browser's
+  // built-in reconnect deliver any remaining buffered phases.
+  es.onerror = () => {
+    if (es && es.readyState === 2 /* EventSource.CLOSED */) {
+      try { es.close(); } catch (_) {}
+    }
+  };
   return () => { try { es.close(); } catch (_) {} };
 }
 
 /**
  * Fetch the list of available MCP tools from the BFF while streaming the
  * discovery phases (introspect → exchange → ws-connect → tools/list) to
- * `onPhase`. Generates its own trace id; falls back to a phaseless GET if
- * EventSource isn't available.
+ * `onPhase`. Falls back to a phaseless GET when the caller didn't supply a
+ * trace id, didn't supply an onPhase handler, or the runtime has no
+ * EventSource (e.g. jsdom).
+ *
+ * Pass `signal` (an AbortSignal) to tear down both the EventSource and the
+ * fetch when the caller unmounts mid-discovery — closes the React
+ * setState-after-unmount race in StrictMode dev double-mount and on early
+ * route navigation. Already-aborted signals are honored synchronously.
  */
-export async function listMcpToolsWithStream(traceId, onPhase) {
+export async function listMcpToolsWithStream(traceId, onPhase, signal) {
   let disconnect = () => {};
-  if (traceId && typeof onPhase === 'function' && typeof EventSource !== 'undefined') {
+  if (
+    traceId &&
+    typeof onPhase === 'function' &&
+    typeof EventSource !== 'undefined'
+  ) {
     disconnect = openMcpDiscoveryStream(traceId, onPhase);
+  }
+  const onAbort = () => disconnect();
+  if (signal) {
+    if (signal.aborted) disconnect();
+    else signal.addEventListener('abort', onAbort, { once: true });
   }
   try {
     const url = traceId
       ? `/api/mcp/inspector/tools?trace=${encodeURIComponent(traceId)}`
       : '/api/mcp/inspector/tools';
-    const res = await fetch(url, { credentials: 'include' });
+    const res = await fetch(url, { credentials: 'include', signal });
     if (!res.ok) {
       const body = await res.text().catch(() => '');
       const err = new Error(`listMcpTools failed: ${res.status}`);
@@ -90,6 +114,7 @@ export async function listMcpToolsWithStream(traceId, onPhase) {
     }
     return await res.json();
   } finally {
+    if (signal) signal.removeEventListener('abort', onAbort);
     disconnect();
   }
 }

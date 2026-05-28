@@ -1,6 +1,5 @@
 // banking_api_ui/src/components/WebMcpPanel.js
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { v4 as uuid } from "uuid";
 import {
   listMcpToolsWithStream,
   callMcpTool,
@@ -22,6 +21,17 @@ import McpParamSelect from './McpParamSelect';
 import McpParamToggle from './McpParamToggle';
 import McpParamSuggest from './McpParamSuggest';
 import McpParamText from './McpParamText';
+
+// Use the built-in Web Crypto / Node crypto.randomUUID() instead of the
+// `uuid` npm package — same output (RFC 4122 v4), no dependency, no Jest
+// ESM-transform issues. Available in Node 19+ and all evergreen browsers.
+// The Math.random fallback exists only for jsdom test environments where
+// `crypto` is not yet exposed on the global; production paths never hit it.
+const uuid = () =>
+  globalThis.crypto?.randomUUID?.() ??
+  "00000000-0000-4000-8000-".concat(
+    Math.floor(Math.random() * 1e12).toString(16).padStart(12, "0"),
+  );
 
 const TRANSFER_TOOL = "create_transfer";
 // Tools that always require HITL browser consent (can't execute inline)
@@ -179,7 +189,10 @@ export default function WebMcpPanel() {
     setLoading(true);
     setDiscoveryPhases([]);
     const traceId = uuid();
+    const controller = new AbortController();
+    let cancelled = false;
     const onPhase = (phase) => {
+      if (cancelled) return;
       // Collapse consecutive updates to the same phase id by replacing the
       // existing row rather than appending — keeps the list short and lets
       // the final 'success' status overwrite the 'active' one.
@@ -191,12 +204,14 @@ export default function WebMcpPanel() {
         return next;
       });
     };
-    listMcpToolsWithStream(traceId, onPhase)
+    listMcpToolsWithStream(traceId, onPhase, controller.signal)
       .then((data) => {
+        if (cancelled) return;
         setTools(data.tools || []);
         setError(null);
       })
       .catch((err) => {
+        if (cancelled || err?.name === 'AbortError') return;
         let parsedBody = null;
         if (err.body) {
           try { parsedBody = JSON.parse(err.body); } catch (_) {}
@@ -219,7 +234,13 @@ export default function WebMcpPanel() {
           rawBody:    parsedBody ? null : (err.body || null),
         });
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
   }, []);
 
   useEffect(() => {
@@ -392,7 +413,11 @@ export default function WebMcpPanel() {
                 </span>
               </div>
               {discoveryPhases.length > 0 && (
-                <ol className="webmcp-discovery-phases">
+                <ol
+                  className="webmcp-discovery-phases"
+                  aria-live="polite"
+                  role="status"
+                >
                   {discoveryPhases.map((p) => (
                     <li
                       key={p.phase}
@@ -414,6 +439,24 @@ export default function WebMcpPanel() {
 
           {error && !selectedTool && (
             <div className="webmcp-error">
+              {discoveryPhases.length > 0 && (
+                <ol className="webmcp-discovery-phases">
+                  {discoveryPhases.map((p) => (
+                    <li
+                      key={p.phase}
+                      className={`webmcp-discovery-phase webmcp-discovery-phase--${p.status || 'active'}`}
+                    >
+                      <span className="webmcp-discovery-phase__status" aria-hidden="true" />
+                      <div className="webmcp-discovery-phase__text">
+                        <div className="webmcp-discovery-phase__label">{p.label}</div>
+                        {p.technical && (
+                          <div className="webmcp-discovery-phase__technical">{p.technical}</div>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              )}
               <p>{error.message}</p>
               <details>
                 <summary>Technical details</summary>

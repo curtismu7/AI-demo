@@ -41,9 +41,16 @@
 }
 
 .webmcp-discovery-phase--active .webmcp-discovery-phase__status {
-  background: #3b82f6;
-  animation: webmcp-spin 1.2s linear infinite;
+  /* Ring spinner: transparent fill, blue border with one transparent side,
+     rotated. A solid disc rotation isn't visually detectable, so the active
+     state needs a real border to make motion visible. */
+  background: transparent;
+  border: 2px solid #3b82f6;
   border-top-color: transparent;
+  /* Box-shrinks slightly because border is now 2px wide. */
+  width: 8px;
+  height: 8px;
+  animation: webmcp-spin 0.9s linear infinite;
 }
 
 .webmcp-discovery-phase--success .webmcp-discovery-phase__status {

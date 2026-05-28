@@ -13,8 +13,10 @@ import { BrowserRouter } from "react-router-dom";
 
 jest.mock("../../services/webMcpClient", () => ({
   listMcpTools: jest.fn(),
+  listMcpToolsWithStream: jest.fn(),
   callMcpTool: jest.fn(),
   openMcpToolStream: jest.fn(),
+  openMcpDiscoveryStream: jest.fn(),
 }));
 
 jest.mock("../../context/AgentUiModeContext", () => ({
@@ -33,6 +35,7 @@ jest.mock("../../styles/appShellPages.css", () => ({}), { virtual: true });
 
 const {
   listMcpTools,
+  listMcpToolsWithStream,
   callMcpTool,
   openMcpToolStream,
 } = require("../../services/webMcpClient");
@@ -67,6 +70,12 @@ async function renderComponent() {
 beforeEach(() => {
   jest.clearAllMocks();
   listMcpTools.mockResolvedValue({ tools: MOCK_TOOLS });
+  // Component switched from listMcpTools to listMcpToolsWithStream; delegate
+  // so existing tests that set listMcpTools.mockResolved/RejectedValue still
+  // drive the same code path without changing every test body.
+  listMcpToolsWithStream.mockImplementation((_traceId, _onPhase, _signal) =>
+    listMcpTools(),
+  );
   callMcpTool.mockResolvedValue({ result: { content: [{ text: "OK" }] } });
   openMcpToolStream.mockReturnValue(() => {});
 });
