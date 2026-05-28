@@ -243,7 +243,7 @@ export default function BankingChips({
           </div>
         </div>
       )}
-      {user?.role === 'admin' && (
+      {(user?.role === 'admin' || user?.role === 'customer') && (
         <div className="banking-chips-dropdown__section banking-chips-dropdown__section--pingone">
           <div className="banking-chips-dropdown__label">
             PingOne Admin <span className="banking-chips-dropdown__mcp-badge">MCP</span>
