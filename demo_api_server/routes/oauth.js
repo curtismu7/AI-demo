@@ -24,6 +24,7 @@ const tokenIntrospectionService = require('../services/tokenIntrospectionService
 const { decodeJwt } = require('../utils/tokenUtils');
 const posthog = require('../services/posthog');
 const archEmit = require('../services/archEventEmitter');
+const { terminateAllUserSessions } = require('../services/pingOneSessionService');
 
 const _isProd = () => !!(process.env.VERCEL || process.env.REPL_ID || process.env.REPLIT_DEPLOYMENT || process.env.NODE_ENV === 'production');
 
@@ -409,16 +410,22 @@ router.get('/callback', async (req, res) => {
 /**
  * Logout - clear local session and end PingOne SSO session
  */
-router.get('/logout', (req, res) => {
+router.get('/logout', async (req, res) => {
   const idToken      = req.session.oauthTokens?.idToken      || null;
   const accessToken  = req.session.oauthTokens?.accessToken  || null;
   const refreshToken = req.session.oauthTokens?.refreshToken || null;
   const postLogoutUri = `${getFrontendOrigin(req)}/logout`;
   const logoutUserId = req.session.user?.id;
+  const pingOneUserId = req.session.user?.oauthId || req.session.user?.id || null;
 
   // RFC 7009 — revoke tokens before destroying the session (best-effort, non-fatal)
   if (accessToken  && accessToken  !== '_cookie_session') oauthService.revokeToken(accessToken,  'access_token');
   if (refreshToken && refreshToken !== '_cookie_session') oauthService.revokeToken(refreshToken, 'refresh_token');
+
+  // Terminate PingOne SSO sessions so the user cannot silently re-authenticate
+  try {
+    await terminateAllUserSessions(pingOneUserId);
+  } catch (_) { /* non-fatal — token revocation + signoff redirect still cover logout */ }
 
   req.session.destroy((err) => {
     if (err) {
