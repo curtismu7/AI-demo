@@ -51,6 +51,7 @@ import AccountDetailsPanel from "./AccountDetailsPanel";
 import AgentConsentModal from "./AgentConsentModal";
 import AgentDemoGuide from "./AgentDemoGuide";
 import BankingChips, { PINGONE_ADMIN_CHIP_IDS } from "./BankingChips";
+import VerticalHero from "./VerticalHero";
 import ComplianceModal from "./ComplianceModal";
 import GatewayConsentModal from "./GatewayConsentModal";
 import { EDU } from "./education/educationIds";
@@ -6936,6 +6937,7 @@ export default function BankingAgent({
                     })();
                   }}
                 />
+                {isLoggedIn && <VerticalHero />}
                 {isLoggedIn && (
                   <BankingChips
                     customChips={customChips}
