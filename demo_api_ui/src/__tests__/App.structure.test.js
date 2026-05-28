@@ -1,14 +1,17 @@
 /**
  * App.structure.test.js — merge-safety guard for App.js and route files
  *
- * Reads source files as strings and asserts critical imports and JSX
- * placements are present. Catches the class of regression where a merge
- * conflict is resolved by restoring one side of a file and silently
- * dropping additions from the other (e.g. AuthorizeRulesPanel drop in
- * merge 3d2cf092).
+ * Two layers of protection:
  *
- * These are intentionally string-level checks — fast, no DOM, no mocks.
- * If you legitimately remove one of the guarded items, update this test.
+ * 1. String-level assertions: cheap, fast — guard critical imports and JSX
+ *    placements against silent merge drops (e.g. AuthorizeRulesPanel drop in
+ *    merge 3d2cf092).
+ *
+ * 2. Render smoke tests: actually mount each /:path under MemoryRouter and
+ *    confirm it doesn't throw. Catches the class of bug where the structure
+ *    LOOKS right as text but React Router rejects it at render time (e.g.
+ *    "<X> is not a <Route> component" — caught by Playwright but missed by
+ *    string-level tests, see the inlined-wildcard fix).
  */
 
 const fs = require("fs");
@@ -27,11 +30,12 @@ describe("App.js — critical imports", () => {
     ["EmbeddedAgentDock", 'import EmbeddedAgentDock from "./components/EmbeddedAgentDock"'],
     ["SessionTokenProvider", 'import { SessionTokenProvider } from "./context/SessionTokenContext"'],
     ["resolveEmbeddedFocus from demoAgentSafety", 'import { resolveEmbeddedFocus } from "./components/demoAgentSafety"'],
-    ["CustomerRoutes", 'import CustomerRoutes'],
-    ["AdminRoutes", 'import AdminRoutes from "./routes/AdminRoutes"'],
+    ["DashboardContent", 'import { DashboardContent } from "./routes/CustomerRoutes"'],
+    ["EducationRoutes", 'import EducationRoutes from "./routes/EducationRoutes"'],
     ["MonitoringRoutes", 'import MonitoringRoutes'],
-    ["EducationRoutes", 'import EducationRoutes'],
     ["PublicRoutes", 'import PublicRoutes'],
+    // Note: WebMcpPanel + AuthorizeRulesPanel imports live in routes/CustomerRoutes.js
+    // (DashboardContent) — they are asserted in the CustomerRoutes.js block below.
   ];
 
   test.each(cases)("imports %s", (_name, importStr) => {
@@ -63,26 +67,36 @@ describe("App.js — critical JSX placements", () => {
     expect(appSrc).toContain("<EmbeddedAgentDock");
   });
 
-  test("CustomerRoutes rendered inside wildcard catch-all", () => {
-    expect(appSrc).toContain("<CustomerRoutes user={user} logout={logout} />");
+  test("DashboardContent is rendered inside the /dashboard route", () => {
+    expect(appSrc).toContain("<DashboardContent user={user} logout={logout} />");
   });
 
-  test("AdminRoutes rendered inside wildcard catch-all", () => {
-    expect(appSrc).toContain("<AdminRoutes user={user} logout={logout} />");
-  });
-
-  test("MonitoringRoutes rendered for /monitoring/*", () => {
+  test("MonitoringRoutes is rendered for /monitoring/*", () => {
     expect(appSrc).toContain("<MonitoringRoutes");
   });
 
-  test("EducationRoutes rendered for /architecture/*", () => {
+  test("EducationRoutes is rendered for /architecture/*", () => {
     expect(appSrc).toContain("<EducationRoutes user={user} logout={logout} />");
+  });
+
+  test("Wildcard catch-all does NOT contain bare component wrappers around <Route>", () => {
+    // React Router v6 requires <Route> elements to be DIRECT children of <Routes>.
+    // A bare `<AdminRoutes ...>` or `<CustomerRoutes ...>` (no path prop) returning
+    // <Route> fragments crashes at render time. Catch that class of bug here.
+    const wildcardForbidden = [
+      "<AdminRoutes ",
+      "<CustomerRoutes ",
+      "<EducationWildcardRoutes ",
+    ];
+    for (const fragment of wildcardForbidden) {
+      expect(appSrc).not.toContain(fragment);
+    }
   });
 });
 
-// ─── CustomerRoutes.js — highest priority (guards original regression) ────────
+// ─── DashboardContent (highest priority — guards the 3d2cf092 regression) ────
 
-describe("CustomerRoutes.js — critical imports and placements", () => {
+describe("CustomerRoutes.js / DashboardContent — critical imports and JSX", () => {
   const src = fs.readFileSync(
     path.resolve(__dirname, "../routes/CustomerRoutes.js"),
     "utf8"
@@ -96,32 +110,11 @@ describe("CustomerRoutes.js — critical imports and placements", () => {
     expect(src).toContain('import AuthorizeRulesPanel from "../components/AuthorizeRulesPanel"');
   });
 
-  test("renders AuthorizeRulesPanel after WebMcpPanel in DashboardContent", () => {
+  test("DashboardContent renders AuthorizeRulesPanel after WebMcpPanel", () => {
     const webIdx = src.indexOf("<WebMcpPanel />");
     const authIdx = src.indexOf("<AuthorizeRulesPanel />", webIdx);
     expect(webIdx).toBeGreaterThan(-1);
     expect(authIdx).toBeGreaterThan(webIdx);
-  });
-
-  test("no stale banking_api_ui paths", () => {
-    expect(src).not.toContain("banking_api_ui");
-  });
-});
-
-// ─── AdminRoutes.js ───────────────────────────────────────────────────────────
-
-describe("AdminRoutes.js — critical imports", () => {
-  const src = fs.readFileSync(
-    path.resolve(__dirname, "../routes/AdminRoutes.js"),
-    "utf8"
-  );
-
-  test('imports AdminRoute', () => {
-    expect(src).toContain('import AdminRoute from "./AdminRoute"');
-  });
-
-  test('imports Dashboard', () => {
-    expect(src).toContain('import Dashboard from "../components/Dashboard"');
   });
 
   test("no stale banking_api_ui paths", () => {

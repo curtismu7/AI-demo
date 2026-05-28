@@ -17,13 +17,48 @@ import {
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
+import Accounts from "./components/Accounts";
+import { ActorTokenEducation } from "./components/ActorTokenEducation";
+import ActivityLogs from "./components/ActivityLogs";
+import AccessIdTokenPathPage from "./components/AccessIdTokenPathPage";
+import AdminErrorAuditLog from "./components/AdminErrorAuditLog";
 import AdminSideNav from "./components/AdminSideNav";
+import AdminTokenComplianceAudit from "./components/AdminTokenComplianceAudit";
+import AdminVaultPage from "./components/AdminVaultPage";
 import AgentFlowDiagramPanel from "./components/AgentFlowDiagramPanel";
+import { AgenticTrustEducation } from "./components/AgenticTrustEducation";
+import ApiKeyPathPage from "./components/ApiKeyPathPage";
 import AuditPage from "./components/AuditPage";
+import AuthorizeConfigPage from "./components/AuthorizeConfigPage";
+import BankingAdminOps from "./components/BankingAdminOps";
+import ClientCredentialsResourcePage from "./components/ClientCredentialsResourcePage";
+import ClientRegistrationPage from "./components/ClientRegistrationPage";
+import DelegatedAccessPage from "./components/DelegatedAccessPage";
+import DelegationPage from "./components/DelegationPage";
+import FeatureFlagsPage from "./components/FeatureFlagsPage";
+import LlmConfigPage from "./components/LlmConfigPage";
+import { MCPToolsEducation } from "./components/MCPToolsEducation";
+import McpGatewayConfig from "./components/McpGatewayConfig";
+import MortgagePathPage from "./components/MortgagePathPage";
+import OAuthDebugLogViewer from "./components/OAuthDebugLogViewer";
+import OAuthTokenDisplayPage from "./components/OAuthTokenDisplayPage";
+import PostmanCollectionsPage from "./components/PostmanCollectionsPage";
+import Profile from "./components/Profile";
+import ResourceServerPage from "./components/ResourceServerPage";
+import ScopeAuditPage from "./components/ScopeAuditPage";
+import ScopeReferencePage from "./components/ScopeReferencePage";
+import SecurityCenter from "./components/SecurityCenter";
+import SecuritySettings from "./components/SecuritySettings";
+import TransactionConsentPage from "./components/TransactionConsentPage";
+import Transactions from "./components/Transactions";
+import UserAccounts from "./components/UserAccounts";
+import UserTransactions from "./components/UserTransactions";
+import Users from "./components/Users";
+import VerticalFeaturePage from "./components/VerticalFeaturePage";
+import LangChainPage from "./pages/LangChainPage";
 import AdminRoute from "./routes/AdminRoute";
-import AdminRoutes from "./routes/AdminRoutes";
-import CustomerRoutes, { DashboardContent } from "./routes/CustomerRoutes";
-import EducationRoutes, { EducationWildcardRoutes } from "./routes/EducationRoutes";
+import { DashboardContent } from "./routes/CustomerRoutes";
+import EducationRoutes from "./routes/EducationRoutes";
 import MonitoringRoutes, {
   ApiTrafficRoute,
   McpTrafficRoute,
@@ -398,16 +433,141 @@ function AppWithAuth() {
                               )
                             }
                           />
-                          <AdminRoutes user={user} logout={logout} />
+                          {/* === Admin routes (inlined — see routes/AdminRoutes.js for source-of-truth list) === */}
+                          <Route path="/admin" element={
+                            <AdminRoute user={user}>
+                              <Dashboard user={user} onLogout={logout} />
+                            </AdminRoute>
+                          } />
+                          <Route path="/admin/banking" element={
+                            <AdminRoute user={user}>
+                              <BankingAdminOps user={user} onLogout={logout} />
+                            </AdminRoute>
+                          } />
+                          <Route path="/admin/vault" element={
+                            <AdminRoute user={user}><AdminVaultPage /></AdminRoute>
+                          } />
+                          <Route path="/users" element={
+                            <AdminRoute user={user}>
+                              <Users user={user} onLogout={logout} />
+                            </AdminRoute>
+                          } />
+                          <Route path="/activity" element={
+                            <AdminRoute user={user}>
+                              <ActivityLogs user={user} onLogout={logout} />
+                            </AdminRoute>
+                          } />
+                          <Route path="/audit" element={
+                            <AdminRoute user={user}><AuditPage user={user} /></AdminRoute>
+                          } />
+                          <Route path="/feature-flags" element={
+                            user ? <FeatureFlagsPage /> : <Navigate to="/" replace />
+                          } />
+                          <Route path="/llm-config" element={
+                            <AdminRoute user={user}>
+                              <LlmConfigPage user={user} onLogout={logout} />
+                            </AdminRoute>
+                          } />
+                          <Route path="/settings" element={
+                            <AdminRoute user={user}>
+                              <SecuritySettings user={user} onLogout={logout} />
+                            </AdminRoute>
+                          } />
+                          <Route path="/authorize-config" element={
+                            <AdminRoute user={user}><AuthorizeConfigPage /></AdminRoute>
+                          } />
+                          <Route path="/mcp-gateway" element={
+                            <AdminRoute user={user}><McpGatewayConfig /></AdminRoute>
+                          } />
+                          <Route path="/error-audit" element={
+                            <AdminRoute user={user}><AdminErrorAuditLog /></AdminRoute>
+                          } />
+                          <Route path="/oauth-debug-logs" element={
+                            <AdminRoute user={user}><OAuthDebugLogViewer /></AdminRoute>
+                          } />
+                          <Route path="/client-registration" element={
+                            <AdminRoute user={user}><ClientRegistrationPage /></AdminRoute>
+                          } />
+                          <Route path="/config" element={
+                            <Navigate to="/configure?tab=pingone-config" replace />
+                          } />
+
+                          {/* === Monitoring routes (use Route wrappers from routes/MonitoringRoutes.js) === */}
                           <Route path="/logs" element={<LogsRoute user={user} logout={logout} />} />
                           <Route path="/api-traffic" element={<ApiTrafficRoute user={user} logout={logout} />} />
                           <Route path="/mcp-traffic" element={<McpTrafficRoute user={user} logout={logout} />} />
                           <Route path="/dev-tools" element={<DevToolsRoute user={user} logout={logout} />} />
-                          <EducationWildcardRoutes user={user} logout={logout} />
                           <Route path="/mcp-inspector" element={<McpInspectorRoute user={user} logout={logout} />} />
                           <Route path="/webmcp" element={<WebMcpRoute user={user} logout={logout} />} />
                           <Route path="/agent-flow-inspector" element={<AgentFlowInspectorRoute user={user} logout={logout} />} />
-                          <CustomerRoutes user={user} logout={logout} />
+
+                          {/* === Education routes (inlined — see routes/EducationRoutes.js for source-of-truth list) === */}
+                          <Route path="/langchain" element={<LangChainPage />} />
+                          <Route path="/mcp-tools" element={
+                            user ? <MCPToolsEducation /> : <Navigate to="/" replace />
+                          } />
+                          <Route path="/agentic-trust" element={
+                            user ? <AgenticTrustEducation /> : <Navigate to="/" replace />
+                          } />
+                          <Route path="/actor-token-education" element={
+                            user ? <ActorTokenEducation /> : <Navigate to="/" replace />
+                          } />
+                          <Route path="/token-compliance" element={
+                            <AdminRoute user={user}><AdminTokenComplianceAudit /></AdminRoute>
+                          } />
+                          <Route path="/postman" element={
+                            <PostmanCollectionsPage user={user} onLogout={logout} />
+                          } />
+                          <Route path="/scope-audit" element={
+                            <AdminRoute user={user}><ScopeAuditPage /></AdminRoute>
+                          } />
+                          <Route path="/scope-reference" element={
+                            <AdminRoute user={user}><ScopeReferencePage /></AdminRoute>
+                          } />
+                          <Route path="/oauth/token-display" element={
+                            user ? <OAuthTokenDisplayPage /> : <Navigate to="/" replace />
+                          } />
+                          <Route path="/resource-server" element={
+                            user ? <ResourceServerPage /> : <Navigate to="/" replace />
+                          } />
+                          <Route path="/resource-server-cc" element={
+                            user ? <ClientCredentialsResourcePage /> : <Navigate to="/" replace />
+                          } />
+                          <Route path="/path/mortgage" element={
+                            user ? <MortgagePathPage /> : <Navigate to="/" replace />
+                          } />
+                          <Route path="/path/feature" element={
+                            user ? <VerticalFeaturePage /> : <Navigate to="/" replace />
+                          } />
+                          <Route path="/path/apikey-info" element={
+                            user ? <ApiKeyPathPage /> : <Navigate to="/" replace />
+                          } />
+                          <Route path="/path/dualtoken-info" element={
+                            user ? <AccessIdTokenPathPage /> : <Navigate to="/" replace />
+                          } />
+
+                          {/* === Customer + shared routes === */}
+                          <Route path="/accounts" element={
+                            user?.role === "admin"
+                              ? <AdminRoute user={user}><Accounts user={user} onLogout={logout} /></AdminRoute>
+                              : <UserAccounts user={user} />
+                          } />
+                          <Route path="/user-accounts" element={<UserAccounts user={user} />} />
+                          <Route path="/transactions" element={
+                            user?.role === "admin"
+                              ? <AdminRoute user={user}><Transactions user={user} onLogout={logout} /></AdminRoute>
+                              : <UserTransactions user={user} />
+                          } />
+                          <Route path="/transaction-consent" element={<TransactionConsentPage user={user} />} />
+                          <Route path="/delegated-access" element={<DelegatedAccessPage user={user} onLogout={logout} />} />
+                          <Route path="/delegation" element={
+                            user ? <DelegationPage user={user} onLogout={logout} /> : <Navigate to="/" replace />
+                          } />
+                          <Route path="/profile" element={<Profile user={user} />} />
+                          <Route path="/security" element={<SecurityCenter user={user} />} />
+                          <Route path="*" element={
+                            <Navigate to={user?.role === "admin" ? "/admin" : "/dashboard"} replace />
+                          } />
                         </Routes>
                         {backgroundLocation &&
                           fullLocation.pathname === "/audit" && (
