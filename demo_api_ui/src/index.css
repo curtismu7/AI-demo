@@ -154,6 +154,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background-color: #ffffff;
   color: var(--brand-dark-gray);
+  overflow-x: hidden;
 }
 
 .container {

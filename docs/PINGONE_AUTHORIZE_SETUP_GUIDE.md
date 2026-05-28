@@ -45,8 +45,14 @@ You only need to do this once per environment.
 
 1. Log in to the PingOne admin console at `https://console.pingone.com`.
 2. Select the environment you plan to use.
-3. Click **Add Services** (or **Manage Services** if services are already there).
-4. Find **PingOne Authorize** in the list and enable it.
+3. On the Overview dashboard, click **Add Services** (or **Manage Services** if services are already there).
+
+![PingOne Console Overview — Getting Started panel with Add Services button](screenshots/01-overview-dashboard.png)
+
+4. In the **Add a Service** dialog, scroll down to find **PingOne Authorize** and click **+ Add**.
+
+![Add a Service dialog — PingOne Authorize option](screenshots/02-add-service-authorize-scrolled.png)
+
 5. Click **Save**.
 
 If you do not see PingOne Authorize in the list, contact your Ping Identity account team — it may need to be added to your license.
@@ -56,11 +62,20 @@ If you do not see PingOne Authorize in the list, contact your Ping Identity acco
 If you already ran `npm run pingone:bootstrap` once, this app was created for you. If you are starting fresh on a new environment, do this:
 
 1. In the PingOne Console, go to **Applications → Applications**.
-2. Click the **+** button to add an application.
-3. Set the name to `Demo Worker Token App`.
+
+![Applications list page showing all apps](screenshots/03-applications-list.png)
+
+2. Click the **+** (Add) button at the top right of the list.
+3. In the **Add Application** panel that slides in from the right, set the name to `Demo Worker Token App`.
 4. Choose **Worker** as the application type.
+
+![Add Application panel — all type options, with Worker highlighted](screenshots/04b-add-application-worker-selected.png)
+
 5. Click **Save**, then open the app and click **Enable** (the toggle at the top right).
 6. Go to the **Roles** tab of the app.
+
+![Worker app — Roles tab with Grant Roles button](screenshots/05-worker-app-roles-tab.png)
+
 7. Click **Grant Roles** and add the `Identity Data Admin` role for your environment.
 8. Note down the **Client ID** and **Client Secret** from the **Configuration** tab — the bootstrap script will ask for these.
 
@@ -468,8 +483,10 @@ Everything in Part 2 was automated. **This part cannot be automated** — PingOn
 ### Step 3.1 — Find the Authorize section
 
 1. In the PingOne Console, make sure you are in the correct environment.
-2. In the left sidebar, look for **Authorize** (it will only appear if you completed Step 1.1).
-3. Click **Authorize** to enter the PingOne Authorize workspace.
+2. In the left sidebar, look for **Authorization** (it will only appear if you completed Step 1.1).
+3. Click **Authorization** to expand it — you will see **Trust Framework**, **Policies**, **Decision Endpoints**, and more.
+
+![Left nav with Authorization section expanded, showing Trust Framework, Policies, Decision Endpoints](screenshots/06-authorization-nav-expanded.png)
 
 You will see two main sections: **Trust Framework** and **Policies**.
 
@@ -479,7 +496,10 @@ You will see two main sections: **Trust Framework** and **Policies**.
 
 Before writing any policies, turn on recent decision recording. This lets you see exactly what inputs drove each decision while you are building.
 
-1. Go to **Authorize → Decision Endpoints**.
+1. Go to **Authorization → Decision Endpoints**.
+
+![Decision Endpoints page](screenshots/09-decision-endpoints.png)
+
 2. Open the **Dev** endpoint.
 3. Enable **Recent Decisions** (toggle it on).
 4. Click **Save**.
@@ -493,7 +513,10 @@ Before writing any policies, turn on recent decision recording. This lets you se
 Trust Framework attributes are the building blocks policies use to make decisions. Think of them as the input variables. You need to create the ones that your rules will reference.
 
 **How to create an attribute:**
-1. Go to **Authorize → Trust Framework → Attributes**.
+1. Go to **Authorization → Trust Framework**, then click the **Attributes** tab.
+
+![Trust Framework — Attributes tab](screenshots/07b-trust-framework-attributes.png)
+
 2. Click **Add Attribute**.
 3. Fill in the name and type, then save.
 
@@ -517,7 +540,10 @@ Trust Framework attributes are the building blocks policies use to make decision
 This policy implements the most important rule: **every transfer requires human approval** regardless of amount.
 
 **How to create a policy:**
-1. Go to **Authorize → Policies**.
+1. Go to **Authorization → Policies**.
+
+![Policies page showing existing policies and Add Policy button](screenshots/08-policies.png)
+
 2. Click **Add Policy**.
 3. Name it `Transfer - Require HITL Consent`.
 4. Click **Add Rule**.
