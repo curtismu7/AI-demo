@@ -986,6 +986,23 @@ if [[ -f "$BASEDIR/langchain_agent/src/main.py" ]]; then
   echo $! > "$PID_AGENT"
 fi
 
+# ── OpenAI Agents SDK (port 8891) ────────────────────────────────────────────
+if [[ -f "$BASEDIR/openai_agent/src/main.py" ]]; then
+  echo "[OASDK] Starting OpenAI Agents SDK service (:8891)..."
+  (
+    cd "$BASEDIR/openai_agent"
+    if [[ -x ".venv/bin/python" ]]; then
+      PY=".venv/bin/python"
+    elif [[ -x "venv/bin/python" ]]; then
+      PY="venv/bin/python"
+    else
+      PY="python3"
+    fi
+    "$PY" -m src.main >> /tmp/demo-openai-agent.log 2>&1
+  ) &
+  echo $! > /tmp/demo-openai-agent.pid
+fi
+
 # ── LM Studio auto-configure ─────────────────────────────────────────────────
 # If LM Studio's local server is running (default :1234), ensure the target
 # model is loaded so the demo works without manual setup. Non-blocking —
