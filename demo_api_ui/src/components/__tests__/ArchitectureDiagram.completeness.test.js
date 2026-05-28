@@ -3,7 +3,7 @@
 // REQ-DIAGRAM-09, REQ-DIAGRAM-10, REQ-DIAGRAM-15 (Phase 270).
 //
 // PURPOSE
-//   Diagram-completeness invariant: every service named in run-demo.sh SVC_LIST
+//   Diagram-completeness invariant: every service named in run.sh SVC_LIST
 //   must appear in at least one .mmd source at repo root. Also asserts the §0
 //   emoji allowlist (⚠️ ✅ ❌) and the no-secret-values invariant so labels
 //   never leak credentials.
@@ -31,14 +31,14 @@ const MMD_FILES = [
   "mcp-security-gateway.mmd",
 ];
 
-// Extract SVC_LIST from run-demo.sh (single source of truth).
+// Extract SVC_LIST from run.sh (single source of truth).
 // Pure-JS regex on the file content — no shell-out (Pitfall A6 in research).
 function getServiceList() {
-  const runBankPath = path.join(REPO_ROOT, "run-demo.sh");
+  const runBankPath = path.join(REPO_ROOT, "run.sh");
   const content = fs.readFileSync(runBankPath, "utf8");
   const match = content.match(/^SVC_LIST=\(([^)]+)\)/m);
   if (!match) {
-    throw new Error("Could not parse SVC_LIST=(...) from run-demo.sh");
+    throw new Error("Could not parse SVC_LIST=(...) from run.sh");
   }
   return match[1].trim().split(/\s+/).filter(Boolean);
 }
@@ -88,7 +88,7 @@ describe("Architecture diagram completeness", () => {
       const found = mmds.filter(({ content }) => content.includes(svc));
       if (found.length === 0) {
         throw new Error(
-          `Service "${svc}" is in run-demo.sh SVC_LIST but appears in NONE of: ` +
+          `Service "${svc}" is in run.sh SVC_LIST but appears in NONE of: ` +
             MMD_FILES.join(", ") +
             `. Add it to architecture-simple.mmd (clean view) or architecture.mmd (detailed view).`,
         );

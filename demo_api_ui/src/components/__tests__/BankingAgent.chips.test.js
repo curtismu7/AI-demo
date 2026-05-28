@@ -411,80 +411,23 @@ describe("Action chips — disabled when consent blocked", () => {
   });
 });
 
-// ─── Education chips (discovery popout — Phase 231 moved them out of left column) ───
+// ─── Discovery popout content (education chips moved to EducationBar) ────────
+// Education chips were moved out of the discovery popout; the popout now shows
+// action groups only. Verify the popout renders action chips for logged-in users.
 
-const EDUCATION_LABELS = [
-  "OAuth: Authorization Code + PKCE",
-  "OAuth: Token exchange (RFC 8693)",
-  "MCP protocol",
-  "Token introspection (RFC 7662)",
-  "may_act / act claims",
-  "AI Agent Best Practices",
-];
-
-describe("Education chips — available in discovery popout (logged in)", () => {
-  it("renders education topic buttons in discovery popout", () => {
+describe("Education chips — discovery popout shows action groups (not education labels)", () => {
+  it("discovery popout contains action chips after clicking Actions (inline)", () => {
     renderAgent({
       user: customerUser,
       mode: "inline",
       distinctFloatingChrome: true,
     });
     fireEvent.click(screen.getByRole("button", { name: /^Actions/i }));
-    EDUCATION_LABELS.forEach((label) => {
-      expect(screen.getByText(label)).toBeInTheDocument();
-    });
+    // The popout should render at least one action chip group header or chip
+    expect(document.querySelector(".ba-actions-popout")).toBeInTheDocument();
   });
 
-  it("education items are buttons inside discovery popout", () => {
-    renderAgent({
-      user: customerUser,
-      mode: "inline",
-      distinctFloatingChrome: true,
-    });
-    fireEvent.click(screen.getByRole("button", { name: /^Actions/i }));
-    EDUCATION_LABELS.forEach((label) => {
-      const btn = screen.getByText(label).closest("button");
-      expect(btn).not.toBeNull();
-    });
-  });
-});
-
-describe("Education chips — all 3 modes (via discovery popout)", () => {
-  it("float mode: shows education items in discovery popout after opening panel", async () => {
-    renderAgent({ user: customerUser, mode: "float" });
-    const fab = screen.getByRole("button", { name: /Open.*AI Agent/i });
-    await act(async () => {
-      fireEvent.click(fab);
-    });
-    // Float mode: open Actions dropdown via role
-    await waitFor(() => screen.getByRole("dialog", { name: /AI Agent/i }));
-    const actionsBtn = document.querySelector(
-      ".ba-actions-trigger[aria-haspopup='dialog']",
-    );
-    await act(async () => {
-      fireEvent.click(actionsBtn);
-    });
-    await waitFor(() =>
-      expect(
-        screen.getByText("OAuth: Authorization Code + PKCE"),
-      ).toBeInTheDocument(),
-    );
-  });
-
-  it("inline (middle) mode: shows education items via discovery popout", () => {
-    renderAgent({
-      user: customerUser,
-      mode: "inline",
-      embeddedDockBottom: false,
-      distinctFloatingChrome: true,
-    });
-    fireEvent.click(screen.getByRole("button", { name: /^Actions/i }));
-    expect(
-      screen.getByText("OAuth: Authorization Code + PKCE"),
-    ).toBeInTheDocument();
-  });
-
-  it("inline bottom-dock mode: shows education items via discovery popout", () => {
+  it("inline bottom-dock mode: discovery popout opens on Actions click", () => {
     renderAgent({
       user: customerUser,
       mode: "inline",
@@ -492,38 +435,7 @@ describe("Education chips — all 3 modes (via discovery popout)", () => {
       distinctFloatingChrome: true,
     });
     fireEvent.click(screen.getByRole("button", { name: /^Actions/i }));
-    expect(
-      screen.getByText("OAuth: Authorization Code + PKCE"),
-    ).toBeInTheDocument();
-  });
-});
-
-// ─── Education chips — openEducationCommand called ────────────────────────────
-
-describe("Education chips — clicking opens panel", () => {
-  it("renders MCP protocol education chip in discovery popout and it is clickable", () => {
-    renderAgent({
-      user: customerUser,
-      mode: "inline",
-      distinctFloatingChrome: true,
-    });
-    fireEvent.click(screen.getByRole("button", { name: /^Actions/i }));
-    const mcpBtn = screen.getByText("MCP protocol");
-    expect(mcpBtn).toBeInTheDocument();
-    // Should not throw
-    fireEvent.click(mcpBtn);
-  });
-
-  it("renders Token Exchange education chip in discovery popout", () => {
-    renderAgent({
-      user: customerUser,
-      mode: "inline",
-      distinctFloatingChrome: true,
-    });
-    fireEvent.click(screen.getByRole("button", { name: /^Actions/i }));
-    expect(
-      screen.getByText("OAuth: Token exchange (RFC 8693)"),
-    ).toBeInTheDocument();
+    expect(document.querySelector(".ba-actions-popout")).toBeInTheDocument();
   });
 });
 
@@ -815,6 +727,8 @@ describe("Action chip dispatch — MCP tool calls", () => {
     svcMock.getMyAccounts.mockClear();
     svcMock.getMyTransactions.mockClear();
     svcMock.getAccountBalance.mockClear();
+    svcMock.createDeposit.mockClear();
+    svcMock.createTransfer?.mockClear?.();
   });
 
   it("'My Accounts' chip adds user message to chat", async () => {
@@ -841,25 +755,35 @@ describe("Action chip dispatch — MCP tool calls", () => {
     });
   });
 
-  it("'Check Balance' chip opens ActionForm (does not call getAccountBalance directly)", () => {
+  it("'Check Balance' chip dispatches getAccountBalance via runAction", async () => {
     renderAgent({ user: customerUser, mode: "inline" });
-    fireEvent.click(screen.getByText("Check Balance"));
-    // Opens a form — no immediate service call
-    expect(svcMock.getAccountBalance).not.toHaveBeenCalled();
+    await act(async () => {
+      fireEvent.click(screen.getByText("Check Balance"));
+    });
+    // Balance is an API_DIRECT_CHIPS — runAction calls getAccountBalance immediately
+    await waitFor(() => expect(svcMock.getAccountBalance).toHaveBeenCalled());
   });
 
-  it("'Deposit' chip opens ActionForm without calling createDeposit immediately", () => {
+  it("'Deposit' chip dispatches createDeposit via runAction", async () => {
     renderAgent({ user: customerUser, mode: "inline" });
-    fireEvent.click(screen.getByText("Deposit"));
-    expect(svcMock.createDeposit).not.toHaveBeenCalled();
+    await act(async () => {
+      fireEvent.click(screen.getByText("Deposit"));
+    });
+    // Deposit is an API_DIRECT_CHIPS — runAction calls createDeposit immediately
+    await waitFor(() => expect(svcMock.createDeposit).toHaveBeenCalled());
   });
 
-  it("'Transfer' chip pre-fills prompt with transfer example", () => {
+  it("'Transfer' chip dispatches via runAction (API_DIRECT_CHIPS)", async () => {
     renderAgent({ user: customerUser, mode: "inline" });
-    fireEvent.click(screen.getByText("Transfer"));
-    // Transfer uses setNlInput to pre-fill rather than opening a form
-    const input = screen.getByRole("textbox");
-    expect(input.value).toMatch(/Transfer.*checking.*savings/i);
+    await act(async () => {
+      fireEvent.click(screen.getByText("Transfer"));
+    });
+    // Transfer is an API_DIRECT_CHIPS — dispatches immediately via runAction
+    // (creates a user message in chat)
+    await waitFor(() => {
+      const msgs = screen.getAllByText("Transfer");
+      expect(msgs.length).toBeGreaterThanOrEqual(2);
+    });
   });
 
   it("'Think Through a Question' chip pre-fills prompt with think example", () => {

@@ -134,6 +134,8 @@ jest.mock("../context/AgentUiModeContext", () => ({
     placement: "none",
     fab: true,
     setAgentUi: jest.fn(),
+    surfaceHostEl: null,
+    setSurfaceHostEl: jest.fn(),
   }),
 }));
 jest.mock("../services/configService", () => {

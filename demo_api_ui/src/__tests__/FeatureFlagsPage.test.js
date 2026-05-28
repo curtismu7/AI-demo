@@ -150,6 +150,7 @@ describe("FeatureFlagsPage — flag toggle", () => {
     );
     global.fetch = jest
       .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ apiKeySet: false, tenantNameSet: false, tenantName: null }) })
       .mockResolvedValueOnce({ ok: true, json: async () => MOCK_RESPONSE })
       .mockResolvedValueOnce({
         ok: true,
@@ -163,9 +164,9 @@ describe("FeatureFlagsPage — flag toggle", () => {
       screen.getByRole("button", { name: /enable simulated authorize/i }),
     );
 
-    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(3));
 
-    const [patchUrl, patchInit] = global.fetch.mock.calls[1];
+    const [patchUrl, patchInit] = global.fetch.mock.calls[2];
     expect(patchInit.method).toBe("PATCH");
     expect(JSON.parse(patchInit.body)).toEqual({
       updates: { ff_authorize_simulated: true },
@@ -176,6 +177,7 @@ describe("FeatureFlagsPage — flag toggle", () => {
   it("rolls back flag and shows error when PATCH fails", async () => {
     global.fetch = jest
       .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ apiKeySet: false, tenantNameSet: false, tenantName: null }) })
       .mockResolvedValueOnce({ ok: true, json: async () => MOCK_RESPONSE })
       .mockResolvedValueOnce({
         ok: false,
@@ -206,6 +208,7 @@ describe("FeatureFlagsPage — flag toggle", () => {
     );
     global.fetch = jest
       .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ apiKeySet: false, tenantNameSet: false, tenantName: null }) })
       .mockResolvedValueOnce({ ok: true, json: async () => MOCK_RESPONSE })
       .mockResolvedValueOnce({
         ok: true,
@@ -230,6 +233,7 @@ describe("FeatureFlagsPage — flag toggle", () => {
     );
     global.fetch = jest
       .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ apiKeySet: false, tenantNameSet: false, tenantName: null }) })
       .mockResolvedValueOnce({ ok: true, json: async () => MOCK_RESPONSE })
       .mockResolvedValueOnce({
         ok: true,

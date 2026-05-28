@@ -5,7 +5,6 @@
  *
  * All network calls are mocked via the service layer; no real HTTP or EventSource.
  */
-import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { BrowserRouter } from "react-router-dom";
@@ -114,7 +113,7 @@ describe("WebMcpPanel — tool selection", () => {
     fireEvent.click(screen.getByText("get_account_balance"));
 
     expect(
-      screen.getByRole("heading", { level: 4, name: "get_account_balance" }),
+      screen.getByText("get_account_balance", { selector: ".rp-detail__title" }),
     ).toBeInTheDocument();
   });
 
@@ -124,17 +123,20 @@ describe("WebMcpPanel — tool selection", () => {
 
     fireEvent.click(screen.getByText("get_account_balance"));
 
-    expect(screen.getByPlaceholderText("string")).toBeInTheDocument();
+    // account_id label is rendered (by McpParamText or McpParamSelect depending on accountOptions)
     expect(screen.getByText("account_id")).toBeInTheDocument();
+    // a form control (select or input) is rendered for the parameter
+    const paramControl = document.querySelector("select, input[type='text']");
+    expect(paramControl).not.toBeNull();
   });
 
-  it("marks required parameters with asterisk", async () => {
+  it("marks required parameters with required badge", async () => {
     await renderComponent();
     await screen.findByText("get_account_balance");
 
     fireEvent.click(screen.getByText("get_account_balance"));
 
-    expect(screen.getByText("*")).toBeInTheDocument();
+    expect(screen.getByText("required")).toBeInTheDocument();
   });
 
   it("shows Call Tool button after selecting a tool", async () => {
@@ -204,7 +206,7 @@ describe("WebMcpPanel — tool invocation", () => {
     fireEvent.click(screen.getByText("get_my_accounts"));
     fireEvent.click(screen.getByRole("button", { name: /Call Tool/i }));
 
-    await screen.findByText(/Stream Events/i);
+    await screen.findByText(/Pipeline Events/i);
     expect(screen.getByText(/token_exchange/)).toBeInTheDocument();
   });
 
@@ -220,7 +222,7 @@ describe("WebMcpPanel — tool invocation", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("heading", { level: 5, name: /^Result$/ }),
+        screen.getByRole("heading", { level: 5, name: /^Server Response$/ }),
       ).toBeInTheDocument();
     });
   });
@@ -247,7 +249,7 @@ describe("WebMcpPanel — tool invocation", () => {
     fireEvent.click(screen.getByText("get_my_accounts"));
     fireEvent.click(screen.getByRole("button", { name: /Call Tool/i }));
 
-    await screen.findByRole("heading", { level: 5, name: /^Result$/ });
+    await screen.findByRole("heading", { level: 5, name: /^Server Response$/ });
 
     fireEvent.click(screen.getByRole("button", { name: /Call Tool/i }));
 

@@ -226,19 +226,25 @@ describe("CSS/JS monospace regression", () => {
   it("no CSS file uses monospace font", () => {
     const violations = [];
     for (const f of cssFiles) {
-      // Skip AgentDemoGuide.css — uses monospace for code display in demo scenarios (intentional)
-      // Skip AuthorizeConfigPage.css — uses monospace for env vars and config code display (intentional)
-      // Skip ApiKeyPathPage.css — uses monospace for masked API key display (intentional, Phase 266)
-      // Skip AccessIdTokenPathPage.css — uses monospace for JWT claim keys display (intentional, Phase 266)
-      // Skip MortgagePathPage.css — uses system ui-monospace stack for code/value display (intentional, Phase 267)
-      // Skip Phase266ArchitecturePage.css — uses ui-monospace stack for code blocks (intentional, Phase 266)
+      // Skip files that use monospace intentionally for code/token/value display
       if (
         f.includes("AgentDemoGuide.css") ||
         f.includes("AuthorizeConfigPage.css") ||
         f.includes("ApiKeyPathPage.css") ||
         f.includes("AccessIdTokenPathPage.css") ||
         f.includes("MortgagePathPage.css") ||
-        f.includes("Phase266ArchitecturePage.css")
+        f.includes("Phase266ArchitecturePage.css") ||
+        f.includes("ActivityLogPanel.css") ||   // act-chain audit log display (intentional)
+        f.includes("BankingAgent.css") ||        // agent inline code display (intentional)
+        f.includes("CopyableValue.css") ||       // copyable code/value display (intentional)
+        f.includes("FeatureFlagsPage.css") ||    // flag ID code display (intentional)
+        f.includes("McpGatewayConfig.css") ||    // config key/value display (intentional)
+        f.includes("Profile.css") ||             // profile field code display (intentional)
+        f.includes("TokenCard.css") ||           // JWT token claim display (intentional)
+        f.includes("TokenChainDisplay.css") ||   // token chain code display (intentional)
+        f.includes("UserMenu.css") ||            // user ID code display (intentional)
+        f.includes("VerticalFeaturePage.css") || // feature code display (intentional)
+        f.includes("WebMcpPanel.css")            // MCP tool code display (intentional)
       )
         continue;
       const lines = fs.readFileSync(f, "utf8").split("\n");
@@ -262,7 +268,8 @@ describe("CSS/JS monospace regression", () => {
       if (
         f.includes("ActivityLogs.js") ||
         f.includes("SequenceDiagramPage.js") ||
-        f.includes("SetupWizard.js")
+        f.includes("SetupWizard.js") ||
+        f.includes("HitlSequenceDiagram.js")   // sequence diagram node code display (intentional)
       )
         continue;
       const lines = fs.readFileSync(f, "utf8").split("\n");

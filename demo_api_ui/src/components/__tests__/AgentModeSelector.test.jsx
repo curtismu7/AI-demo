@@ -11,7 +11,8 @@ const mockHook = {
   modeOptions: [
     { id: "heuristics", label: "Heuristics only", external: false },
     { id: "heuristics_helix", label: "Heuristics + Helix", external: false },
-    { id: "chatgpt", label: "Just ChatGPT", external: true },
+    { id: "claude", label: "Claude (Anthropic)", external: false },
+    { id: "helix_google", label: "Helix (Google)", external: true },
   ],
   setMode: jest.fn(),
   setExternalWiring: jest.fn(),
@@ -32,9 +33,9 @@ afterEach(() => {
 test("renders mode options and calls setMode on change", () => {
   render(<AgentModeSelector />);
   fireEvent.change(screen.getByLabelText(/agent mode/i), {
-    target: { value: "chatgpt" },
+    target: { value: "claude" },
   });
-  expect(mockHook.setMode).toHaveBeenCalledWith("chatgpt", null);
+  expect(mockHook.setMode).toHaveBeenCalledWith("claude", null);
 });
 
 test("no wiring sub-toggle or banner for a non-external mode", () => {
@@ -44,7 +45,7 @@ test("no wiring sub-toggle or banner for a non-external mode", () => {
 });
 
 test("external mode shows wiring sub-toggle; platform shows degraded banner", () => {
-  mockHook.mode = "chatgpt";
+  mockHook.mode = "helix_google";
   mockHook.externalWiring = "platform";
   render(<AgentModeSelector />);
   expect(screen.getByLabelText(/external wiring/i)).toBeInTheDocument();
@@ -52,7 +53,7 @@ test("external mode shows wiring sub-toggle; platform shows degraded banner", ()
 });
 
 test("external mode with bff wiring shows sub-toggle but NO degraded banner", () => {
-  mockHook.mode = "chatgpt";
+  mockHook.mode = "helix_google";
   mockHook.externalWiring = "bff";
   render(<AgentModeSelector />);
   expect(screen.getByLabelText(/external wiring/i)).toBeInTheDocument();
@@ -60,14 +61,14 @@ test("external mode with bff wiring shows sub-toggle but NO degraded banner", ()
 });
 
 test("changing wiring select calls setExternalWiring", () => {
-  mockHook.mode = "chatgpt"; mockHook.externalWiring = "bff";
+  mockHook.mode = "helix_google"; mockHook.externalWiring = "bff";
   render(<AgentModeSelector />);
   fireEvent.change(screen.getByLabelText(/external wiring/i), { target: { value: "platform" } });
   expect(mockHook.setExternalWiring).toHaveBeenCalledWith("platform");
 });
 
 test("compact mode: platform shows chip not full banner", () => {
-  mockHook.mode = "chatgpt"; mockHook.externalWiring = "platform";
+  mockHook.mode = "helix_google"; mockHook.externalWiring = "platform";
   render(<AgentModeSelector compact />);
   expect(screen.getByText(/delegation lost/i)).toBeInTheDocument();      // chip text
   expect(screen.queryByText(/per-tool RFC 8693/i)).not.toBeInTheDocument(); // full banner absent
