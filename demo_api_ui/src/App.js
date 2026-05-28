@@ -26,19 +26,26 @@ import AdminTokenComplianceAudit from "./components/AdminTokenComplianceAudit";
 import AdminVaultPage from "./components/AdminVaultPage";
 import AgentFlowDiagramPanel from "./components/AgentFlowDiagramPanel";
 import { AgenticTrustEducation } from "./components/AgenticTrustEducation";
-import ApiExplorerPanel from "./components/ApiExplorerPanel";
 import ArchitectureFlowPage from "./components/ArchitectureFlowPage";
 import ArchitectureOverviewPage from "./components/ArchitectureOverviewPage";
-import SequenceDiagramPage from "./components/SequenceDiagramPage";
 import ArchitectureTabsPanel from "./components/ArchitectureTabsPanel";
 import ArchitectureTokenFlowPage from "./components/ArchitectureTokenFlowPage";
 import Phase266ArchitecturePage from "./components/Phase266ArchitecturePage";
 import MortgagePathPage from "./components/MortgagePathPage";
 import ApiKeyPathPage from "./components/ApiKeyPathPage";
 import AccessIdTokenPathPage from "./components/AccessIdTokenPathPage";
-import ApiTrafficPage from "./components/ApiTrafficPage";
 import AuditPage from "./components/AuditPage";
 import AdminRoute from "./routes/AdminRoute";
+import MonitoringRoutes, {
+  ApiTrafficRoute,
+  McpTrafficRoute,
+  DevToolsRoute,
+  SequenceDiagramRoute,
+  LogsRoute,
+  McpInspectorRoute,
+  WebMcpRoute,
+  AgentFlowInspectorRoute,
+} from "./routes/MonitoringRoutes";
 import PublicRoutes, {
   ConfigurePage,
   SelfServicePageRoute,
@@ -61,7 +68,6 @@ import Dashboard from "./components/Dashboard";
 import DelegatedAccessPage from "./components/DelegatedAccessPage";
 import DelegationPage from "./components/DelegationPage";
 import DemoServerCheckModal from "./components/DemoServerCheckModal";
-import DevToolsDashboard from "./components/DevToolsDashboard";
 import EmbeddedAgentDock from "./components/EmbeddedAgentDock";
 import EducationPanelsHost from "./components/education/EducationPanelsHost";
 import FeatureFlagsPage from "./components/FeatureFlagsPage";
@@ -70,11 +76,8 @@ import LandingPage from "./components/LandingPage";
 import LlmConfigPage from "./components/LlmConfigPage";
 import LogoutPage from "./components/LogoutPage";
 import LogViewer from "./components/LogViewer";
-import LogViewerPage from "./components/LogViewerPage";
 import { MCPToolsEducation } from "./components/MCPToolsEducation";
-import McpInspector from "./components/McpInspector";
 import McpGatewayConfig from "./components/McpGatewayConfig";
-import McpTrafficPage from "./components/McpTrafficPage";
 import AuthorizeConfigPage from "./components/AuthorizeConfigPage";
 import MissingCredentialsModal from "./components/MissingCredentialsModal";
 import OAuthDebugLogViewer from "./components/OAuthDebugLogViewer";
@@ -90,13 +93,10 @@ import ServerRestartModal from "./components/ServerRestartModal";
 import SessionExpiryTimer from "./components/SessionExpiryTimer";
 import SessionReauthBanner from "./components/SessionReauthBanner";
 import SpinnerHost from "./components/shared/SpinnerHost";
-import TokenChainDisplay from "./components/TokenChainDisplay";
-import TokenDiffPanel from "./components/TokenDiffPanel";
 import TopNav from "./components/TopNav";
 import TransactionConsentPage from "./components/TransactionConsentPage";
 import Transactions from "./components/Transactions";
 import DemoTourModal from "./components/tour/DemoTourModal";
-import UnifiedTokenFlowInspector from "./components/UnifiedTokenFlowInspector";
 import UserAccounts from "./components/UserAccounts";
 import UserDashboard from "./components/UserDashboard";
 import Users from "./components/Users";
@@ -354,50 +354,16 @@ function AppWithAuth() {
               <Route path="/authz-test" element={<AuthzTestPageRoute user={user} logout={logout} />} />
               <Route path="/onboarding" element={<OnboardingRoute user={user} />} />
               {/* Monitoring outer routes — explicit so customers navigating from /dashboard don't hit
-							    the path="*" inner-Routes catch-all which redirects back to /dashboard */}
+                    the path="*" inner-Routes catch-all which redirects back to /dashboard */}
               <Route
                 path="/monitoring/*"
                 element={
-                  <>
-                    <AdminSideNav user={user} />
-                    <TopNav user={user} onLogout={logout} />
-                    <main className="main-content">
-                      <Routes>
-                        <Route
-                          path="token-chain"
-                          element={<TokenChainDisplay />}
-                        />
-                        <Route path="token-diff" element={<TokenDiffPanel />} />
-                        <Route
-                          path="flow-inspector"
-                          element={
-                            <UnifiedTokenFlowInspector
-                              floatingByDefault={false}
-                              showToggle={false}
-                            />
-                          }
-                        />
-                        <Route
-                          path="mcp-traffic"
-                          element={<McpTrafficPage />}
-                        />
-                        <Route
-                          path="api-explorer"
-                          element={<ApiExplorerPanel />}
-                        />
-                        <Route
-                          path="agent-flow"
-                          element={
-                            user ? (
-                              <AgentFlowPage />
-                            ) : (
-                              <Navigate to="/" replace />
-                            )
-                          }
-                        />
-                      </Routes>
-                    </main>
-                  </>
+                  <MonitoringRoutes
+                    user={user}
+                    logout={logout}
+                    AgentFlowPage={AgentFlowPage}
+                    appFlags={appFlags}
+                  />
                 }
               />
               <Route
@@ -433,58 +399,10 @@ function AppWithAuth() {
                   </>
                 }
               />
-              <Route
-                path="/api-traffic"
-                element={
-                  <>
-                    <AdminSideNav user={user} />
-                    <TopNav user={user} onLogout={logout} />
-                    <main className="main-content">
-                      <ApiTrafficPage />
-                    </main>
-                  </>
-                }
-              />
-              <Route
-                path="/mcp-traffic"
-                element={
-                  <>
-                    <AdminSideNav user={user} />
-                    <TopNav user={user} onLogout={logout} />
-                    <main className="main-content">
-                      <McpTrafficPage />
-                    </main>
-                  </>
-                }
-              />
-              <Route
-                path="/dev-tools"
-                element={
-                  <>
-                    <AdminSideNav user={user} />
-                    <TopNav user={user} onLogout={logout} />
-                    <main className="main-content">
-                      <DevToolsDashboard
-                        defaultWidth={1200}
-                        defaultHeight={700}
-                        onClose={() => window.history.back()}
-                      />
-                    </main>
-                  </>
-                }
-              />
-              <Route
-                path="/sequence-diagram"
-                element={
-                  <>
-                    <AdminSideNav user={user} />
-                    <TopNav user={user} onLogout={logout} />
-                    <main className="main-content">
-                      <SequenceDiagramPage user={user} />
-                    </main>
-                  </>
-                }
-              />
+              <Route path="/api-traffic" element={<ApiTrafficRoute user={user} logout={logout} />} />
+              <Route path="/mcp-traffic" element={<McpTrafficRoute user={user} logout={logout} />} />
+              <Route path="/dev-tools" element={<DevToolsRoute user={user} logout={logout} />} />
+              <Route path="/sequence-diagram" element={<SequenceDiagramRoute user={user} logout={logout} />} />
               {/* Public landing page — available to all users */}
               <Route
                 path="/"
@@ -581,40 +499,10 @@ function AppWithAuth() {
                               />
                             }
                           />
-                          <Route
-                            path="/logs"
-                            element={
-                              user ? (
-                                <LogViewerPage />
-                              ) : (
-                                <Navigate to="/" replace />
-                              )
-                            }
-                          />
-                          <Route
-                            path="/api-traffic"
-                            element={
-                              user ? (
-                                <ApiTrafficPage />
-                              ) : (
-                                <Navigate to="/" replace />
-                              )
-                            }
-                          />
-                          <Route
-                            path="/mcp-traffic"
-                            element={<McpTrafficPage />}
-                          />
-                          <Route
-                            path="/dev-tools"
-                            element={
-                              <DevToolsDashboard
-                                defaultWidth={1200}
-                                defaultHeight={700}
-                                onClose={() => window.history.back()}
-                              />
-                            }
-                          />
+                          <Route path="/logs" element={<LogsRoute user={user} logout={logout} />} />
+                          <Route path="/api-traffic" element={<ApiTrafficRoute user={user} logout={logout} />} />
+                          <Route path="/mcp-traffic" element={<McpTrafficRoute user={user} logout={logout} />} />
+                          <Route path="/dev-tools" element={<DevToolsRoute user={user} logout={logout} />} />
                           <Route
                             path="/activity"
                             element={
@@ -738,12 +626,7 @@ function AppWithAuth() {
                               </AdminRoute>
                             }
                           />
-                          <Route
-                            path="/mcp-inspector"
-                            element={
-                              <McpInspector user={user} onLogout={logout} />
-                            }
-                          />
+                          <Route path="/mcp-inspector" element={<McpInspectorRoute user={user} logout={logout} />} />
                           <Route
                             path="/authorize-config"
                             element={
@@ -806,16 +689,7 @@ function AppWithAuth() {
                               </AdminRoute>
                             }
                           />
-                          <Route
-                            path="/webmcp"
-                            element={
-                              user ? (
-                                <WebMcpPanel />
-                              ) : (
-                                <Navigate to="/" replace />
-                              )
-                            }
-                          />
+                          <Route path="/webmcp" element={<WebMcpRoute user={user} logout={logout} />} />
                           <Route
                             path="/oauth-debug-logs"
                             element={
@@ -867,66 +741,7 @@ function AppWithAuth() {
                               )
                             }
                           />
-                          <Route
-                            path="/agent-flow-inspector"
-                            element={
-                              user ? (
-                                <UnifiedTokenFlowInspector
-                                  floatingByDefault={false}
-                                  showToggle={true}
-                                />
-                              ) : (
-                                <Navigate to="/" replace />
-                              )
-                            }
-                          />
-                          <Route
-                            path="/monitoring/token-chain"
-                            element={
-                              user && appFlags.enableTokenChainDisplay ? (
-                                <TokenChainDisplay />
-                              ) : (
-                                <Navigate to="/" replace />
-                              )
-                            }
-                          />
-                          <Route
-                            path="/monitoring/token-diff"
-                            element={
-                              user ? (
-                                <TokenDiffPanel />
-                              ) : (
-                                <Navigate to="/" replace />
-                              )
-                            }
-                          />
-                          <Route
-                            path="/monitoring/flow-inspector"
-                            element={
-                              user ? (
-                                <UnifiedTokenFlowInspector
-                                  floatingByDefault={false}
-                                  showToggle={false}
-                                />
-                              ) : (
-                                <Navigate to="/" replace />
-                              )
-                            }
-                          />
-                          <Route
-                            path="/monitoring/mcp-traffic"
-                            element={<McpTrafficPage />}
-                          />
-                          <Route
-                            path="/monitoring/api-explorer"
-                            element={
-                              user ? (
-                                <ApiExplorerPanel />
-                              ) : (
-                                <Navigate to="/" replace />
-                              )
-                            }
-                          />
+                          <Route path="/agent-flow-inspector" element={<AgentFlowInspectorRoute user={user} logout={logout} />} />
                           <Route
                             path="/resource-server"
                             element={
