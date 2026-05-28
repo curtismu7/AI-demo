@@ -15,6 +15,7 @@ const { buildPingOneAuthorizeResourceQueryParam } = require('../utils/oauthAutho
 const { getRoleFromClaims } = require('../services/roleClaimResolver');
 const appEventService = require('../services/appEventService');
 const tokenIntrospectionService = require('../services/tokenIntrospectionService');
+const { terminateAllUserSessions } = require('../services/pingOneSessionService');
 const demoScenarioStore = require('../services/demoScenarioStore');
 const { VERTICAL_PRIMARY_TYPE } = require('../config/verticalPrimaryTypes');
 
@@ -746,7 +747,7 @@ router.get('/token-claims', (req, res) => {
 /**
  * Logout end user OAuth session and end PingOne SSO session
  */
-router.get('/logout', (req, res) => {
+router.get('/logout', async (req, res) => {
   const idToken      = req.session.oauthTokens?.idToken      || null;
   const accessToken  = req.session.oauthTokens?.accessToken  || null;
   const refreshToken = req.session.oauthTokens?.refreshToken || null;
@@ -756,6 +757,11 @@ router.get('/logout', (req, res) => {
   // RFC 7009 — revoke tokens before destroying the session (best-effort, non-fatal)
   if (accessToken  && accessToken  !== '_cookie_session') oauthService.revokeToken(accessToken,  'access_token');
   if (refreshToken && refreshToken !== '_cookie_session') oauthService.revokeToken(refreshToken, 'refresh_token');
+
+  // Terminate PingOne SSO sessions so the user cannot silently re-authenticate
+  try {
+    await terminateAllUserSessions(userId);
+  } catch (_) { /* non-fatal */ }
 
   // Clear this user's in-memory demo state so the next login starts fresh
   try {
