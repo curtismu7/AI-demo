@@ -18,6 +18,7 @@ export class ErrorBoundary extends React.Component {
       hasError: false,
       error: null,
       errorInfo: null,
+      copied: false,
     };
   }
 
@@ -57,6 +58,19 @@ export class ErrorBoundary extends React.Component {
       hasError: false,
       error: null,
       errorInfo: null,
+      copied: false,
+    });
+  };
+
+  handleCopyError = () => {
+    const { error, errorInfo } = this.state;
+    const text = [
+      error?.stack || error?.message,
+      errorInfo?.componentStack,
+    ].filter(Boolean).join('\n\n');
+    navigator.clipboard.writeText(text).then(() => {
+      this.setState({ copied: true });
+      setTimeout(() => this.setState({ copied: false }), 2000);
     });
   };
 
@@ -71,7 +85,17 @@ export class ErrorBoundary extends React.Component {
             </p>
             {process.env.NODE_ENV === 'development' && this.state.errorInfo && (
               <details className="error-details">
-                <summary>Error Details (Development Only)</summary>
+                <summary>
+                  Error Details (Development Only)
+                  <button
+                    type="button"
+                    className="btn btn-copy-error"
+                    onClick={(e) => { e.preventDefault(); this.handleCopyError(); }}
+                    aria-label="Copy error details to clipboard"
+                  >
+                    {this.state.copied ? '✅ Copied' : 'Copy'}
+                  </button>
+                </summary>
                 {window.__lastAgentError && (
                   <div className="error-details-agent">
                     <strong>Last agent error:</strong>
