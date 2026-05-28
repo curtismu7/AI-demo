@@ -117,20 +117,16 @@ import { TokenChainProvider } from "./context/TokenChainContext";
 import { VerticalProvider } from "./context/VerticalContext";
 import LangChainPage from "./pages/LangChainPage";
 import { monitorApiHealth } from "./services/bankingRestartNotificationService";
-import { getCachedJson } from "./services/cachedStatusService";
-import { loadPublicConfig, savePublicConfig } from "./services/configService";
-import { notifyInfo, notifyWarning } from "./utils/appToast";
-import { SESSION_REAUTH_EVENT } from "./utils/authUi";
+import { useAuth } from "./hooks/useAuth";
+import { useAppFlags } from "./hooks/useAppFlags";
+import { useServerHealthCheck } from "./hooks/useServerHealthCheck";
+import { useOAuthUrlCleanup } from "./hooks/useOAuthUrlCleanup";
 import {
   isBankingAgentDashboardRoute,
   isEmbeddedAgentDockRoute,
   isPublicMarketingAgentPath,
   isMonitoringRoute,
 } from "./utils/embeddedAgentFabVisibility";
-import {
-  showEndUserOAuthErrorToast,
-  stripEndUserOAuthErrorParamsFromUrl,
-} from "./utils/endUserOAuthErrorToast";
 import "./App.css";
 
 // Browser extension interference detection and handling
@@ -207,62 +203,24 @@ function AgentFlowPage() {
   );
 }
 
-/** Prevents re-auth after logout when effects re-run (matches f8393a7 session guard). */
-let _didLogOut = false;
-
 function AppWithAuth() {
   const fullLocation = useLocation();
   const backgroundLocation = fullLocation.state?.backgroundLocation;
   const { pathname } = useLocation();
-  const [searchParams] = useSearchParams();
   const pathNorm = pathname.replace(/\/$/, "") || "/";
   const isApiTrafficOnlyPage =
     pathNorm === "/api-traffic" ||
     pathNorm === "/logs" ||
     pathNorm === "/agent";
   const { placement: agentPlacement, fab: agentFab, surfaceHostEl } = useAgentUiMode();
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [logViewerOpen, setLogViewerOpen] = useState(false);
-  /** On-page session prompt (replaces toast-only for “log in again” flows). */
-  const [sessionReauth, setSessionReauth] =
-    useState(null); /** Missing credentials modal state */
-  const [credentialsModal, setCredentialsModal] = useState(null);
-  /** Servers that were down on startup — null = not yet checked, [] = all ok */
-  const [downServers, setDownServers] = useState(null);
-  /** Avoid userAuthenticated ↔ checkOAuthSession dispatch loops; reset when user clears. */
-  const sessionEstablishedRef = useRef(null);
-  const [appFlags, setAppFlags] = useState({
-    showEducationPanel: true,
-    enableTokenChainDisplay: true,
-    agentUiMode: "standard",
-    debugShowTokenDetails: false,
-    debugShowApiCalls: false,
-    logFilterCategories: "",
-  });
 
-  useEffect(() => {
-    loadPublicConfig()
-      .then((cfg) => {
-        setAppFlags({
-          showEducationPanel:
-            cfg.show_education_panel !== false &&
-            cfg.show_education_panel !== "false",
-          enableTokenChainDisplay:
-            cfg.enable_token_chain_display !== false &&
-            cfg.enable_token_chain_display !== "false",
-          agentUiMode: cfg.agent_ui_mode || "standard",
-          debugShowTokenDetails:
-            cfg.debug_show_token_details === true ||
-            cfg.debug_show_token_details === "true",
-          debugShowApiCalls:
-            cfg.debug_show_api_calls === true ||
-            cfg.debug_show_api_calls === "true",
-          logFilterCategories: cfg.log_filter_categories || "",
-        });
-      })
-      .catch(() => {});
-  }, []);
+  const { user, loading, logout, sessionReauth, setSessionReauth } = useAuth();
+  const { appFlags } = useAppFlags();
+  const { downServers, setDownServers } = useServerHealthCheck();
+  useOAuthUrlCleanup();
+
+  const [logViewerOpen, setLogViewerOpen] = useState(false);
+  const [credentialsModal, setCredentialsModal] = useState(null);
 
   // Setup browser extension interference handling
   useEffect(() => {
@@ -275,203 +233,12 @@ function AppWithAuth() {
     monitorApiHealth();
   }, []);
 
-  // Startup server health check — show blocking modal if any required server is down
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/health/demo-status", { credentials: "include" })
-      .then((r) => r.json())
-      .then((data) => {
-        if (cancelled) return;
-        const down = (data.servers || []).filter((s) => !s.up);
-        setDownServers(down);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        // BFF itself unreachable — show both as down
-        setDownServers([
-          {
-            name: "Banking API Server",
-            key: "api_server",
-            up: false,
-            startCmd: "cd banking_api_server && npm start",
-            description: "Express BFF",
-            port: 3001,
-          },
-          {
-            name: "Banking MCP Server",
-            key: "mcp_server",
-            up: false,
-            startCmd: "cd banking_mcp_server && npm run dev",
-            description: "MCP tool server",
-            port: 8080,
-          },
-        ]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   // Clear old page content on route change — scroll to top before paint
   useLayoutEffect(() => {
     window.scrollTo(0, 0);
     const main = document.querySelector(".main-content");
     if (main) main.scrollTop = 0;
   }, [pathname]);
-
-  // Path A (CR-02/CR-04): the langchain chat session identity is now derived
-  // SERVER-SIDE from a PingOne token the BFF proxy attaches to session_init.
-  // The old `WebSocket.prototype.send` monkey-patch that injected `userEmail`
-  // into session_init has been removed — a client-supplied email is no longer
-  // trusted for identity (it was the CR-02 spoof primitive) and would be
-  // stripped by the BFF proxy anyway.
-
-  const checkOAuthSession = useCallback(async () => {
-    const applyUser = (u) => {
-      setUser(u);
-      if (!sessionEstablishedRef.current) {
-        sessionEstablishedRef.current = true;
-        window.dispatchEvent(new CustomEvent("userAuthenticated"));
-      }
-      setLoading(false);
-    };
-
-    try {
-      const adminResponse = await getCachedJson("/api/auth/oauth/status");
-      if (adminResponse.data.authenticated) {
-        applyUser(adminResponse.data.user);
-        return true;
-      }
-
-      const userResponse = await getCachedJson("/api/auth/oauth/user/status");
-      if (userResponse.data.authenticated) {
-        applyUser(userResponse.data.user);
-        return true;
-      }
-
-      const sessionResponse = await getCachedJson("/api/auth/session");
-      if (sessionResponse.data.authenticated) {
-        applyUser(sessionResponse.data.user);
-        return true;
-      }
-
-      setLoading(false);
-      return false;
-    } catch (error) {
-      console.error("Error checking OAuth sessions:", error.message);
-      setLoading(false);
-      return false;
-    }
-  }, []);
-
-  // Public config → IndexedDB when not in logout handoff (f8393a7 pattern).
-  useEffect(() => {
-    if (localStorage.getItem("userLoggedOut") === "true") return;
-    axios
-      .get("/api/admin/config")
-      .then(({ data }) => savePublicConfig(data.config))
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    const pathname =
-      typeof window !== "undefined" &&
-      typeof window.location?.pathname === "string"
-        ? window.location.pathname
-        : "";
-    const isPostLogoutLanding =
-      pathname === "/logout" || pathname.endsWith("/logout");
-    const userLoggedOut =
-      localStorage.getItem("userLoggedOut") === "true" ||
-      _didLogOut ||
-      isPostLogoutLanding;
-
-    if (userLoggedOut) {
-      _didLogOut = true;
-      sessionEstablishedRef.current = false;
-      fetch("/api/auth/clear-session", {
-        method: "POST",
-        credentials: "include",
-      })
-        .catch(() => {})
-        .finally(() => {
-          localStorage.removeItem("userLoggedOut");
-          setUser(null);
-          setLoading(false);
-          if (isPostLogoutLanding && window.history?.replaceState) {
-            window.history.replaceState(null, "", "/");
-          }
-        });
-      return undefined;
-    }
-
-    const oauthSuccess =
-      typeof window !== "undefined" &&
-      new URLSearchParams(window.location.search || "").get("oauth") ===
-        "success";
-
-    // NOTE: do NOT clear bx-dashboard-reauth on oauth=success.
-    // The REAUTH_KEY guard is intentional: redirect once automatically (seamless
-    // SSO re-auth), then show the banner if still failing.  Clearing the key
-    // here re-enables the redirect on the very next 401, creating an infinite loop:
-    //   accounts/my 401 → set key → redirect → oauth=success → key cleared →
-    //   accounts/my 401 → set key → redirect → …
-    // The key is cleared correctly in UserDashboard's fetchUserData try-block
-    // when data actually loads successfully.
-
-    const RETRY_DELAYS_MS = [450, 950, 1900, 3000];
-    let retryIndex = 0;
-    let cancelled = false;
-    const timeouts = [];
-
-    const arm = (delayMs, fn) => {
-      const id = setTimeout(() => {
-        if (!cancelled) void fn();
-      }, delayMs);
-      timeouts.push(id);
-    };
-
-    const runCheck = async () => {
-      if (cancelled) return;
-      const ok = await checkOAuthSession();
-      if (cancelled || ok) return;
-      if (!oauthSuccess || retryIndex >= RETRY_DELAYS_MS.length) return;
-      const delay = RETRY_DELAYS_MS[retryIndex++];
-      arm(delay, runCheck);
-    };
-
-    arm(200, runCheck);
-
-    return () => {
-      cancelled = true;
-      timeouts.forEach(clearTimeout);
-    };
-  }, [checkOAuthSession]);
-
-  useEffect(() => {
-    const handler = () => {
-      void checkOAuthSession();
-    };
-    window.addEventListener("userAuthenticated", handler);
-    return () => window.removeEventListener("userAuthenticated", handler);
-  }, [checkOAuthSession]);
-
-  useEffect(() => {
-    const onSessionReauth = (e) => {
-      const d = e.detail;
-      if (!d || typeof d.message !== "string" || !d.message.trim()) return;
-      const role = d.role === "admin" ? "admin" : "customer";
-      const isHITL = d.isHITL === true;
-      setSessionReauth({ message: d.message.trim(), role, isHITL });
-    };
-    window.addEventListener(SESSION_REAUTH_EVENT, onSessionReauth);
-    return () =>
-      window.removeEventListener(SESSION_REAUTH_EVENT, onSessionReauth);
-  }, []);
-
-  useEffect(() => {
-    if (user) setSessionReauth(null);
-  }, [user]);
 
   // Listen for missing_credentials events (dispatched by API error handling)
   useEffect(() => {
@@ -487,44 +254,6 @@ function AppWithAuth() {
     window.addEventListener("missing-credentials", onMissingCreds);
     return () =>
       window.removeEventListener("missing-credentials", onMissingCreds);
-  }, []);
-
-  /** End-user OAuth BFF failures redirect to / (not /login) so FAB/dock stay mounted — toast here. */
-  useEffect(() => {
-    if (showEndUserOAuthErrorToast(searchParams)) {
-      stripEndUserOAuthErrorParamsFromUrl();
-    }
-  }, [searchParams]);
-
-  /** SSO silent sign-in: PingOne skipped the credential prompt (active session reuse). */
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search || "");
-    if (params.get("sso_silent") !== "1") return;
-    // Remove the param from the URL without a page reload
-    params.delete("sso_silent");
-    const newSearch = params.toString();
-    const newUrl =
-      window.location.pathname + (newSearch ? `?${newSearch}` : "");
-    window.history.replaceState(null, "", newUrl);
-    notifyInfo(
-      "✅ Signed in automatically — you had an active PingOne session.",
-      { autoClose: 6000 },
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot on mount only
-  }, []);
-
-  /** OAuth success landing: strip ?oauth= param from URL — same pattern as sso_silent handler above. */
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search || "");
-    if (!params.has("oauth")) return;
-    params.delete("oauth");
-    const newSearch = params.toString();
-    const newUrl =
-      window.location.pathname + (newSearch ? `?${newSearch}` : "");
-    window.history.replaceState(null, "", newUrl);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot on mount only
   }, []);
 
   /** Nav rail / layout flags — computed declaratively so React className is always in sync. */
@@ -579,23 +308,6 @@ function AppWithAuth() {
   /** Slower default dismiss on public landing so OAuth/agent messages are readable (signed-in routes stay 4s). */
   const toastContainerAutoCloseMs =
     !user && isPublicMarketingAgentPath(pathname) ? 12000 : 4000;
-
-  const logout = () => {
-    console.info("Starting logout — navigating to /api/auth/logout");
-
-    localStorage.setItem("userLoggedOut", "true");
-
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("refreshToken");
-    sessionStorage.clear();
-
-    window.dispatchEvent(new CustomEvent("userLoggedOut"));
-
-    localStorage.removeItem("tokenChainHistory");
-    window.location.href = "/api/auth/logout";
-  };
 
   return (
     <DemoTourProvider>
