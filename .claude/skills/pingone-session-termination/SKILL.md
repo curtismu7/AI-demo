@@ -6,6 +6,21 @@ argument-hint: 'Describe where you need session termination (e.g. logout handler
 
 # PingOne Session Termination
 
+## Logout is a layered problem
+
+A complete signout experience requires coordinating up to four distinct layers — they are related but not the same:
+
+| Layer | What it does | This repo |
+|---|---|---|
+| 1. Protocol logout | Ends the PingOne auth session in the browser (OIDC signoff / SAML SLO) | `/as/signoff` redirect — already in both logout routes |
+| 2. PingOne session termination | Forcibly deletes the server-side PingOne session record | `pingOneSessionService.js` `DELETE /sessions/{id}` |
+| 3. Application-local session cleanup | Destroys the BFF Express session and clears cookies | `req.session.destroy()` + `clearAllAuthCookies()` |
+| 4. Token revocation | Invalidates issued tokens at the authorization server | RFC 7009 — `oauthService.revokeToken()` |
+
+**Key rule (from Ping documentation):** Use logout to end user session state; use token revocation when token invalidation is also required. They are separate controls — logout does not automatically revoke tokens, and token revocation does not end the SSO session.
+
+**Cross-protocol note:** OIDC signoff does not propagate to SAML applications. In a mixed environment, a complete enterprise logout requires explicit coordination across all layers. This demo app is OIDC-only, so the four layers above cover the full signout.
+
 ## Decision record: which operation applies where
 
 | Operation | STOP AGENT | Logout |
@@ -117,3 +132,17 @@ Steps 2–3 are both best-effort (try/catch, non-fatal). Steps 4–5 are the har
 |---|---|---|
 | Admin logout | `routes/oauth.js` GET /logout | Before `session.destroy()` |
 | User logout | `routes/oauthUser.js` GET /logout | Before `session.destroy()` |
+
+## When to add more layers
+
+If the demo ever adds **widget-based or SDK-based** integrations: the underlying logout protocol doesn't change — widget/SDK affect delivery, not the PingOne session model. The same four layers still apply.
+
+If the demo ever adds **SAML applications**: OIDC signoff alone won't log the user out of SAML RPs. A broader signout would need SAML SLO coordination in addition to the four layers above.
+
+For **helpdesk-forced signout, fraud response, or forced reauthentication** scenarios: all four layers should fire, plus `disableUserAtPingOne()` in `killSwitchService.js` (prevents re-authentication entirely until re-enabled).
+
+## Public documentation
+
+- [Signoff endpoint](https://developer.pingidentity.com/pingone-api/auth/openid-connect-oauth-2/signoff.html)
+- [Token Revocation](https://developer.pingidentity.com/pingone-api/auth/openid-connect-oauth-2/token-revocation.html)
+- [Sessions and Logout](https://developer.pingidentity.com/pingone-api/workflow-library/platform-sso-and-authorization/sessions-and-logout.html)
