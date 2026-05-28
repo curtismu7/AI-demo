@@ -6,15 +6,10 @@ const { blockInDemoMode } = require('../middleware/demoMode');
 const demoScenarioStore = require('../services/demoScenarioStore');
 const posthog = require('../services/posthog');
 const configStore = require('../services/configStore');
+const { VERTICAL_PRIMARY_TYPE } = require('../config/verticalPrimaryTypes');
 
-// Expected primary accountType per vertical — used to detect stale seed data on page load.
-const VERTICAL_PRIMARY_TYPE = {
-  banking:          'CHECKING',
-  healthcare:       'Primary Care',
-  retail:           'Rewards Points',
-  'sporting-goods': 'Pro Member',
-  workforce:        'PTO Balance',
-};
+// Guard: only one reseed can run at a time to prevent concurrent duplicate-account creation.
+const _reseedGuard = { inProgress: false };
 
 /**
  * Rebuild a user's accounts from a snapshot saved in demoScenarioStore (Redis/KV).
@@ -243,9 +238,11 @@ router.get('/my', authenticateToken, async (req, res) => {
     const hasSavings  = () => userAccounts.some(a => (a.accountType || a.type) === 'SAVINGS'  || (a.accountType || a.type) === 'savings');
     const hasLoan     = () => userAccounts.some(a => (a.accountType || a.type) === 'loan');
 
-    // Detect vertical mismatch: existing accounts belong to a different vertical's seed.
-    const primaryType = userAccounts[0]?.accountType;
-    const verticalMismatch = userAccounts.length > 0 && expectedPrimaryType && primaryType !== expectedPrimaryType;
+    // Case-insensitive mismatch: provisionDemoAccounts writes lowercase 'checking'/'savings'
+    // while the banking seed file uses 'CHECKING'/'SAVINGS' — normalise before comparing.
+    const primaryType = (userAccounts[0]?.accountType || '').toLowerCase();
+    const expectedLower = (expectedPrimaryType || '').toLowerCase();
+    const verticalMismatch = userAccounts.length > 0 && expectedLower && primaryType !== expectedLower;
 
     if (req.user.id && (userAccounts.length === 0 || verticalMismatch)) {
       if (userAccounts.length === 0) {
@@ -254,20 +251,31 @@ router.get('/my', authenticateToken, async (req, res) => {
         userAccounts = await restoreAccountsFromSnapshot(req.user.id);
       }
 
-      // After restore, re-check for vertical mismatch.
-      const restoredPrimaryType = userAccounts[0]?.accountType;
+      // After restore, re-check for vertical mismatch (case-insensitive).
+      const restoredPrimary = (userAccounts[0]?.accountType || '').toLowerCase();
       const stillMismatched = userAccounts.length === 0 ||
-        (expectedPrimaryType && restoredPrimaryType !== expectedPrimaryType);
+        (expectedLower && restoredPrimary !== expectedLower);
 
-      if (stillMismatched) {
-        // Wipe stale accounts and reseed for the active vertical.
-        await dataStore.reseedAllCustomersForVertical(activeVertical);
+      if (stillMismatched && !_reseedGuard.inProgress) {
+        _reseedGuard.inProgress = true;
+        try {
+          // Wipe stale accounts and reseed all customers for the active vertical.
+          await dataStore.reseedAllCustomersForVertical(activeVertical);
+          // Update demoScenarioStore snapshots for every customer so cold-start
+          // restore doesn't return wrong-vertical accounts for other users.
+          const customers = Array.from(dataStore.users.values()).filter(u => u.role === 'customer');
+          await Promise.all(customers.map(async (u) => {
+            const accts = dataStore.getAccountsByUserId(u.id);
+            const snap = accts.map(a => ({
+              id: a.id, accountType: a.accountType, accountNumber: a.accountNumber,
+              name: a.name || '', balance: a.balance, currency: a.currency || 'USD', isActive: true,
+            }));
+            await demoScenarioStore.save(u.id, { accountSnapshot: snap });
+          }));
+        } finally {
+          _reseedGuard.inProgress = false;
+        }
         userAccounts = dataStore.getAccountsByUserId(req.user.id);
-        const snapshot = userAccounts.map(a => ({
-          id: a.id, accountType: a.accountType, accountNumber: a.accountNumber,
-          name: a.name || '', balance: a.balance, currency: a.currency || 'USD', isActive: true,
-        }));
-        await demoScenarioStore.save(req.user.id, { accountSnapshot: snapshot });
       }
     }
 

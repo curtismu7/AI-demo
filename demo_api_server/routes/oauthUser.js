@@ -15,6 +15,8 @@ const { buildPingOneAuthorizeResourceQueryParam } = require('../utils/oauthAutho
 const { getRoleFromClaims } = require('../services/roleClaimResolver');
 const appEventService = require('../services/appEventService');
 const tokenIntrospectionService = require('../services/tokenIntrospectionService');
+const demoScenarioStore = require('../services/demoScenarioStore');
+const { VERTICAL_PRIMARY_TYPE } = require('../config/verticalPrimaryTypes');
 
 const STEP_UP_TTL_MS = 5 * 60 * 1000; // 5 min step-up validity
 
@@ -57,15 +59,6 @@ function redirectEndUserOAuthSpaFailure(req, res, params, pathOverride) {
   res.redirect(`${origin}${path}?${q.toString()}`);
 }
 
-// Primary accountType for each vertical's seed — used to detect stale seed data.
-const VERTICAL_PRIMARY_TYPE = {
-  banking:          'CHECKING',
-  healthcare:       'Primary Care',
-  retail:           'Rewards Points',
-  'sporting-goods': 'Pro Member',
-  workforce:        'PTO Balance',
-};
-
 /**
  * Create sample accounts and transactions for new customers
  */
@@ -90,14 +83,16 @@ async function reseedIfVerticalMismatch(userId, firstName, lastName) {
   const existing = dataStore.getAccountsByUserId(userId);
 
   if (existing.length === 0) {
-    // No accounts yet — seed fresh
     return createSampleDataForCustomer(userId, firstName, lastName);
   }
 
-  const primaryType = existing[0]?.accountType;
-  if (expectedType && primaryType !== expectedType) {
-    console.debug(`[reseed] User ${userId} has "${primaryType}" accounts but vertical is "${activeVertical}" (expected "${expectedType}") — reseeding`);
-    // Wipe existing accounts/transactions for this user
+  // Case-insensitive: provisionDemoAccounts writes lowercase; seed files use uppercase.
+  const primaryType = (existing[0]?.accountType || '').toLowerCase();
+  const expectedLower = (expectedType || '').toLowerCase();
+  if (expectedLower && primaryType !== expectedLower) {
+    console.debug(`[reseed] User ${userId} has "${existing[0]?.accountType}" accounts but vertical is "${activeVertical}" — reseeding`);
+    // Wipe this user's accounts/transactions from the Maps directly,
+    // then persist so in-memory and disk stay in sync before re-seeding.
     const acctIds = new Set();
     for (const [id, acct] of dataStore.accounts) {
       if (acct.userId === userId) { acctIds.add(id); dataStore.accounts.delete(id); }
@@ -107,7 +102,16 @@ async function reseedIfVerticalMismatch(userId, firstName, lastName) {
         dataStore.transactions.delete(id);
       }
     }
-    return createSampleDataForCustomer(userId, firstName, lastName);
+    await dataStore.persistAllData();
+    const result = await createSampleDataForCustomer(userId, firstName, lastName);
+    // Update the KV snapshot so Vercel cold-start restore returns correct-vertical accounts.
+    const freshAccounts = dataStore.getAccountsByUserId(userId);
+    const snap = freshAccounts.map(a => ({
+      id: a.id, accountType: a.accountType, accountNumber: a.accountNumber,
+      name: a.name || '', balance: a.balance, currency: a.currency || 'USD', isActive: true,
+    }));
+    await demoScenarioStore.save(userId, { accountSnapshot: snap });
+    return result;
   }
 }
 

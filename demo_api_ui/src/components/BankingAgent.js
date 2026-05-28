@@ -1614,6 +1614,34 @@ const TOPIC_MESSAGES = {
  * @param {boolean} [props.distinctFloatingChrome] When floating, stronger card/chrome so it reads as a separate widget vs the page.
  * @param {boolean} [props.splitColumnChrome] Inline mode: compact "assistant" chrome for token | agent | banking columns (navy header, chat bubbles).
  */
+
+// Chips that always call the real API regardless of LLM mode.
+// Helix has no account data access and would hallucinate if sent as NL prompts.
+const API_DIRECT_CHIPS = new Set([
+  "accounts", "transactions", "balance", "transfer", "deposit", "withdraw", "feature",
+  "mcp_tools", "sensitive-account-details",
+  "test_wrong_scope", "test_wrong_audience", "test_hitl_required",
+  "transfer_600_test", "test_otp_required",
+  "demo_intent_delegation", "test_full_compliance_flow",
+]);
+
+// NL prompts for conversational chips in Helix (LLM-only) mode.
+// API_DIRECT_CHIPS are excluded — they bypass Helix entirely.
+const CHIP_NL_PROMPTS = {
+  biggest_purchase: "What is my biggest purchase?",
+  spending_summary: "Give me a spending summary",
+  query_user: "Query user by email: ",
+  sequential_think: "Think: Should I transfer money from checking to savings?",
+  demo_nl_routing: "What is my checking account balance?",
+  ai_ask: "What can you help me with?",
+  ai_helix_demo: "Tell me about interest rates",
+  ai_explain: "Explain how token exchange works",
+  ai_helix_explain: "Explain what OAuth scopes are",
+  ai_analyze: "Summarize how MCP tool delegation works in this demo",
+  ai_advice: "Give me some financial advice",
+  ai_helix_advice: "What are some tips for saving money?",
+};
+
 export default function BankingAgent({
   user,
   onLogout,
@@ -5437,39 +5465,6 @@ export default function BankingAgent({
     });
   }
 
-  // Natural-language prompts for each chip — used when LLM-only mode is active
-  // so Helix receives a real sentence instead of a bare action ID.
-  const CHIP_NL_PROMPTS = {
-    accounts: "Show me my accounts",
-    transactions: "Show my recent transactions",
-    balance: "Check balance for my checking account",
-    transfer: "Transfer $100 from checking to savings",
-    deposit: "Deposit $100 to my checking account",
-    withdraw: "Withdraw $100 from my checking account",
-    mcp_tools: "List all available MCP tools",
-    "sensitive-account-details": "Show my sensitive account details",
-    biggest_purchase: "What is my biggest purchase?",
-    spending_summary: "Give me a spending summary",
-    query_user: "Query user by email: ",
-    sequential_think:
-      "Think: Should I transfer money from checking to savings?",
-    demo_nl_routing: "What is my checking account balance?",
-    ai_ask: "What can you help me with?",
-    ai_helix_demo: "Tell me about interest rates",
-    ai_explain: "Explain how token exchange works",
-    ai_helix_explain: "Explain what OAuth scopes are",
-    ai_analyze: "Summarize how MCP tool delegation works in this demo",
-    ai_advice: "Give me some financial advice",
-    ai_helix_advice: "What are some tips for saving money?",
-    test_full_compliance_flow: "Run the full compliance flow",
-    test_wrong_scope: "Test a request with the wrong scope",
-    test_wrong_audience: "Test a request with the wrong audience",
-    test_hitl_required: "Test a high-value transfer requiring human approval",
-    transfer_600_test: "Transfer $600 from checking to savings",
-    test_otp_required: "Test an OTP step-up challenge",
-    demo_intent_delegation: "Run an intent-bound transfer demo",
-  };
-
   // Slot-filling parser for the second turn of a clarification dialog.
   // The user just answered our "Which account?" / "How much?" prompt; we
   // know which action they were trying to do, so we only need to pull the
@@ -5690,16 +5685,6 @@ export default function BankingAgent({
       setShowDemoGuide(true);
       return;
     }
-
-    // These chips always call the real API regardless of LLM mode — Helix has no
-    // account data access and would hallucinate if sent as NL prompts.
-    const API_DIRECT_CHIPS = new Set([
-      "accounts", "transactions", "balance", "transfer", "deposit", "withdraw", "feature",
-      "mcp_tools", "sensitive-account-details",
-      "test_wrong_scope", "test_wrong_audience", "test_hitl_required",
-      "transfer_600_test", "test_otp_required",
-      "demo_intent_delegation", "test_full_compliance_flow",
-    ]);
 
     // In LLM-only mode, route conversational chips through the NL pipeline so Helix handles them.
     // Data-retrieval chips always bypass Helix and hit the real API.

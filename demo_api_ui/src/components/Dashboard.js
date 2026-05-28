@@ -612,7 +612,7 @@ const Dashboard = ({ user, onLogout }) => {
                     lineHeight: 1.5,
                   }}
                 >
-                  Enter a username and the last 4 digits of their phone on file.
+                  Enter a username to look up their profile, accounts, and transactions.
                 </p>
                 {txLookupHints.length > 0 && (
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem", marginBottom: "1rem" }}>
