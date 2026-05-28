@@ -130,7 +130,6 @@
       "^react-router/dom$": "<rootDir>/node_modules/react-router/dist/development/dom-export.js",
       "^react-router$": "<rootDir>/node_modules/react-router/dist/development/index.js",
       "^uuid$": "<rootDir>/src/__mocks__/uuid.js",
-      "^.*bankingAgentFloatingDefaultOpen$": "<rootDir>/src/utils/demoAgentFloatingDefaultOpen.js",
       "^.*bankingAgentNlService$": "<rootDir>/src/services/demoAgentNlService.js",
       "^.*bankingAgentService$": "<rootDir>/src/services/demoAgentService.js"
     }

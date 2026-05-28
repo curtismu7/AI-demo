@@ -95,11 +95,6 @@ jest.mock("../../utils/agentToolSteps", () => ({
   getToolStepsForAction: jest.fn(() => []),
 }));
 
-jest.mock("../../utils/bankingAgentFloatingDefaultOpen", () => ({
-  // Float panel starts CLOSED in tests so effects only fire after explicit FAB click
-  isBankingAgentFloatingDefaultOpen: jest.fn(() => false),
-}));
-
 jest.mock("react-toastify", () => ({
   toast: {
     error: jest.fn(),

@@ -74,9 +74,6 @@ jest.mock("../../services/agentAccessConsent", () => ({
   setConsentDeclined: jest.fn(),
 }));
 jest.mock("../../utils/agentToolSteps", () => ({ getToolStepsForAction: jest.fn(() => []) }));
-jest.mock("../../utils/bankingAgentFloatingDefaultOpen", () => ({
-  isBankingAgentFloatingDefaultOpen: jest.fn(() => false),
-}));
 jest.mock("react-toastify", () => ({ toast: { error: jest.fn(), success: jest.fn(), info: jest.fn(), warn: jest.fn() } }));
 jest.mock("../../utils/appToast", () => ({
   toast: { info: jest.fn(), success: jest.fn(), error: jest.fn(), warn: jest.fn(), warning: jest.fn(), update: jest.fn(), dismiss: jest.fn() },

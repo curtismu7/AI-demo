@@ -45,7 +45,6 @@ import {
   notifySuccess,
   toast,
 } from "../utils/appToast";
-import { isBankingAgentFloatingDefaultOpen } from "../utils/demoAgentFloatingDefaultOpen";
 import { isPublicMarketingAgentPath } from "../utils/embeddedAgentFabVisibility";
 import AccountDetailsPanel from "./AccountDetailsPanel";
 import AgentConsentModal from "./AgentConsentModal";
@@ -2284,15 +2283,19 @@ export default function BankingAgent({
     } catch {}
   }, [isOpen, isInline]);
 
-  // Floating mode: follow route changes only — default collapsed on dashboard homes, open on tool routes.
+  // Floating mode: always collapse on route changes. Explicit open intents
+  // (Agent nav button → `banking-agent-open` event, return from /config with
+  // state.scrollToAgent/openAgent) re-open the panel via their own effects below.
   // Do not tie this to user/session (see REGRESSION_LOG — auth sync was resetting isOpen and closing the panel).
   useEffect(() => {
     if (isInline) return;
     if (!hasMountedRef.current) {
       hasMountedRef.current = true;
-      return; // skip initial mount — let localStorage-restored value stand
+      return;
     }
-    setIsOpen(isBankingAgentFloatingDefaultOpen(location.pathname));
+    setIsOpen(false);
+    // location.pathname is the intentional trigger — fire on every route change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname, isInline]);
 
   // Auto-open when returning from /config (Config.js navigates back with scrollToAgent:true)
