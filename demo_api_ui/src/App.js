@@ -19,7 +19,6 @@ import "react-toastify/dist/ReactToastify.css";
 
 import Accounts from "./components/Accounts";
 import ActivityLogs from "./components/ActivityLogs";
-import ActivityLogPage from "./components/ActivityLogPage";
 import { ActorTokenEducation } from "./components/ActorTokenEducation";
 import AdminErrorAuditLog from "./components/AdminErrorAuditLog";
 import AdminSideNav from "./components/AdminSideNav";
@@ -34,16 +33,14 @@ import SequenceDiagramPage from "./components/SequenceDiagramPage";
 import ArchitectureTabsPanel from "./components/ArchitectureTabsPanel";
 import ArchitectureTokenFlowPage from "./components/ArchitectureTokenFlowPage";
 import Phase266ArchitecturePage from "./components/Phase266ArchitecturePage";
-import HitlSequencePage from "./components/HitlSequencePage";
 import MortgagePathPage from "./components/MortgagePathPage";
-import VerticalFeaturePage from "./components/VerticalFeaturePage";
 import ApiKeyPathPage from "./components/ApiKeyPathPage";
 import AccessIdTokenPathPage from "./components/AccessIdTokenPathPage";
 import ApiTrafficPage from "./components/ApiTrafficPage";
 import AuditPage from "./components/AuditPage";
 import BankingAdminOps from "./components/BankingAdminOps";
 import BankingAgent from "./components/BankingAgent";
-import { resolveEmbeddedFocus } from "./components/demoAgentSafety";
+import { resolveEmbeddedFocus } from "./components/bankingAgentSafety";
 import CIBAPanel from "./components/CIBAPanel";
 import CimdSimPanel from "./components/CimdSimPanel";
 import ClientCredentialsResourcePage from "./components/ClientCredentialsResourcePage";
@@ -56,6 +53,7 @@ import DelegatedAccessPage from "./components/DelegatedAccessPage";
 import DelegationPage from "./components/DelegationPage";
 import DemoServerCheckModal from "./components/DemoServerCheckModal";
 import DevToolsDashboard from "./components/DevToolsDashboard";
+import EmbeddedAgentDock from "./components/EmbeddedAgentDock";
 import EducationPanelsHost from "./components/education/EducationPanelsHost";
 import FeatureFlagsPage from "./components/FeatureFlagsPage";
 import Footer from "./components/Footer";
@@ -86,6 +84,7 @@ import SecurityCenter from "./components/SecurityCenter";
 import SecuritySettings from "./components/SecuritySettings";
 import SelfServicePage from "./components/SelfServicePage";
 import ServerRestartModal from "./components/ServerRestartModal";
+import SessionExpiryTimer from "./components/SessionExpiryTimer";
 import SessionReauthBanner from "./components/SessionReauthBanner";
 import SetupPage from "./components/SetupPage";
 import SetupWizard from "./components/SetupWizard";
@@ -100,10 +99,8 @@ import UnifiedTokenFlowInspector from "./components/UnifiedTokenFlowInspector";
 import UserAccounts from "./components/UserAccounts";
 import UserDashboard from "./components/UserDashboard";
 import Users from "./components/Users";
-import UserDetailPage from "./components/UserDetailPage";
 import UserTransactions from "./components/UserTransactions";
 import WebMcpPanel from "./components/WebMcpPanel";
-import AuthorizeRulesPanel from "./components/AuthorizeRulesPanel";
 import {
   AgentUiModeProvider,
   useAgentUiMode,
@@ -111,10 +108,10 @@ import {
 import { DemoTourProvider } from "./context/DemoTourContext";
 import { EducationUIProvider } from "./context/EducationUIContext";
 import { ExchangeModeProvider } from "./context/ExchangeModeContext";
+import { IndustryBrandingProvider } from "./context/IndustryBrandingContext";
 import { SpinnerProvider } from "./context/SpinnerContext";
 import { TokenChainProvider } from "./context/TokenChainContext";
-import { McpFieldProvider } from './context/McpFieldContext';
-import { SessionTokenProvider } from './context/SessionTokenContext';
+import { VerticalProvider } from "./context/VerticalContext";
 import LangChainPage from "./pages/LangChainPage";
 import { monitorApiHealth } from "./services/bankingRestartNotificationService";
 import { getCachedJson } from "./services/cachedStatusService";
@@ -123,6 +120,7 @@ import { notifyInfo, notifyWarning } from "./utils/appToast";
 import { SESSION_REAUTH_EVENT } from "./utils/authUi";
 import {
   isBankingAgentDashboardRoute,
+  isEmbeddedAgentDockRoute,
   isPublicMarketingAgentPath,
   isMonitoringRoute,
 } from "./utils/embeddedAgentFabVisibility";
@@ -130,7 +128,6 @@ import {
   showEndUserOAuthErrorToast,
   stripEndUserOAuthErrorParamsFromUrl,
 } from "./utils/endUserOAuthErrorToast";
-import { useAdminTheme } from "./hooks/useAdminTheme";
 import "./App.css";
 
 // Browser extension interference detection and handling
@@ -197,10 +194,10 @@ function AgentFlowPage() {
       }}
     >
       <h2 style={{ fontSize: "1rem", marginBottom: "0.5rem" }}>
-        Agent Request Flow
+        🔀 Agent Request Flow
       </h2>
       <p>
-        Use the AI Agent to trigger a tool call — the request flow panel
+        Use the Banking Agent to trigger a tool call — the request flow panel
         will appear automatically.
       </p>
     </div>
@@ -210,7 +207,6 @@ function AgentFlowPage() {
 function AdminRoute({ user, children }) {
   const toastedRef = useRef(false);
   const isAdmin = user?.role === "admin";
-  useAdminTheme(isAdmin);
 
   useEffect(() => {
     if (!isAdmin && !toastedRef.current) {
@@ -236,7 +232,7 @@ function AppWithAuth() {
     pathNorm === "/api-traffic" ||
     pathNorm === "/logs" ||
     pathNorm === "/agent";
-  const { placement: agentPlacement, surfaceHostEl } = useAgentUiMode();
+  const { placement: agentPlacement, fab: agentFab, surfaceHostEl } = useAgentUiMode();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [logViewerOpen, setLogViewerOpen] = useState(false);
@@ -306,18 +302,18 @@ function AppWithAuth() {
         // BFF itself unreachable — show both as down
         setDownServers([
           {
-            name: "Demo API Server",
+            name: "Banking API Server",
             key: "api_server",
             up: false,
-            startCmd: "cd demo_api_server && npm start",
+            startCmd: "cd banking_api_server && npm start",
             description: "Express BFF",
             port: 3001,
           },
           {
-            name: "Demo MCP Server",
+            name: "Banking MCP Server",
             key: "mcp_server",
             up: false,
-            startCmd: "cd demo_mcp_server && npm run dev",
+            startCmd: "cd banking_mcp_server && npm run dev",
             description: "MCP tool server",
             port: 8080,
           },
@@ -426,13 +422,14 @@ function AppWithAuth() {
       new URLSearchParams(window.location.search || "").get("oauth") ===
         "success";
 
-    // On a successful OAuth return, clear the reauth guard so a fresh 401 (if the
-    // new session is also broken) can trigger one more automatic redirect rather than
-    // showing the error toast immediately.  The URL param is stripped by replaceState
-    // (line ~539) so oauthSuccess will be false on the next render — no loop risk.
-    if (oauthSuccess) {
-      sessionStorage.removeItem("bx-dashboard-reauth");
-    }
+    // NOTE: do NOT clear bx-dashboard-reauth on oauth=success.
+    // The REAUTH_KEY guard is intentional: redirect once automatically (seamless
+    // SSO re-auth), then show the banner if still failing.  Clearing the key
+    // here re-enables the redirect on the very next 401, creating an infinite loop:
+    //   accounts/my 401 → set key → redirect → oauth=success → key cleared →
+    //   accounts/my 401 → set key → redirect → …
+    // The key is cleared correctly in UserDashboard's fetchUserData try-block
+    // when data actually loads successfully.
 
     const RETRY_DELAYS_MS = [450, 950, 1900, 3000];
     let retryIndex = 0;
@@ -545,22 +542,22 @@ function AppWithAuth() {
   /** Nav rail / layout flags — computed declaratively so React className is always in sync. */
   const isOnDashboard = pathname === "/dashboard";
 
-  /** Floating agent: dashboard homes only. */
+  /** Floating agent: dashboard homes only. Embedded dock: those routes plus `/config` (setup-focused assistant). */
   const onDashboardAgentRoute = isBankingAgentDashboardRoute(pathname);
+  const onEmbeddedDockRoute = isEmbeddedAgentDockRoute(pathname);
 
-  // Routes where UserDashboard is rendered (handles its own middle FAB + split layout).
+  // Routes where UserDashboard is rendered (handles its own middle FAB + split layout and its own bottom dock).
   // Admin uses Dashboard.js on /admin — those routes need the global float/dock from App.
-  // / renders LandingPage for all users; /admin has the admin Dashboard; /dashboard has UserDashboard.
+  // / now renders LandingPage for non-admin logged-in users; UserDashboard lives at /dashboard.
   const onUserDashboardRoute = Boolean(user) && pathname === "/dashboard";
 
   // Landing home (/): show floating agent even when signed out.
   // Suppress float on signed-in / only when UserDashboard owns middle placement.
   const marketingAgentSurface = isPublicMarketingAgentPath(pathname) && !user;
 
-  // Middle placement on /dashboard: UserDashboard renders the middle column
-  // and registers its host element; the single agent portals into it (4c).
-  const hasMiddleLayout =
-    Boolean(user) && agentPlacement === "middle" && onUserDashboardRoute;
+  // Landing /: always show float agent, never bottom dock.
+  const hasEmbeddedDockLayout =
+    Boolean(user) && agentPlacement === "bottom" && onEmbeddedDockRoute;
 
   const onMonitoringRoute = isMonitoringRoute(pathname);
 
@@ -569,6 +566,9 @@ function AppWithAuth() {
   const showFloatingAgent =
     !agentDisabled &&
     !isApiTrafficOnlyPage &&
+    (!hasEmbeddedDockLayout ||
+      onMonitoringRoute ||
+      (Boolean(user) && agentFab && onDashboardAgentRoute)) &&
     (marketingAgentSurface ||
       (Boolean(user) && agentPlacement === "none") ||
       (Boolean(user) && onMonitoringRoute) ||
@@ -577,14 +577,15 @@ function AppWithAuth() {
         onDashboardAgentRoute &&
         !(agentPlacement === "middle" && onUserDashboardRoute)));
 
-  /** Single <BankingAgent> portals into the middle host element when present; falls back to document.body otherwise. */
-  const shouldMountSingleAgent = showFloatingAgent || hasMiddleLayout;
+  /** Single <BankingAgent> portals into the bottom dock host element when present; falls back to document.body otherwise. */
+  const shouldMountSingleAgent = showFloatingAgent || hasEmbeddedDockLayout;
 
-  // When the single agent is portaled into the middle column host it wears the
-  // split-column inline chrome (no floating frame/drag). Float and all other
-  // surfaces keep the default floating chrome.
-  const singleAgentSurfaceProps = hasMiddleLayout
-    ? { mode: "inline", splitColumnChrome: true, showPopOut: true }
+  // When the single agent is portaled into the bottom dock host it must wear
+  // the dock's inline chrome (no floating frame/drag), exactly as the old
+  // per-dock <BankingAgent mode="inline" embeddedDockBottom> did. Float and
+  // all other surfaces keep the default floating chrome.
+  const singleAgentSurfaceProps = hasEmbeddedDockLayout
+    ? { mode: "inline", embeddedDockBottom: true }
     : {};
 
   /** Slower default dismiss on public landing so OAuth/agent messages are readable (signed-in routes stay 4s). */
@@ -592,7 +593,7 @@ function AppWithAuth() {
     !user && isPublicMarketingAgentPath(pathname) ? 12000 : 4000;
 
   const logout = () => {
-    console.info("Starting logout — calling /api/auth/logout via fetch");
+    console.info("Starting logout — navigating to /api/auth/logout");
 
     localStorage.setItem("userLoggedOut", "true");
 
@@ -605,34 +606,23 @@ function AppWithAuth() {
     window.dispatchEvent(new CustomEvent("userLoggedOut"));
 
     localStorage.removeItem("tokenChainHistory");
-
-    // Fetch the logout endpoint so the BFF can set cookie-clearing headers
-    // (Set-Cookie: connect.sid=; Max-Age=0) on this response directly — if we
-    // navigate via window.location.href the 302→PingOne redirect loses those
-    // headers at the proxy layer and cookies are not cleared in the browser.
-    // The BFF returns { logoutUrl } instead of redirecting when called via fetch.
-    fetch("/api/auth/logout", { credentials: "include" })
-      .then((r) => r.json())
-      .then(({ logoutUrl }) => {
-        if (logoutUrl) {
-          window.location.href = logoutUrl;
-        } else {
-          // Fallback: BFF returned HTML redirect (shouldn't happen with fetch)
-          window.location.href = "/";
-        }
-      })
-      .catch(() => {
-        // Network error — clear what we can and go home
-        window.location.href = "/";
-      });
+    window.location.href = "/api/auth/logout";
   };
 
   return (
     <DemoTourProvider>
       <EducationUIProvider>
         <TokenChainProvider activePath={pathname}>
+          <SessionExpiryTimer
+            hideOnPaths={[
+              "/configure",
+              "/demo-data",
+              "/self-service",
+              "/onboarding",
+            ]}
+          />
           <div
-            className={`App end-user-nano${isOnDashboard ? " App--on-dashboard" : ""}${sessionReauth ? " App--session-reauth" : ""}`}
+            className={`App end-user-nano${isOnDashboard ? " App--on-dashboard" : ""}${hasEmbeddedDockLayout ? " App--has-embedded-dock" : ""}${sessionReauth ? " App--session-reauth" : ""}`}
           >
             <ToastContainer
               position="top-right"
@@ -784,16 +774,6 @@ function AppWithAuth() {
                             )
                           }
                         />
-                        <Route
-                          path="activity-log"
-                          element={
-                            loading ? null : user ? (
-                              <ActivityLogPage />
-                            ) : (
-                              <Navigate to="/" replace />
-                            )
-                          }
-                        />
                       </Routes>
                     </main>
                   </>
@@ -826,10 +806,6 @@ function AppWithAuth() {
                         <Route
                           path="phase-266"
                           element={<Phase266ArchitecturePage />}
-                        />
-                        <Route
-                          path="hitl"
-                          element={<HitlSequencePage />}
                         />
                       </Routes>
                     </main>
@@ -897,7 +873,11 @@ function AppWithAuth() {
                       <TopNav user={user} onLogout={logout} />
                       {user && <AdminSideNav user={user} />}
                       <main className="main-content">
-                        <LandingPage user={user} onLogout={logout} />
+                        {user?.role === "admin" ? (
+                          <Dashboard user={user} onLogout={logout} />
+                        ) : (
+                          <LandingPage user={user} onLogout={logout} />
+                        )}
                       </main>
                     </>
                   )
@@ -907,16 +887,13 @@ function AppWithAuth() {
               <Route
                 path="/dashboard"
                 element={
-                  loading ? (
-                    <div className="loading" role="status" aria-live="polite">Loading…</div>
-                  ) : !user ? (
+                  loading ? null : !user ? (
                     <>
                       <AdminSideNav user={null} />
                       <TopNav user={user} onLogout={logout} />
                       <main className="main-content">
                         <UserDashboard user={null} onLogout={logout} />
                         <WebMcpPanel />
-                        <AuthorizeRulesPanel />
                       </main>
                     </>
                   ) : (
@@ -926,7 +903,6 @@ function AppWithAuth() {
                       <main className="main-content">
                         <UserDashboard user={user} onLogout={logout} />
                         <WebMcpPanel />
-                        <AuthorizeRulesPanel />
                       </main>
                     </>
                   )
@@ -970,7 +946,13 @@ function AppWithAuth() {
                         <Routes location={backgroundLocation || fullLocation}>
                           <Route
                             path="/"
-                            element={<LandingPage user={user} onLogout={logout} />}
+                            element={
+                              user?.role === "admin" ? (
+                                <Dashboard user={user} onLogout={logout} />
+                              ) : (
+                                <LandingPage user={user} onLogout={logout} />
+                              )
+                            }
                           />
                           <Route
                             path="/admin"
@@ -1044,14 +1026,6 @@ function AppWithAuth() {
                             element={
                               <AdminRoute user={user}>
                                 <Users user={user} onLogout={logout} />
-                              </AdminRoute>
-                            }
-                          />
-                          <Route
-                            path="/users/:userId"
-                            element={
-                              <AdminRoute user={user}>
-                                <UserDetailPage />
                               </AdminRoute>
                             }
                           />
@@ -1307,16 +1281,6 @@ function AppWithAuth() {
                             }
                           />
                           <Route
-                            path="/monitoring/activity-log"
-                            element={
-                              user ? (
-                                <ActivityLogPage />
-                              ) : (
-                                <Navigate to="/" replace />
-                              )
-                            }
-                          />
-                          <Route
                             path="/monitoring/token-diff"
                             element={
                               user ? (
@@ -1374,16 +1338,6 @@ function AppWithAuth() {
                             }
                           />
                           <Route
-                            path="/path/feature"
-                            element={
-                              user ? (
-                                <VerticalFeaturePage />
-                              ) : (
-                                <Navigate to="/" replace />
-                              )
-                            }
-                          />
-                          <Route
                             path="/path/apikey-info"
                             element={
                               user ? (
@@ -1416,30 +1370,22 @@ function AppWithAuth() {
                           {/* User-friendly self-service routes */}
                           <Route
                             path="/profile"
-                            element={
-                              user ? (
-                                <Profile user={user} />
-                              ) : (
-                                <Navigate to="/" replace />
-                              )
-                            }
+                            element={<Profile user={user} />}
                           />
                           <Route
                             path="/security"
-                            element={
-                              user ? (
-                                <SecurityCenter user={user} />
-                              ) : (
-                                <Navigate to="/" replace />
-                              )
-                            }
+                            element={<SecurityCenter user={user} />}
                           />
                           {/* Catch-all: unknown routes redirect to dashboard instead of blank/404 */}
                           <Route
                             path="*"
                             element={
                               <Navigate
-                                to="/dashboard"
+                                to={
+                                  user?.role === "admin"
+                                    ? "/admin"
+                                    : "/dashboard"
+                                }
                                 replace
                               />
                             }
@@ -1481,18 +1427,25 @@ function AppWithAuth() {
               onClose={() => setLogViewerOpen(false)}
               categoryFilter={appFlags.logFilterCategories}
             />
-            {!isApiTrafficOnlyPage && <Footer user={user} />}
-            <ServerRestartModal />
-            {downServers &&
-              downServers.length > 0 &&
-              !pathname.startsWith("/configure") &&
-              !pathname.startsWith("/setup") && (
-                <DemoServerCheckModal
-                  downServers={downServers}
-                  onAllUp={() => setDownServers([])}
-                  onDismiss={() => setDownServers([])}
+            {/* UserDashboard renders EmbeddedAgentDock inside its layout. App-level dock sits in document
+              order directly above the footer on non-dashboard routes.
+              Guest landing (/) always uses float agent — no bottom dock. */}
+            {!loading &&
+              !onUserDashboardRoute &&
+              !(!user && isPublicMarketingAgentPath(pathname)) && (
+                <EmbeddedAgentDock
+                  user={user}
+                  agentPlacement={agentPlacement}
                 />
               )}
+            {!isApiTrafficOnlyPage && <Footer user={user} />}
+            <ServerRestartModal />
+            {downServers && downServers.length > 0 && (
+              <DemoServerCheckModal
+                downServers={downServers}
+                onAllUp={() => setDownServers([])}
+              />
+            )}
             {!isApiTrafficOnlyPage && <DemoTourModal />}
             <MissingCredentialsModal
               isOpen={!!credentialsModal}
@@ -1520,20 +1473,20 @@ function AppWithAuth() {
 
 export default function App() {
   return (
-    <SessionTokenProvider>
-      <SpinnerProvider>
-        <AgentUiModeProvider>
-          <McpFieldProvider>
-            <ExchangeModeProvider>
-              <Router
-                future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-              >
+    <SpinnerProvider>
+      <AgentUiModeProvider>
+        <ExchangeModeProvider>
+          <Router
+            future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+          >
+            <IndustryBrandingProvider>
+              <VerticalProvider>
                 <AppWithAuth />
-              </Router>
-            </ExchangeModeProvider>
-          </McpFieldProvider>
-        </AgentUiModeProvider>
-      </SpinnerProvider>
-    </SessionTokenProvider>
+              </VerticalProvider>
+            </IndustryBrandingProvider>
+          </Router>
+        </ExchangeModeProvider>
+      </AgentUiModeProvider>
+    </SpinnerProvider>
   );
 }

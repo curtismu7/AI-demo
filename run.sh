@@ -1003,6 +1003,16 @@ if [[ -f "$BASEDIR/openai_agent/src/main.py" ]]; then
   echo $! > /tmp/demo-openai-agent.pid
 fi
 
+# ── Mastra Agent (port 8892) ─────────────────────────────────────────────────
+if [[ -f "$BASEDIR/mastra_agent/dist/index.js" ]]; then
+  echo "[MASTRA] Starting Mastra Agent (:8892)..."
+  (
+    cd "$BASEDIR/mastra_agent"
+    node dist/index.js >> /tmp/demo-mastra-agent.log 2>&1
+  ) &
+  echo $! > /tmp/demo-mastra-agent.pid
+fi
+
 # ── LM Studio auto-configure ─────────────────────────────────────────────────
 # If LM Studio's local server is running (default :1234), ensure the target
 # model is loaded so the demo works without manual setup. Non-blocking —
