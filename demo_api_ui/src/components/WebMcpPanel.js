@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { v4 as uuid } from "uuid";
 import {
-  listMcpTools,
+  listMcpToolsWithStream,
   callMcpTool,
   openMcpToolStream,
 } from "../services/webMcpClient";
@@ -143,6 +143,7 @@ export default function WebMcpPanel() {
   const [result, setResult] = useState(null);
   const [streamEvents, setStreamEvents] = useState([]);
   const [error, setError] = useState(null);
+  const [discoveryPhases, setDiscoveryPhases] = useState([]);
   const [accountOptions, setAccountOptions] = useState([]); // [{value, label}]
   const [userOptions, setUserOptions]       = useState([]); // [{value, label}]
   const [adminAccountOptions, setAdminAccountOptions] = useState([]); // [{value, label}]
@@ -176,7 +177,21 @@ export default function WebMcpPanel() {
 
   useEffect(() => {
     setLoading(true);
-    listMcpTools()
+    setDiscoveryPhases([]);
+    const traceId = uuid();
+    const onPhase = (phase) => {
+      // Collapse consecutive updates to the same phase id by replacing the
+      // existing row rather than appending — keeps the list short and lets
+      // the final 'success' status overwrite the 'active' one.
+      setDiscoveryPhases((prev) => {
+        const next = [...prev];
+        const idx = next.findIndex((p) => p.phase === phase.phase);
+        if (idx >= 0) next[idx] = phase;
+        else next.push(phase);
+        return next;
+      });
+    };
+    listMcpToolsWithStream(traceId, onPhase)
       .then((data) => {
         setTools(data.tools || []);
         setError(null);
@@ -366,7 +381,35 @@ export default function WebMcpPanel() {
 
         <div className="rp-container" style={{ margin: '16px 0' }}>
           {loading && !selectedTool && (
-            <div className="webmcp-loading">Loading tools…</div>
+            <div className="webmcp-loading">
+              <div className="webmcp-loading__header">
+                <span className="webmcp-calling-spinner" aria-hidden="true" />
+                <span>
+                  Loading MCP tools — this can take a few seconds on a fresh
+                  session while the BFF verifies your token with PingOne,
+                  exchanges it for an MCP-scoped token, and opens the WebSocket
+                  to the MCP server.
+                </span>
+              </div>
+              {discoveryPhases.length > 0 && (
+                <ol className="webmcp-discovery-phases">
+                  {discoveryPhases.map((p) => (
+                    <li
+                      key={p.phase}
+                      className={`webmcp-discovery-phase webmcp-discovery-phase--${p.status || 'active'}`}
+                    >
+                      <span className="webmcp-discovery-phase__status" aria-hidden="true" />
+                      <div className="webmcp-discovery-phase__text">
+                        <div className="webmcp-discovery-phase__label">{p.label}</div>
+                        {p.technical && (
+                          <div className="webmcp-discovery-phase__technical">{p.technical}</div>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
           )}
 
           {error && !selectedTool && (

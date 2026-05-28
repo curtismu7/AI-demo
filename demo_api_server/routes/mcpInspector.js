@@ -18,6 +18,27 @@ const {
 } = require('../services/mcpWebSocketClient');
 const { callToolLocal, listLocalInspectorTools } = require('../services/mcpLocalTools');
 const archEmit = require('../services/archEventEmitter');
+const mcpFlowSseHub = require('../services/mcpFlowSseHub');
+
+/**
+ * Discovery phase publisher. Emits a {phase, label, detail, status} event to
+ * the SSE hub if a trace id was provided by the client; no-op otherwise so
+ * tests and non-SSE callers behave exactly as before.
+ *
+ * Phase shape mirrors the existing tool-call SSE payload shape so the UI can
+ * reuse one parser.
+ */
+function publishDiscoveryPhase(traceId, phase, label, technical, status = 'active', extra = null) {
+  if (!traceId) return;
+  mcpFlowSseHub.publish(traceId, {
+    type: 'discovery-phase',
+    phase,
+    label,
+    technical,
+    status,
+    ...(extra ? { extra } : {}),
+  });
+}
 
 const MCP_SESSION_NEEDED_MSG =
   'MCP discovery needs a real OAuth access token in your Backend-for-Frontend (BFF) session. If you see this after a cold open, sign out and sign in again. Cookie-only restored sessions cannot call the MCP server.';
@@ -119,13 +140,43 @@ router.get('/context', async (req, res) => {
   }
 });
 
+// GET /api/mcp/inspector/tools/events?trace=<uuid> — SSE stream of discovery
+// phases (introspect → exchange → ws-connect → tools/list). Client opens this
+// BEFORE calling GET /tools?trace=<same-uuid>, mirroring the tool-call pattern.
+router.get('/tools/events', (req, res) => {
+  mcpFlowSseHub.handleSseGet(req, res);
+});
+
 // GET /api/mcp/inspector/tools — live tools/list from MCP server, or local catalog when no MCP bearer / MCP down
 router.get('/tools', async (req, res) => {
   const effectiveUserId = req.session?.user?.id || req.user?.id || null;
   const mcpUrl = getMcpServerUrl();
   const isLocalDefault = mcpUrl === 'ws://localhost:8080' && !process.env.MCP_SERVER_URL;
 
+  // Optional trace id for streaming discovery phases via SSE. The hub treats
+  // unknown trace ids as no-ops, so this stays backwards-compatible with the
+  // existing test suite (which doesn't pass ?trace=).
+  const traceId = typeof req.query.trace === 'string' ? req.query.trace.trim() : '';
+  if (traceId && req.sessionID) {
+    mcpFlowSseHub.ensurePostTrace(traceId, req.sessionID);
+  }
+  let traceEnded = false;
+  const endTrace = () => {
+    if (traceEnded || !traceId) return;
+    traceEnded = true;
+    mcpFlowSseHub.endTrace(traceId);
+  };
+  res.on('finish', endTrace);
+  res.on('close', endTrace);
+
   const respondLocalCatalog = (reason) => {
+    publishDiscoveryPhase(
+      traceId,
+      'local_catalog',
+      'Using local tool catalog',
+      `Falling back to in-process catalog (reason: ${reason})`,
+      'success'
+    );
     return res.json({
       timingsMs: { roundTrip: 0 },
       tools: listLocalInspectorTools(),
@@ -136,11 +187,31 @@ router.get('/tools', async (req, res) => {
   };
 
   try {
+    publishDiscoveryPhase(
+      traceId,
+      'config_load',
+      'Loading runtime config',
+      'configStore.ensureInitialized()'
+    );
     await configStore.ensureInitialized();
+    publishDiscoveryPhase(
+      traceId,
+      'config_load',
+      'Loaded runtime config',
+      'configStore.ensureInitialized()',
+      'success'
+    );
 
     if (!getSessionBearerForMcp(req)) {
       return respondLocalCatalog('no_mcp_bearer_cookie_only_or_missing_token');
     }
+
+    publishDiscoveryPhase(
+      traceId,
+      'token_resolve',
+      'Verifying session and exchanging token',
+      'RFC 7662 introspection → RFC 8693 token exchange'
+    );
 
     let agentToken;
     let userSub;
@@ -160,22 +231,58 @@ router.get('/tools', async (req, res) => {
         (err.httpStatus === 401 && Boolean(err.pingoneError));
       if (isExchangeScopeError) {
         console.warn('[MCP Inspector] token exchange failed (%s HTTP %s), using local catalog', err.code, err.httpStatus);
+        publishDiscoveryPhase(
+          traceId,
+          'token_resolve',
+          'Token exchange failed — using local catalog',
+          `RFC 8693 exchange returned HTTP ${err.httpStatus || err.code}`,
+          'warning'
+        );
         return respondLocalCatalog(`exchange_failed_${err.httpStatus || err.code}`);
       }
+      publishDiscoveryPhase(
+        traceId,
+        'token_resolve',
+        'Token resolution failed',
+        err.message || 'unknown error',
+        'failed'
+      );
       return res.status(502).json({ error: 'token_resolution_failed', message: err.message });
     }
     if (!agentToken) {
       return respondLocalCatalog('token_resolution_yielded_null');
     }
+    publishDiscoveryPhase(
+      traceId,
+      'token_resolve',
+      'Session verified and MCP token minted',
+      'RFC 7662 introspection + RFC 8693 token exchange',
+      'success'
+    );
 
     if (isLocalDefault && process.env.VERCEL) {
       return respondLocalCatalog('MCP_SERVER_URL not set on Vercel; localhost MCP unreachable');
     }
 
+    publishDiscoveryPhase(
+      traceId,
+      'ws_connect',
+      'Connecting to MCP server',
+      'WebSocket JSON-RPC: initialize → notifications/initialized'
+    );
+
     const started = Date.now();
     try {
       const result = await mcpListTools(agentToken, userSub);
       const durationMs = Date.now() - started;
+      publishDiscoveryPhase(
+        traceId,
+        'tools_list',
+        'Tool catalog loaded',
+        `JSON-RPC tools/list (${durationMs}ms, ${(result.tools || []).length} tools)`,
+        'success',
+        { durationMs, count: (result.tools || []).length }
+      );
       return res.json({
         timingsMs: { roundTrip: durationMs },
         tools: result.tools || [],
@@ -185,8 +292,22 @@ router.get('/tools', async (req, res) => {
     } catch (err) {
       if (isMcpUnreachableError(err)) {
         console.warn('[MCP Inspector] tools/list MCP unreachable, using local catalog:', err.message);
+        publishDiscoveryPhase(
+          traceId,
+          'ws_connect',
+          'MCP server unreachable — using local catalog',
+          err.message,
+          'warning'
+        );
         return respondLocalCatalog(`mcp_unreachable: ${err.message}`);
       }
+      publishDiscoveryPhase(
+        traceId,
+        'tools_list',
+        'tools/list failed',
+        err.message || 'unknown error',
+        'failed'
+      );
       throw err;
     }
   } catch (err) {

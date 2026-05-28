@@ -31,6 +31,70 @@ export async function listMcpTools() {
 }
 
 /**
+ * Open an SSE stream that emits discovery phase events for an in-flight
+ * GET /api/mcp/inspector/tools call. Mirrors the lifecycle of
+ * openMcpToolStream: client subscribes first, then issues the GET with the
+ * same trace id, and the BFF publishes phases as it walks the chain.
+ *
+ * @param {string} traceId — UUID matching the ?trace= query on the GET
+ * @param {(phase: object) => void} onPhase — called for each parsed phase event
+ * @returns {() => void} disconnect (idempotent)
+ */
+export function openMcpDiscoveryStream(traceId, onPhase) {
+  if (!traceId || typeof onPhase !== 'function') {
+    return () => {};
+  }
+  const url = `/api/mcp/inspector/tools/events?trace=${encodeURIComponent(traceId)}`;
+  let es;
+  try {
+    es = new EventSource(url);
+  } catch (_) {
+    return () => {};
+  }
+  const handle = (ev) => {
+    try {
+      const data = JSON.parse(ev.data);
+      if (data && data.type === 'discovery-phase') onPhase(data);
+      if (data && data.phase === 'stream_end' && es) es.close();
+    } catch (_) {
+      /* ignore malformed chunks */
+    }
+  };
+  es.addEventListener('message', handle);
+  es.onerror = () => { try { es.close(); } catch (_) {} };
+  return () => { try { es.close(); } catch (_) {} };
+}
+
+/**
+ * Fetch the list of available MCP tools from the BFF while streaming the
+ * discovery phases (introspect → exchange → ws-connect → tools/list) to
+ * `onPhase`. Generates its own trace id; falls back to a phaseless GET if
+ * EventSource isn't available.
+ */
+export async function listMcpToolsWithStream(traceId, onPhase) {
+  let disconnect = () => {};
+  if (traceId && typeof onPhase === 'function' && typeof EventSource !== 'undefined') {
+    disconnect = openMcpDiscoveryStream(traceId, onPhase);
+  }
+  try {
+    const url = traceId
+      ? `/api/mcp/inspector/tools?trace=${encodeURIComponent(traceId)}`
+      : '/api/mcp/inspector/tools';
+    const res = await fetch(url, { credentials: 'include' });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      const err = new Error(`listMcpTools failed: ${res.status}`);
+      err.status = res.status;
+      err.body = body;
+      throw err;
+    }
+    return await res.json();
+  } finally {
+    disconnect();
+  }
+}
+
+/**
  * Call an MCP tool via the BFF proxy.
  * @param {string} toolName   - registered tool name
  * @param {object} params     - tool input parameters
