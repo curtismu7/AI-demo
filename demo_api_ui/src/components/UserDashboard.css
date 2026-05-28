@@ -1,4 +1,12 @@
 .user-dashboard {
+  /* Theme-dynamic brand accents: rebind the dashboard's brand-blue tokens
+     to the active theme's primary color so every accent (active borders,
+     focus rings, navy buttons, etc.) tracks the theme picker. Falls back
+     to the dashboard header color, then to the legacy navy. */
+  --brand-navy: var(--app-primary-red, var(--brand-dashboard-header-start, #1d4ed8));
+  --brand-navy-dark: var(--app-primary-red-hover, var(--brand-dashboard-header-end, #1e40af));
+  --brand-navy-light: var(--app-primary-red-mid, var(--app-primary-red, #3b82f6));
+
   width: 100%;
   max-width: min(1920px, 100%);
   margin: 0 auto;
@@ -410,7 +418,7 @@
 
 /* Hero strip + light toolbar row (actions live below the blue header) */
 .dashboard-header-stack {
-  margin-bottom: 32px;
+  margin-bottom: 18px;
   border-radius: 10px;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
@@ -435,10 +443,10 @@
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: clamp(8px, 1.5vw, 14px);
   row-gap: clamp(8px, 1.2vw, 12px);
-  padding: clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 22px);
+  padding: clamp(6px, 1vw, 10px) clamp(12px, 2vw, 18px);
   background: #ffffff;
   border-top: 1px solid rgba(15, 23, 42, 0.08);
   overflow-x: auto;
@@ -449,9 +457,9 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-height: 38px;
-  padding: clamp(8px, 1.2vw, 10px) clamp(10px, 1.8vw, 16px);
-  font-size: clamp(0.75rem, 0.5vw + 0.68rem, 0.84rem);
+  min-height: 30px;
+  padding: 5px 10px;
+  font-size: 0.75rem;
   font-weight: 600;
   font-family: inherit;
   line-height: 1.25;

@@ -98,11 +98,9 @@ export default function AgentUiModeToggle({
       </span>
       <div
         style={{
-          display: "flex",
+          display: "inline-flex",
           flexDirection: "row",
           alignItems: "center",
-          width: "100%",
-          maxWidth: variant === "config" ? "560px" : "none",
         }}
       >
         <div
@@ -152,9 +150,6 @@ export default function AgentUiModeToggle({
           </label>
         )}
       </div>
-      <p className="agent-ui-mode-toggle__label" style={{ marginTop: "6px" }}>
-        These are layouts of one agent — not different agents.
-      </p>
     </div>
   );
 }

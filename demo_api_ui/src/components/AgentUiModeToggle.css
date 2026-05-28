@@ -4,7 +4,7 @@
   display: inline-flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.35rem;
+  gap: 0.2rem;
 }
 
 .agent-ui-mode-toggle__label {
@@ -135,14 +135,13 @@
   box-shadow: none;
 }
 
-/* ─── Config page (full-width panel) ─── */
+/* ─── Config page (compact toolbar pill) ─── */
 .agent-ui-mode-toggle--config {
-  width: 100%;
-  max-width: 520px;
+  width: auto;
 }
 
 .agent-ui-mode-toggle--config .agent-ui-mode-toggle__label {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: #374151;
   text-transform: none;
   letter-spacing: normal;
@@ -150,21 +149,19 @@
 }
 
 .agent-ui-mode-toggle--config .agent-ui-mode-toggle__segmented {
-  flex: 1;
-  display: flex;
+  display: inline-flex;
   border: 1px solid #d1d5db;
-  border-radius: 10px;
+  border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .agent-ui-mode-toggle--config .agent-ui-mode-toggle__btn {
-  flex: 1;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.65rem 0.5rem;
-  font-size: 0.8125rem;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.75rem;
   background: #fff;
   color: #374151;
 }

@@ -1,21 +1,18 @@
 // banking_api_ui/src/components/SessionExpiryTimer.jsx - Global Banking Header
 import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import bffAxios from "../services/bffAxios";
 import { isEducationalPath } from "../utils/educationalPages";
 import { performLogout } from "../services/logout";
-import { useTheme } from "../context/ThemeContext";
 import "./SessionExpiryTimer.css";
 
 /**
  * BankingHeader — Professional banking header that appears on all logged-in pages.
  * Inspired by PNC and major banking UIs.
- * Shows: Logo, user info, session timer, and context-aware controls.
+ * Shows: user info, session timer, and context-aware controls.
  */
 export default function SessionExpiryTimer({ hideOnPaths = [] }) {
-  const navigate = useNavigate();
   const { pathname } = useLocation();
-  const { identity } = useTheme();
   const [timeRemaining, setTimeRemaining] = useState(null);
   const [isExpired, setIsExpired] = useState(false);
   const [expiresAt, setExpiresAt] = useState(null);
@@ -127,27 +124,7 @@ export default function SessionExpiryTimer({ hideOnPaths = [] }) {
     return (
       <header className="banking-header">
         <div className="banking-header__inner">
-          <div className="banking-header__left">
-            <button
-              type="button"
-              className="banking-header__logo banking-header__logo--btn"
-              onClick={() => navigate("/")}
-              aria-label="Go to home"
-            >
-              <span className="banking-header__logo-icon">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                  aria-hidden="true"
-                >
-                  <path d="M4 10h3v7H4zM10.5 10h3v7h-3zM2 19h20v3H2zM17 10h3v7h-3zM12 1 2 6v2h20V6z" />
-                </svg>
-              </span>
-              <span className="banking-header__logo-text">{identity?.logoText || 'AI Demo'}</span>
-            </button>
-          </div>
+          <div className="banking-header__left" />
           <div className="banking-header__right" />
         </div>
       </header>
@@ -166,25 +143,6 @@ export default function SessionExpiryTimer({ hideOnPaths = [] }) {
     <header className="banking-header">
       <div className="banking-header__inner">
         <div className="banking-header__left">
-          <button
-            type="button"
-            className="banking-header__logo banking-header__logo--btn"
-            onClick={() => navigate("/")}
-            aria-label="Go to home"
-          >
-            <span className="banking-header__logo-icon">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                  aria-hidden="true"
-                >
-                  <path d="M4 10h3v7H4zM10.5 10h3v7h-3zM2 19h20v3H2zM17 10h3v7h-3zM12 1 2 6v2h20V6z" />
-                </svg>
-              </span>
-            <span className="banking-header__logo-text">Super Bank</span>
-          </button>
           {userInfo && (
             <div className="banking-header__user-context">
               <span className="banking-header__user-context-label">

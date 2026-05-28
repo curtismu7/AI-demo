@@ -2538,88 +2538,11 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           <button
             type="button"
             className="dashboard-toolbar-btn"
-            style={{
-              background: "#dc2626",
-              borderColor: "#dc2626",
-              color: "#fff",
-            }}
             title="Reset demo: clear agent history and token chain"
             onClick={() => setShowResetModal(true)}
           >
             Reset Demo
           </button>
-          {user ? (
-            <span
-              style={{
-                marginLeft: "auto",
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                fontSize: 12,
-                color: "#1e293b",
-                fontWeight: 500,
-              }}
-            >
-              <span
-                style={{
-                  background: "#dbeafe",
-                  color: "#1e40af",
-                  borderRadius: 4,
-                  padding: "2px 7px",
-                  fontWeight: 600,
-                  fontSize: 11,
-                }}
-              >
-                {user.role === "admin" ? "Admin" : "Customer"}
-              </span>
-              {user.firstName || user.name?.split(" ")[0] || user.username}
-              {tokenSecondsLeft !== null && (
-                <span
-                  style={{
-                    background:
-                      tokenSecondsLeft < 60
-                        ? "#fef2f2"
-                        : tokenSecondsLeft < 300
-                          ? "#fff7ed"
-                          : "#f0fdf4",
-                    color:
-                      tokenSecondsLeft < 60
-                        ? "#dc2626"
-                        : tokenSecondsLeft < 300
-                          ? "#ea580c"
-                          : "#15803d",
-                    border: `1px solid ${tokenSecondsLeft < 60 ? "#fca5a5" : tokenSecondsLeft < 300 ? "#fed7aa" : "#86efac"}`,
-                    borderRadius: 4,
-                    padding: "2px 7px",
-                    fontSize: 11,
-                    fontWeight: 600,
-                  }}
-                >
-                  Token:{" "}
-                  {tokenSecondsLeft >= 3600
-                    ? `${Math.floor(tokenSecondsLeft / 3600)}h ${Math.floor((tokenSecondsLeft % 3600) / 60)}m`
-                    : tokenSecondsLeft >= 60
-                      ? `${Math.floor(tokenSecondsLeft / 60)}m ${tokenSecondsLeft % 60}s`
-                      : `${tokenSecondsLeft}s`}
-                </span>
-              )}
-            </span>
-          ) : (
-            <button
-              type="button"
-              className="dashboard-toolbar-btn"
-              style={{
-                marginLeft: "auto",
-                fontWeight: 700,
-                background: "#2563eb",
-                color: "#fff",
-                border: "none",
-              }}
-              onClick={navigateToCustomerOAuthLogin}
-            >
-              Sign In
-            </button>
-          )}
         </div>
       </div>
 
