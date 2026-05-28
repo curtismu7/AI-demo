@@ -124,6 +124,89 @@ Real banking applications use professional typography. Emojis break the enterpri
 
 ## 4. Bug Fix Log (reverse-chronological)
 
+### 2026-05-28 — New agents (openai/mastra/pydantic) silently produced empty dock + non-vertical dock title
+
+**Files changed:**
+- `demo_api_server/services/configStore.js` — `llm_framework` default flipped back from `openai_agents` → `langchain`. The new openai_agents service was up on :8891 but failed every /run because no `OPENAI_API_KEY` was set, and `mastra_agent` / `pydantic_agent` had structural bugs of their own. Making `langchain` the default means a fresh `./run.sh` produces a working dock out of the box.
+- `demo_api_server/routes/featureFlags.js` — same default flip in the Feature Flags registry so the admin UI surfaces the corrected default.
+- `demo_api_ui/src/components/EmbeddedAgentDock.js` — dock title and `aria-label` now read `terminology.agent` / `identity.displayName` from `useTheme()` instead of the hardcoded `'AI banking assistant'`. On CareConnect the dock now reads "AI Care Assistant"; on banking it falls back via `displayName` → `'AI assistant'` neutral form when no `terminology.agent` exists. Config-page title is unchanged.
+- `openai_agent/src/config.py` — replaced `openai_api_key` with `llm_api_key` + `llm_base_url`. Defaults to LM Studio (`http://localhost:1234/v1`, `lm-studio` key, `qwen/qwen3.6-35b-a3b` model). Override via `AGENT_LLM_BASE_URL` / `AGENT_LLM_API_KEY` / `AGENT_LLM_MODEL` for OpenAI/Groq/Together/etc.
+- `openai_agent/src/run_handler.py` — propagates `cfg.llm_base_url` into `run_ctx` so the existing `AsyncOpenAI(base_url=...)` wiring in `agent_factory.py` picks it up. Per-run `context.model` from the BFF still wins.
+- `openai_agent/src/agui_emitter.py` — `on_error()` now emits `RUN_ERROR` (the AG-UI event the BFF and `useAgentRun.js` actually handle) instead of `ERROR` followed by `RUN_FINISHED`. Previously the dock displayed nothing on agent errors because neither the BFF nor the React hook listens for `ERROR`.
+- `pydantic_agent/src/config.py` — replaced bare-import-time `os.environ["OPENAI_API_KEY"]` (which crashed at process start when unset) with the same lazy `AGENT_LLM_*` resolution as openai_agent.
+- `pydantic_agent/src/agent_factory.py` — constructs `OpenAIModel(provider=OpenAIProvider(api_key, base_url))` explicitly instead of accepting a `"openai:gpt-4o"` model URI. Lets pydantic_ai point at any OpenAI-compatible endpoint.
+- `pydantic_agent/src/run_handler.py` — passes `cfg.LLM_BASE_URL` / `cfg.LLM_API_KEY` into `build_agent()`. Falls back to env-resolved defaults when `context.model` is empty.
+- `pydantic_agent/src/agui_emitter.py` — same `ERROR` → `RUN_ERROR` fix as openai_agent.
+- `mastra_agent/src/config.ts` — same `AGENT_LLM_*` env-var pattern.
+- `mastra_agent/src/agentFactory.ts` — constructs the OpenAI provider via `createOpenAI({ baseURL, apiKey })` from `@ai-sdk/openai` (already a dep), then passes `provider(model)` as the Mastra Agent's `model`. Previously took a bare `model: string` which Mastra's Agent constructor doesn't accept at runtime.
+- `mastra_agent/src/runHandler.ts` — passes `{baseUrl, apiKey, model}` to `buildAgent()` instead of a bare model string.
+- `mastra_agent/package.json` — bumped `@ai-sdk/openai` from `^1.0.0` to `^2.0.0` (AI SDK v5). `@mastra/core@^1.37.0`'s `agent.stream()` rejects AI SDK v4 models at runtime with "Please use AI SDK v5+ models or call the streamLegacy() method instead". `streamLegacy()` works but is documented as deprecated; the v5 upgrade is the maintained path.
+- `run.sh` — added `mastra_agent` to `SVC_LIST`/`SVC_BUILD` (was missing — could lead to missing `dist/index.js` on a fresh clone). Added a `PY_AGENTS=(openai_agent pydantic_agent)` loop right after the Node `SVC_LIST` loop that detects a broken/missing `.venv` (the pydantic_agent venv directory existed but had no `bin/python` binary — a stub from a previous broken setup), recreates it via `python3 -m venv .venv`, and runs `pip install -r requirements.txt`. Loud failure on any error. Removed the `[[ -f src/main.py ]]` / `[[ -f dist/index.js ]]` launch guards per CLAUDE.md "Don't guard launches with `[[ -f dist/index.js ]]`" — silent skips were exactly the failure mode that produced the empty dock.
+
+**What was broken (multiple compounding):**
+1. **`llm_framework` default was `openai_agents`** but `OPENAI_API_KEY` was unset in `demo_api_server/.env`. The openai_agent service booted fine (lazy key read) but every `/run` emitted a `RUN_STARTED → ERROR → RUN_FINISHED` SSE sequence.
+2. **The Python agents emitted `ERROR`, not `RUN_ERROR`.** [useAgentRun.js:187](demo_api_ui/src/hooks/useAgentRun.js#L187) and [agentRun.js](demo_api_server/routes/agentRun.js) only handle `RUN_ERROR`. The dock saw `RUN_STARTED` → unrecognized `ERROR` → `RUN_FINISHED` and rendered nothing — no error message, no state change, just the same empty pane that looked like "no agent."
+3. **EmbeddedAgentDock title was hardcoded** to `'AI banking assistant'` regardless of the active vertical. On CareConnect the user saw "AI banking assistant" instead of something derived from the manifest.
+4. **pydantic_agent's `.venv` directory existed but contained no `bin/python` binary.** The launch block did `PY=".venv/bin/python"; "$PY" -m src.main` which silently invoked system `python3` 3.9 (not 3.11), which crashed on `KeyError: 'OPENAI_API_KEY'` at import time, so :8893 never came up. Plus pydantic_agent was missing from `SVC_LIST` so deps weren't being installed.
+5. **mastra_agent was missing from `SVC_LIST`.** On a fresh clone it would not get `npm install` + `npm run build`, leaving `dist/index.js` absent and the launch block silently skipping due to the `[[ -f dist/index.js ]]` guard.
+
+**What is intentionally NOT changed:**
+- LangChain agent provider (still Helix). Switching it to LM Studio is a separate decision; the existing `provider: str = "helix"` default in `langchain_agent/src/config/settings.py` is unchanged.
+- The framework picker still surfaces all 4 frameworks. Users can flip to any of them via Feature Flags; the LM Studio defaults mean openai_agents/mastra/pydantic_ai will work as long as LM Studio is running with a model loaded.
+- `FRAMEWORK_PORTS` / `FRAMEWORK_LABELS` in `routes/agentRun.js` and `EmbeddedAgentDock.js`. The routing logic is correct.
+- The Helix integration in any agent. Helix is NOT OpenAI-compatible (it's a 3-step create-conversation/post-message/poll API — see `langchain_agent/src/agent/helix_llm.py:245`). Porting Helix to the new agents would require writing 3 equivalents of `ChatHelix` and is intentionally out of scope.
+
+**Pattern to prevent recurrence:**
+- Agents must emit `RUN_ERROR` for terminal failures, never just `ERROR`. The BFF normalizes nothing — whatever the agent emits flows verbatim to the React hook, which only knows `RUN_ERROR` / `RUN_FINISHED` / `STATE_*` / `TEXT_*` / `TOOL_*`.
+- New services must be added to `SVC_LIST` (Node) or the new `PY_AGENTS` array (Python) in `run.sh`. Per CLAUDE.md "Don't guard launches with `[[ -f dist/index.js ]]`" — file-existence launch guards silently hide failures.
+- Vertical-aware UI strings should read `terminology` / `identity` from `useTheme()`. Hardcoded "banking" strings will regress every time a new vertical is added.
+
+**Verify:**
+```bash
+cd demo_api_ui && npm run build                                # exit 0
+cd demo_api_ui && npx jest App.structure --no-coverage         # 25/25 pass
+./run.sh stop && ./run.sh                                      # all 4 agents listening on 8889/8891/8892/8893
+# Manual: dock title on CareConnect reads "AI Care Assistant"
+# Manual: in Feature Flags UI flip llm_framework → openai_agents, send a chat → reply comes from LM Studio
+# Manual: flip to pydantic_ai → reply comes from LM Studio via pydantic-ai
+# Manual: flip to mastra → reply comes from LM Studio via @ai-sdk/openai
+```
+
+---
+
+### 2026-05-28 — Verticals: header / sidenav / feature page now follow active theme
+
+**Files changed:**
+- `demo_api_ui/src/context/ThemeContext.js` — context value (and no-provider fallback) now exposes `manifest` and `featurePage`. Without this, every consumer destructuring `manifest` from `useTheme()` got `undefined`.
+- `demo_api_ui/src/App.js` — imported `VerticalFeaturePage` and registered `<Route path="/path/feature">`. `BankingAgent.js:3478` already navigates there for non-banking verticals (e.g. CareConnect `show_health_record`); without the route, navigation fell through to the `*` catch-all and silently redirected back to `/dashboard`. Also genericized the `/monitoring/agent-flow` placeholder copy from "Banking Agent" → "AI agent".
+- `demo_api_ui/src/components/SessionExpiryTimer.jsx` — top banking-header logo text reads `identity?.headerTitle ?? displayName` in both the loaded and loading branches. Previously line 186 was the literal string `Super Bank` and line 148 read the non-existent field `identity?.logoText`.
+- `demo_api_ui/src/components/TopNav.js` — fallback brand `'Super Bank'` → `'AI Demo'`; reads `headerTitle` before `displayName`.
+- `demo_api_ui/src/components/SideNav.js` — `USER_NAV` static array replaced with `buildUserNav(terminology, identity)`. Group label becomes `"My ${brand}"`, dashboard link uses `terminology.dashboard`, accounts link uses `My ${terminology.accounts}`, transfer link uses `terminology.highValueAction`. (Note: SideNav.js is currently only referenced from tests — AdminSideNav.jsx is what production renders — but the user explicitly asked for it themed.)
+- `demo_api_ui/src/components/Dashboard.js` — admin recovery toast "Refresh access token in the Banking Agent" → "in the AI agent".
+- `demo_api_ui/src/components/SetupPage.js` — shell-command placeholder `cd path/to/Banking` → `cd path/to/repo`.
+- `demo_api_ui/src/components/MissingCredentialsModal.jsx` — worker app name hint `"Banking Demo Worker"` → `"Demo Worker"`.
+- `demo_api_ui/src/components/ClientRegistrationPage.js` — client-name input placeholder `"My Banking Integration"` → `"My Integration"`.
+- `demo_api_ui/src/components/Onboarding.js`, `UnifiedTokenFlowInspector.jsx`, `WebMcpPanel.js` (×3), `CIBAPanel.js` (×2) — all user-visible "Banking Agent" labels in body copy → "AI agent" / "AI Agent". The React component is still named `BankingAgent` internally; only the user-facing wording changed.
+- `demo_api_ui/src/components/DelegationPage.js` — presenter-script quote "Super Banking lets customers delegate…" → "This app lets customers delegate…", plus another "Banking Agent" → "AI agent".
+
+**What was broken:** Switching to a non-banking vertical (e.g. CareConnect) left the gray banking-header reading `Super Bank`, several body-copy references to "Banking Agent" untouched, and the per-vertical feature page unreachable. `ThemeContext` was fetching the manifest correctly but not exposing it on the consumer side, so downstream code (`VerticalFeaturePage`, `BankingAgent` feature dispatch) silently fell back to the banking defaults — wrong MCP tool name (`show_mortgage` instead of `show_health_record`), wrong scope, wrong page.
+
+**What is intentionally NOT changed:** `PingOneTestPage.jsx` "Super Banking *App*" / "Super Banking MCP Server" references name actual PingOne application/resource-server entities — renaming would mislead. `Dashboard.js:512` "Banking scopes are being injected by the BFF" — the PingOne resource server is literally named `Banking` per `docs/PINGONE_CONFIG.md`. Component identifiers (`BankingAgent`, `BankingChips`, `persistBankingAgentUi`, file paths under `banking_*`) are not user-visible and were left alone.
+
+**Pattern to prevent recurrence:** When a manifest field needs to drive UI, both add it to the `ThemeProvider` `value` object AND to the no-provider fallback in `useTheme()` — otherwise destructure sites silently get `undefined`. When adding a route that components already navigate to, grep for the path string before assuming the route exists. For new per-vertical screens, register the route adjacent to `/path/mortgage` in `App.js` so the chip pipeline (`vertical_feature_demo` → `/path/feature` → `VerticalFeaturePage`) is discoverable.
+
+**Verify:**
+```bash
+cd demo_api_ui && npm run build                                # exit 0
+cd demo_api_ui && npx jest App.structure --no-coverage         # 25/25 pass
+# Manual: switch vertical via /api/config/vertical → 'healthcare', hard-reload /dashboard
+#   - Gray banking-header reads "CareConnect"
+#   - TopNav brand reads "CareConnect"
+#   - "Show Health Record" chip lands on /path/feature, renders the records card (not redirects to /dashboard)
+```
+
+---
+
 ### 2026-05-28 — Restore AuthorizeRulesPanel + fix horizontal scroll
 
 **Files changed:**

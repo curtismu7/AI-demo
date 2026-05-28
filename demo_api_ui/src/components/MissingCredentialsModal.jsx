@@ -47,7 +47,7 @@ const GUIDANCE = {
     steps: [
       "Go to PingOne Admin Console → Applications",
       'Click "+ Add Application" → select "Worker"',
-      'Name it (e.g. "Banking Demo Worker")',
+      'Name it (e.g. "Demo Worker")',
       'On the Roles tab, assign "Environment Admin" role for your environment',
       "Copy the Client ID and Client Secret from the Overview tab",
     ],

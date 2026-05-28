@@ -302,7 +302,7 @@ export default function ClientRegistrationPage({ user, onLogout }) {
               Client Identity
             </h2>
             <Field label="Client Name *" hint="Human-readable name shown on consent screens.">
-              <Input value={clientName} onChange={setClientName} placeholder="My Banking Integration" disabled={submitting} />
+              <Input value={clientName} onChange={setClientName} placeholder="My Integration" disabled={submitting} />
             </Field>
             <Field label="Description" hint="Optional description stored in PingOne.">
               <Input value={clientDescription} onChange={setClientDescription} placeholder="Brief description of this OAuth client" disabled={submitting} />

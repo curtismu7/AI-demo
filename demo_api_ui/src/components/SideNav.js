@@ -75,40 +75,45 @@ const ADMIN_NAV = [
   },
 ];
 
-const USER_NAV = [
-  {
-    group: "My Banking",
-    items: [
-      { to: "/dashboard", label: "My Dashboard", icon: "HiOutlineBarChart3" },
-      { to: "/agent", label: "AI Agent", icon: "MdOutlineChat" },
-      { to: "/demo-data", label: "Demo config", icon: "MdSettings" },
-      { label: "🔄 Reset Demo", icon: "MdSettings", action: "resetDemo" },
-      { to: "/pingone-test", label: "Test Page", icon: "MdSettings" },
-    ],
-  },
-  {
-    group: "Self Service",
-    items: [
-      { to: "/self-service", label: "Create Account", icon: "MdPerson" },
-      { to: "/accounts", label: "My Accounts", icon: "MdAccountBalance" },
-      { to: "/transactions", label: "Transfer Money", icon: "MdMoneyExchange" },
-      { to: "/profile", label: "Profile Settings", icon: "MdPerson" },
-      { to: "/security", label: "Security Center", icon: "MdSecurity" },
-      { to: "/delegation", label: "Manage Delegates", icon: "HiOutlineUsers" },
-    ],
-  },
-];
+function buildUserNav(terminology, identity) {
+  const brand = identity?.displayName || identity?.headerTitle || 'Workspace';
+  const accountsLabel = terminology?.accounts ? `My ${terminology.accounts}` : 'My Accounts';
+  const transferLabel = terminology?.highValueAction || 'Transfer Money';
+  return [
+    {
+      group: `My ${brand}`,
+      items: [
+        { to: "/dashboard", label: terminology?.dashboard || "My Dashboard", icon: "HiOutlineBarChart3" },
+        { to: "/agent", label: "AI Agent", icon: "MdOutlineChat" },
+        { to: "/demo-data", label: "Demo config", icon: "MdSettings" },
+        { label: "🔄 Reset Demo", icon: "MdSettings", action: "resetDemo" },
+        { to: "/pingone-test", label: "Test Page", icon: "MdSettings" },
+      ],
+    },
+    {
+      group: "Self Service",
+      items: [
+        { to: "/self-service", label: "Create Account", icon: "MdPerson" },
+        { to: "/accounts", label: accountsLabel, icon: "MdAccountBalance" },
+        { to: "/transactions", label: transferLabel, icon: "MdMoneyExchange" },
+        { to: "/profile", label: "Profile Settings", icon: "MdPerson" },
+        { to: "/security", label: "Security Center", icon: "MdSecurity" },
+        { to: "/delegation", label: "Manage Delegates", icon: "HiOutlineUsers" },
+      ],
+    },
+  ];
+}
 
 export default function SideNav({ user, onLogout }) {
   const { preset } = useIndustryBranding();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, toggleTheme, terminology, identity } = useTheme();
   const [collapsed, setCollapsed] = useState(false);
   const [showKillModal, setShowKillModal] = useState(false);
   const [agentRevoked, setAgentRevoked] = useState(false);
   const navigate = useNavigate();
   const edu = useEducationUIOptional();
   const isAdmin = user?.role === "admin";
-  const navGroups = isAdmin ? ADMIN_NAV : USER_NAV;
+  const navGroups = isAdmin ? ADMIN_NAV : buildUserNav(terminology, identity);
 
   // Helper function to render React Icon component from icon string name
   const renderIcon = (iconName, size = 20) => {

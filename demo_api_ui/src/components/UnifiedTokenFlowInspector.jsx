@@ -156,7 +156,7 @@ function AgentFlowSection({ compact = false, onSelectToken, selectedTokenId: sel
     return (
       <div className="utfi-agent-flow-section utfi-agent-flow-section--empty">
         <div className="utfi-empty-state">
-          <p>Use the Banking Agent (e.g. My Accounts) to see the request flow here.</p>
+          <p>Use the AI agent (e.g. My Accounts) to see the request flow here.</p>
         </div>
         <div className="utfi-flow-primer">
           <div className="utfi-primer-title">What you&apos;ll see when an action runs:</div>

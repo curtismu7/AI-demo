@@ -416,7 +416,7 @@ function DemoTalkTrackPanel() {
               num: 1,
               heading: 'Set the scene',
               text: 'Open the page and point at the "Grant Account Access" form.',
-              quote: '"Super Banking lets customers delegate access to family members — maybe a spouse, a college student, or an accountant. This is a common real-world need."',
+              quote: '"This app lets customers delegate access to family members — maybe a spouse, a college student, or an accountant. This is a common real-world need."',
             },
             {
               num: 2,
@@ -439,7 +439,7 @@ function DemoTalkTrackPanel() {
             {
               num: 5,
               heading: 'Connect to the AI agent',
-              text: 'Navigate to the Banking Agent, ask it to "check account balance for delegate@example.com".',
+              text: 'Navigate to the AI agent, ask it to "check account balance for delegate@example.com".',
               quote: '"Now watch the Live Token Chain section — the agent performed an RFC 8693 token exchange, got a scoped token with the act claim, and called the banking MCP tool. The bank\'s API saw the exact scopes that were granted — nothing more."',
             },
             {

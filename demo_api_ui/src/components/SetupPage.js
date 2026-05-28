@@ -8,7 +8,7 @@ import "./SetupPage.css";
 import McpGatewayConfig from "./McpGatewayConfig";
 
 const REPO_ROOT_CMD =
-  "cd path/to/Banking   # repository root (parent of demo_api_ui/)";
+  "cd path/to/repo   # repository root (parent of demo_api_ui/)";
 
 const SUITES = [
   { key: "bff:unit", label: "BFF — unit tests" },

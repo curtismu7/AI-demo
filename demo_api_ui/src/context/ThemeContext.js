@@ -215,12 +215,14 @@ export function ThemeProvider({ children }) {
     effectiveAgentTheme,
     // manifest / vertical fields (new)
     loading,
+    manifest,
     themeId: manifest ? manifest.id : null,
     identity: manifest ? manifest.identity : null,
     cssVars: manifest && manifest.theme ? manifest.theme.cssVars : null,
     terminology: manifest ? manifest.terminology : null,
     agent: manifest ? manifest.agent : null,
     dashboard: manifest ? manifest.dashboard : null,
+    featurePage: manifest ? manifest.featurePage : null,
     mapTerm,
     switchTheme,
   }), [
@@ -244,12 +246,14 @@ export function useTheme() {
       effectiveAgentTheme: 'auto',
       // manifest defaults
       loading: false,
+      manifest: null,
       themeId: null,
       identity: null,
       cssVars: null,
       terminology: null,
       agent: null,
       dashboard: null,
+      featurePage: null,
       mapTerm: (t) => t,
       switchTheme: async () => {},
     };

@@ -36,9 +36,12 @@ tt {
   --app-primary-red-mid: #dc2626;
   --app-primary-red-border: #7f1d1d;
   --app-primary-btn-text: #ffffff;
-  --brand-topnav-bg-start: #1e293b;
-  --brand-topnav-bg-end: #334155;
-  --brand-topnav-text: #ffffff;
+  /* Top-nav vars resolve to dashboard-header vars so a single manifest override
+     (--brand-dashboard-header-*) themes both the dashboard hero and the sticky
+     top-nav. Fallback colors retained for the no-manifest case. */
+  --brand-topnav-bg-start: var(--brand-dashboard-header-start, #1e293b);
+  --brand-topnav-bg-end: var(--brand-dashboard-header-end, #334155);
+  --brand-topnav-text: var(--brand-dashboard-header-text, #ffffff);
   --app-primary-blue: var(--brand-navy);
   --app-primary-blue-hover: var(--brand-navy);
   --app-primary-blue-mid: var(--brand-navy);
@@ -49,8 +52,11 @@ tt {
   --brand-app-shell-hero-start: var(--brand-navy);
   --brand-app-shell-hero-end: var(--brand-navy);
 
-  /* Chase.com Brand Colors (Phase 85: Dashboard Styling) */
-  --brand-navy: #1d4ed8;
+  /* Chase.com Brand Colors (Phase 85: Dashboard Styling).
+     --brand-navy resolves to the manifest's --theme-accent so non-banking
+     verticals cascade their accent through the hundreds of CSS rules that
+     reference --brand-navy. Fallback retained for the no-manifest case. */
+  --brand-navy: var(--theme-accent, #1d4ed8);
   --brand-navy-dark: #1e40af;
   --brand-navy-light: #3b82f6;
   --brand-blue: #2563eb;

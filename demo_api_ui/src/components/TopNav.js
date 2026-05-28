@@ -3,6 +3,9 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useSessionToken } from "../context/SessionTokenContext";
 import { useTheme } from "../context/ThemeContext";
 import { navigateToCustomerOAuthLogin } from "../utils/authUi";
+import AgentUiModeToggle from "./AgentUiModeToggle";
+import ThemePicker from "./ThemePicker";
+import ThresholdControls from "./ThresholdControls";
 import UserMenu from "./UserMenu";
 import "./TopNav.css";
 
@@ -11,7 +14,7 @@ export default function TopNav({ user, onLogout }) {
   const location = useLocation();
   const { identity } = useTheme();
   const { tokenSecondsLeft, openTokenModal } = useSessionToken();
-  const brandName = (identity && identity.displayName) || 'Super Bank';
+  const brandName = (identity && (identity.headerTitle || identity.displayName)) || 'AI Demo';
 
   const isAdminView =
     user?.role === 'admin' &&
@@ -28,8 +31,6 @@ export default function TopNav({ user, onLogout }) {
       location.pathname === '/mfa-test' ||
       location.pathname === '/error-audit' ||
       location.pathname === '/oauth-debug');
-
-  const dashboardBadge = isAdminView ? 'Admin Dashboard' : null;
 
   const handleSwitchView = () => {
     if (isAdminView) {
@@ -58,7 +59,7 @@ export default function TopNav({ user, onLogout }) {
     <header className="topnav">
       <div className="topnav-container">
 
-        {/* Left: Brand + dashboard badge */}
+        {/* Left: Brand */}
         <div className="topnav-left">
           <button
             type="button"
@@ -69,25 +70,71 @@ export default function TopNav({ user, onLogout }) {
             <MdAccountBalance className="topnav-brand-icon" />
             <span className="topnav-brand-name">{brandName}</span>
           </button>
-          {dashboardBadge && (
-            <>
-              <span className="topnav-brand-divider" aria-hidden="true" />
-              <span className="topnav-dashboard-badge">{dashboardBadge}</span>
-            </>
-          )}
         </div>
 
-        {/* Center: Quick nav (admin only) */}
+        {/* Context chip — Customer / Admin / Setup */}
+        {user && (
+          <span className="topnav-context-chip">
+            {location.pathname === '/setup' || location.pathname.startsWith('/setup/')
+              ? 'Setup'
+              : isAdminView
+                ? 'Admin'
+                : 'Customer'}
+          </span>
+        )}
+
+        {/* 3-tab nav — admin gets all three; customer gets nothing here (chip is enough) */}
         {user?.role === 'admin' && (
-          <nav className="topnav-center">
-            <button type="button" className="topnav-group-trigger" onClick={() => navigate('/dashboard')}>Customer</button>
-            <button type="button" className="topnav-group-trigger" onClick={() => navigate('/admin')}>Admin</button>
-            <button type="button" className="topnav-group-trigger" onClick={() => navigate('/setup')}>Setup</button>
+          <nav className="topnav-nav">
+            <button
+              type="button"
+              className={`topnav-nav-link${location.pathname === '/dashboard' ? ' topnav-nav-link--active' : ''}`}
+              onClick={() => navigate('/dashboard')}
+            >
+              Customer
+            </button>
+            <button
+              type="button"
+              className={`topnav-nav-link${isAdminView ? ' topnav-nav-link--active' : ''}`}
+              onClick={() => navigate('/admin')}
+            >
+              Admin
+            </button>
+            <button
+              type="button"
+              className={`topnav-nav-link${location.pathname.startsWith('/setup') ? ' topnav-nav-link--active' : ''}`}
+              onClick={() => navigate('/setup')}
+            >
+              Setup
+            </button>
           </nav>
         )}
 
-        {/* Right: token pill + search + user menu */}
+        <span className="topnav-spacer" aria-hidden="true" />
+
+        {/* Right: dashboard controls + token pill + search + user menu */}
         <div className="topnav-right">
+
+          {/* Dashboard controls — only when viewing /dashboard.
+              ThemePicker is globally useful, but the others are dashboard-specific
+              (ThresholdControls = HITL/MFA modal; Reset Demo clears agent/token state).
+              Reset Demo fires a window event consumed by UserDashboard so the
+              confirmation modal can stay co-located with `onLogout`. */}
+          {location.pathname === '/dashboard' && (
+            <div className="topnav-dashboard-controls" role="toolbar" aria-label="Dashboard actions">
+              <ThemePicker variant="toolbar" />
+              <AgentUiModeToggle variant="config" />
+              <ThresholdControls />
+              <button
+                type="button"
+                className="topnav-reset-demo-btn"
+                title="Reset demo: clear agent history and token chain"
+                onClick={() => window.dispatchEvent(new CustomEvent('dashboard:open-reset-modal'))}
+              >
+                Reset Demo
+              </button>
+            </div>
+          )}
 
           {/* Token pill — only when user is logged in */}
           {user && (

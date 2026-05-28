@@ -562,12 +562,12 @@ export default function CIBAPanel() {
                 The UI loads the signed-in user from <code>GET /api/auth/oauth/status</code> (admin PingOne app), <code>GET /api/auth/oauth/user/status</code> (end-user app), and <code>GET /api/auth/session</code> (basic auth). The post-login redirect depends on the user's <strong>stored role</strong> — a user whose record has <code>role: admin</code> is routed to <code>/admin</code> regardless of which OAuth app was used for sign-in.
               </p>
 
-              <h3 className="ciba-section-title">Banking Agent (robot button) vs signing in</h3>
+              <h3 className="ciba-section-title">AI Agent (robot button) vs signing in</h3>
               <p className="ciba-section-desc">
-                The <strong>Banking Agent</strong> panel is <em>not</em> a third identity. It does not log you in by itself. When you <strong>are</strong> signed in, the Agent calls <code>POST /api/mcp/tool</code>; the API server attaches your <strong>current session&apos;s OAuth access token</strong> and forwards MCP tool calls (accounts, transactions, etc.) <strong>as you</strong>. So the Agent is the same user as the browser session — just a different UI (MCP tools) on top of the same Backend-for-Frontend (BFF) session cookie.
+                The <strong>AI Agent</strong> panel is <em>not</em> a third identity. It does not log you in by itself. When you <strong>are</strong> signed in, the Agent calls <code>POST /api/mcp/tool</code>; the API server attaches your <strong>current session&apos;s OAuth access token</strong> and forwards MCP tool calls <strong>as you</strong>. So the Agent is the same user as the browser session — just a different UI (MCP tools) on top of the same Backend-for-Frontend (BFF) session cookie.
               </p>
               <p className="ciba-section-desc">
-                When you are <strong>not</strong> signed in, the Agent only offers Configure and the two login buttons — it cannot run banking tools until a session exists.
+                When you are <strong>not</strong> signed in, the Agent only offers Configure and the two login buttons — it cannot run tools until a session exists.
               </p>
               <div className="ciba-notice ciba-notice--info">
                 <strong>How we know who you are:</strong> the server reads <code>req.session.user</code> for the human. For MCP tool calls, the Backend-for-Frontend (BFF) can optionally issue a <strong>delegated token</strong> where the <strong>agent OAuth client</strong> is the actor and you remain the subject (RFC 8693 with <code>actor_token</code> + <code>subject_token</code>) — configure <code>USE_AGENT_ACTOR_FOR_MCP</code>, <code>AGENT_OAUTH_CLIENT_*</code>, and optional PingOne directory provisioning via <code>/api/agent/identity/bootstrap</code>. That is “on behalf of,” not impersonation.
@@ -590,7 +590,7 @@ export default function CIBAPanel() {
             <div className="ciba-tab-content">
               <h3 className="ciba-section-title">MCP / AI Agent authentication</h3>
               <p className="ciba-section-desc">
-                When the AI Banking Agent needs user tokens to call the Banking API,
+                When the AI agent needs user tokens to call the backend API,
                 CIBA replaces the awkward "open this URL in your browser" redirect.
                 The <strong>Full stack</strong> tab shows how MCP tools, token exchange, and REST APIs connect; here we focus on why CIBA helps chat and agent flows.
               </p>

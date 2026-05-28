@@ -286,7 +286,7 @@ const Dashboard = ({ user, onLogout }) => {
             const still = await resolveSessionUser();
             if (still?.role === "admin") {
               notifyWarning(
-                "Could not load admin data yet. Try refreshing the page, or use Refresh access token in the Banking Agent.",
+                "Could not load admin data yet. Try refreshing the page, or use Refresh access token in the AI agent.",
                 { autoClose: 14000 },
               );
             } else {

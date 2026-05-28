@@ -72,7 +72,7 @@ export default function Onboarding() {
           <ul style={{ ...olStyle, listStyle: 'disc' }}>
             <li><strong>Admin sign-in</strong> — Opens the <em>admin</em> OAuth client. After success you are sent to the <strong>Admin Dashboard</strong> (<code>/admin</code>): activity logs, all users and accounts, security settings, app configuration, MCP Inspector. New demo users from this flow are stored with an <strong>admin</strong> role unless they already existed.</li>
             <li><strong>Customer sign-in</strong> — Opens the <em>end-user</em> OAuth client. After success you go to the <strong>personal dashboard</strong> (<code>/dashboard</code>) with your own accounts and transactions. New users get a <strong>customer</strong> role and sample data.</li>
-            <li><strong>Banking Agent</strong> (robot button) — This is <em>not</em> a third login. When you are signed in, agent actions call the API using <strong>your current session</strong> (same person as the main app). When signed out, the agent only helps you start Admin or Customer sign-in (or open reference docs). Open the <strong>CIBA guide → Sign-in &amp; roles</strong> tab for the full picture.</li>
+            <li><strong>AI Agent</strong> (robot button) — This is <em>not</em> a third login. When you are signed in, agent actions call the API using <strong>your current session</strong> (same person as the main app). When signed out, the agent only helps you start Admin or Customer sign-in (or open reference docs). Open the <strong>CIBA guide → Sign-in &amp; roles</strong> tab for the full picture.</li>
           </ul>
         </div>
 

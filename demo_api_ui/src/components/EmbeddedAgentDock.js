@@ -2,6 +2,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAgentUiMode } from '../context/AgentUiModeContext';
+import { useTheme } from '../context/ThemeContext';
 import { isEmbeddedAgentDockRoute } from '../utils/embeddedAgentFabVisibility';
 import { resolveEmbeddedFocus } from './demoAgentSafety';
 
@@ -42,8 +43,18 @@ const FRAMEWORK_LABELS = {
 export default function EmbeddedAgentDock({ user, agentPlacement }) {
   const { pathname } = useLocation();
   const { setSurfaceHostEl } = useAgentUiMode();
+  const { terminology, identity } = useTheme();
   const [hostEl, setHostEl] = useState(null);
   const [frameworkLabel, setFrameworkLabel] = useState(null);
+
+  // Vertical-aware title — Care Connect → "Care Assistant", banking → "banking
+  // assistant", retail → fall back to identity.displayName. Config-page title
+  // is unchanged below.
+  const verticalAgentTitle = terminology?.agent
+    ? `AI ${terminology.agent}`
+    : identity?.displayName
+      ? `AI ${identity.displayName} assistant`
+      : 'AI assistant';
   const hostRefCb = useCallback((el) => setHostEl(el), []);
   useEffect(() => {
     setSurfaceHostEl(hostEl);
@@ -134,7 +145,7 @@ export default function EmbeddedAgentDock({ user, agentPlacement }) {
     <div
       className={`global-embedded-agent-dock-wrap${collapsed ? ' global-embedded-agent-dock-wrap--collapsed' : ''}`}
       role="region"
-      aria-label={isConfigPage ? 'Application setup assistant' : 'AI banking assistant'}
+      aria-label={isConfigPage ? 'Application setup assistant' : verticalAgentTitle}
       data-agent-ui="embedded"
     >
       {/* Resize handle sits at the very top — acts as the visual seam between content and dock */}
@@ -164,7 +175,7 @@ export default function EmbeddedAgentDock({ user, agentPlacement }) {
       >
         <div className="embedded-agent-dock__head">
           <h2 className="embedded-agent-dock__title">
-            {isConfigPage ? 'Application setup assistant' : 'AI banking assistant'}
+            {isConfigPage ? 'Application setup assistant' : verticalAgentTitle}
             {!isConfigPage && frameworkLabel && (
               <span className="embedded-agent-dock__framework-badge">{frameworkLabel}</span>
             )}

@@ -27,8 +27,6 @@ import {
   splitGridClass,
 } from "../utils/dashboardLayout";
 import { toastCustomerError } from "../utils/dashboardToast";
-import AgentUiModeToggle from "./AgentUiModeToggle";
-import ThresholdControls from "./ThresholdControls";
 import ExchangeModeToggle from "./ExchangeModeToggle";
 import Fido2Challenge from "./Fido2Challenge";
 import TokenChainDisplay from "./TokenChainDisplay";
@@ -41,7 +39,6 @@ import "./UserDashboard.css";
 import OAuthTokenDisplayPage from "./OAuthTokenDisplayPage";
 import { useTheme } from "../context/ThemeContext";
 import RetailDashboard from "./RetailDashboard";
-import ThemePicker from "./ThemePicker";
 
 /** Format a number as USD currency — $1,234.56 */
 const fmt = (n) =>
@@ -190,6 +187,14 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   const [accounts, setAccounts] = useState([]);
   const [showTokenModal, setShowTokenModal] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
+
+  // Reset Demo button lives in TopNav (see TopNav.js). It dispatches this
+  // event so the confirmation modal can stay co-located with `onLogout`.
+  useEffect(() => {
+    const open = () => setShowResetModal(true);
+    window.addEventListener('dashboard:open-reset-modal', open);
+    return () => window.removeEventListener('dashboard:open-reset-modal', open);
+  }, []);
   const [tokenExpiresAt, setTokenExpiresAt] = useState(null);
   const [tokenSecondsLeft, setTokenSecondsLeft] = useState(null);
   const { publishTokenState } = useSessionToken();
@@ -2525,26 +2530,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       <a href="#main-dashboard-content" className="dash-skip-link">
         Skip to main content
       </a>
-      {/* ── Toolbar row with additional actions ────────────────────── */}
-      <div className="dashboard-header-stack" style={{ marginTop: 0 }}>
-        <div
-          className="dashboard-toolbar"
-          role="toolbar"
-          aria-label="Dashboard actions"
-        >
-          <ThemePicker variant="toolbar" />
-          <AgentUiModeToggle variant="config" />
-          <ThresholdControls />
-          <button
-            type="button"
-            className="dashboard-toolbar-btn"
-            title="Reset demo: clear agent history and token chain"
-            onClick={() => setShowResetModal(true)}
-          >
-            Reset Demo
-          </button>
-        </div>
-      </div>
 
       {/* ── Token | (split: agent + banking columns) | classic: banking + float reserve ── */}
       {agentPlacement === "middle" ? (
