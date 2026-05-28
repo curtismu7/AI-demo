@@ -74,15 +74,21 @@ creates the same `wrong major in this shell` confusion later.
 
 ### Node services and what each needs to start
 
-There are **eight** Node services (`demo_mortgage_service` became a live
-backend in Phase 267, wired behind the MCP Gateway's api_key disposition). The
-naive "run `npm install` in three of them" approach (which the README used to
+There are **9 Node services** and **3 Python agent services**. The naive
+"run `npm install` in three of them" approach (which the README used to
 recommend) leaves the rest with missing `node_modules` or missing `dist/`,
 producing cryptic `MODULE_NOT_FOUND` and
 `Cannot find module '.../dist/index.js'` errors at startup. `run.sh` now
-auto-installs and auto-builds all eight via the `SVC_LIST` / `SVC_BUILD` /
-`SVC_INSTALL_FLAGS` parallel arrays in its dependency-check loop — keep that
-table in sync when adding a service.
+auto-installs and auto-builds every Node service via the `SVC_LIST` /
+`SVC_BUILD` / `SVC_INSTALL_FLAGS` parallel arrays in its dependency-check
+loop, and creates/repairs each Python `.venv` via the `PY_AGENTS` loop —
+keep both in sync when adding a service.
+
+The three agent runtimes (LangChain, OpenAI Agents SDK, Mastra, Pydantic AI)
+are alternative LLM frameworks selected at runtime via the `llm_framework`
+configStore flag and routed by the BFF's `resolveAgentTarget()`. They share
+the same `AGENT_CLIENT_ID` / `PINGONE_AI_AGENT_*` PingOne identities, so
+adding a new agent runtime does NOT require any bootstrap change.
 
 | Service | Port | Type | Install needs | Build needs (`tsc`) |
 |---|---|---|---|---|
@@ -94,7 +100,10 @@ table in sync when adding a service.
 | `demo_agent_service`| 3006 | TypeScript  | `npm install` | `npm run build` → `dist/index.js` |
 | `demo_mcp_invest`   | 8081 | TypeScript  | `npm install` | `npm run build` → `dist/index.js` |
 | `demo_mortgage_service` | 8082 | Plain JS | `npm install` | — |
-| `langchain_agent`      | 8888 (uvicorn) + 8889 (chat WS) + 8890 (health/inspector) | Python | `pip install -r requirements.txt` (separate concern) | — |
+| `mastra_agent`      | 8892 | TypeScript  | `npm install` | `npm run build` → `dist/index.js` |
+| `langchain_agent`   | 8888 (uvicorn) + 8889 (chat WS) + 8890 (health/inspector) | Python | `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt` | — |
+| `openai_agent`      | 8891 | Python | `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt` | — |
+| `pydantic_agent`    | 8893 | Python | `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt` | — |
 
 Two recurring failure modes to watch for when adding or modifying service launches in `run.sh`:
 
@@ -138,14 +147,17 @@ npm run test:e2e:admin
 | `demo_api_ui/` | React SPA (CRA); BFF calls via proxy to API |
 | `demo_api_server/` | Express BFF — PingOne OAuth, sessions, banking APIs |
 | `demo_mcp_server/` | MCP tool server (WebSocket); not deployed on Vercel |
-| `langchain_agent/` | Optional LangChain agent |
+| `langchain_agent/` | LangChain agent runtime (Python) |
+| `openai_agent/` | OpenAI Agents SDK runtime (Python) |
+| `mastra_agent/` | Mastra agent runtime (TypeScript) |
+| `pydantic_agent/` | Pydantic AI agent runtime (Python) |
 | `REGRESSION_PLAN.md` | **Authoritative** do-not-break list + bug fix log |
 | `.cursor/rules/regression-guard.mdc` | Cursor rule mirroring regression checks |
 | `.claude/skills/` | Domain skills (OAuth, MCP, Vercel, PingOne API, TypeScript) |
 
 **Ports** (authoritative — see `REGRESSION_PLAN.md` §3 and `run.sh`):
 - **External (`api.ping.demo` HTTPS):** BFF `:3001`, UI `:4000`
-- **Loopback only:** MCP `:8080`, MCP Invest `:8081`, Mortgage `:8082`, LangChain `:8888` (+ `:8889` chat WS + `:8890` health/inspector), MCP Gateway `:3005`, Agent `:3006`, HITL `:3009`
+- **Loopback only:** MCP `:8080`, MCP Invest `:8081`, Mortgage `:8082`, LangChain `:8888` (+ `:8889` chat WS + `:8890` health/inspector), OpenAI Agents SDK `:8891`, Mastra `:8892`, Pydantic AI `:8893`, MCP Gateway `:3005`, Agent `:3006`, HITL `:3009`
 - `demo_api_ui/.env` `REACT_APP_API_PORT=3001` must match the BFF port.
 
 ---
