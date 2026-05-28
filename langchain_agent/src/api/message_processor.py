@@ -744,6 +744,7 @@ class MessageProcessor:
         message: str,
         auth_token: str,
         emitter,  # AGUIEventEmitter
+        vertical_flavor: str = None,
     ) -> None:
         """Process one agent turn and emit AG-UI events via the provided emitter.
 
@@ -793,7 +794,7 @@ class MessageProcessor:
         if has_prior_history:
             msgs_for_graph = [HumanMessage(content=message)]
         else:
-            system_msg_text = await self.agent._build_system_message(session_id)
+            system_msg_text = await self.agent._build_system_message(session_id, vertical_flavor=vertical_flavor)
             msgs_for_graph = [
                 SystemMessage(content=system_msg_text),
                 HumanMessage(content=message),

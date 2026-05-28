@@ -1,4 +1,5 @@
 const http = require('http');
+const { getActiveManifest } = require('./verticalConfigService');
 
 /**
  * Build an AG-UI CUSTOM event object.
@@ -93,12 +94,19 @@ function proxyAgentSse(options) {
     });
   }
 
+  // Pass vertical persona to the LangChain agent so it adopts the correct
+  // domain voice. Resolved BFF-side from the active vertical manifest;
+  // never touches the browser.
+  const manifest = getActiveManifest();
+  const verticalFlavor = manifest?.agent?.systemPromptFlavor || null;
+
   // Build request body
   const requestBody = JSON.stringify({
     message,
     session_id: sessionId,
     auth_token: authToken,
     run_id: runId,
+    vertical_flavor: verticalFlavor,
   });
 
   const requestOptions = {

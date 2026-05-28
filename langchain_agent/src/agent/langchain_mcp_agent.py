@@ -115,13 +115,20 @@ class LangChainMCPAgent(TracingMixin):
             logger.error(f"Failed to initialize agent tools: {e}")
             raise
     
-    async def _build_system_message(self, session_id: str) -> str:
+    async def _build_system_message(self, session_id: str, vertical_flavor: str = None) -> str:
         """Build the system prompt string for the given session.
 
         Extracts tool descriptions and user-identification context, then returns
         a plain string (not a ChatPromptTemplate).  The caller injects this as a
         SystemMessage into the LangGraph ainvoke messages list on the first turn
         for the session — subsequent turns rely on MemorySaver's stored state.
+
+        Args:
+            session_id: The chat session ID.
+            vertical_flavor: Optional vertical persona string injected by the BFF
+                from manifest.agent.systemPromptFlavor. When present it replaces
+                the default "helpful AI banking assistant" base persona so the
+                agent speaks the active vertical's domain language.
         """
         # Build tool descriptions
         if self._tools:
@@ -162,7 +169,9 @@ CURRENT USER STATUS: ❌ USER NOT IDENTIFIED
 - If the user doesn't exist, offer to help them register a new account
 - Only proceed with banking operations after the user is identified and has an account"""
 
-        return f"""You are a helpful AI banking assistant that can perform actions through various MCP (Model Context Protocol) servers.
+        base_persona = vertical_flavor if vertical_flavor else "You are a helpful AI assistant that can perform actions through various MCP (Model Context Protocol) servers."
+
+        return f"""{base_persona}
 
 {user_context}
 

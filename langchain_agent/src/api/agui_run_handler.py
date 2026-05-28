@@ -37,11 +37,14 @@ async def agent_run(request: Request) -> StreamingResponse:
     session_id: str = body.get("session_id", f"sess_{uuid.uuid4().hex[:8]}")
     auth_token: str = body.get("auth_token", "")
     run_id: str = f"run_{uuid.uuid4().hex[:12]}"
+    # Vertical persona injected by the BFF from the active vertical manifest.
+    # Used to override the base persona in _build_system_message on the first turn.
+    vertical_flavor: Optional[str] = body.get("vertical_flavor") or None
 
     logger.info("[AG-UI] /run session=%s run=%s", session_id, run_id)
 
     return StreamingResponse(
-        _run_stream(run_id, session_id, message, auth_token),
+        _run_stream(run_id, session_id, message, auth_token, vertical_flavor),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
@@ -51,7 +54,8 @@ async def agent_run(request: Request) -> StreamingResponse:
 
 
 async def _run_stream(
-    run_id: str, session_id: str, message: str, auth_token: str
+    run_id: str, session_id: str, message: str, auth_token: str,
+    vertical_flavor: Optional[str] = None,
 ) -> AsyncGenerator[str, None]:
     """Drive the agent and yield SSE frames from an asyncio.Queue."""
     queue: asyncio.Queue = asyncio.Queue()
@@ -71,7 +75,7 @@ async def _run_stream(
 
     ka_task = asyncio.create_task(keepalive())
     agent_task = asyncio.create_task(
-        _invoke_agent(emitter, session_id, message, auth_token, finish)
+        _invoke_agent(emitter, session_id, message, auth_token, finish, vertical_flavor)
     )
 
     try:
@@ -94,6 +98,7 @@ async def _invoke_agent(
     message: str,
     auth_token: str,
     finish_fn,
+    vertical_flavor: Optional[str] = None,
 ) -> None:
     """Invoke the message processor and drive emitter lifecycle."""
     if _message_processor is None:
@@ -120,6 +125,7 @@ async def _invoke_agent(
             message=message,
             auth_token=auth_token,
             emitter=emitter,
+            vertical_flavor=vertical_flavor,
         )
         await emitter.on_run_end()
     except Exception as exc:
