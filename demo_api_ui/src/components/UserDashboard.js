@@ -29,18 +29,19 @@ import {
 import { toastCustomerError } from "../utils/dashboardToast";
 import AgentUiModeToggle from "./AgentUiModeToggle";
 import ThresholdControls from "./ThresholdControls";
-import BankingAgent from "./BankingAgent";
-import EmbeddedAgentDock from "./EmbeddedAgentDock";
 import ExchangeModeToggle from "./ExchangeModeToggle";
-import { EDU } from "./education/educationIds";
 import Fido2Challenge from "./Fido2Challenge";
 import TokenChainDisplay from "./TokenChainDisplay";
+import { useSessionToken } from '../context/SessionTokenContext';
 import ConfirmModal from "./ConfirmModal";
 import TransactionConsentModal from "./TransactionConsentModal";
+import EmbeddedAgentDock from "./EmbeddedAgentDock";
 import FloatingPanel from "./FloatingPanel";
 import "./UserDashboard.css";
-import DashboardHeader from "./DashboardHeader";
-import { resolveEmbeddedFocus } from "./bankingAgentSafety";
+import OAuthTokenDisplayPage from "./OAuthTokenDisplayPage";
+import { useTheme } from "../context/ThemeContext";
+import RetailDashboard from "./RetailDashboard";
+import ThemePicker from "./ThemePicker";
 
 /** Format a number as USD currency — $1,234.56 */
 const fmt = (n) =>
@@ -124,8 +125,8 @@ const DEMO_TRANSACTIONS = [
 ];
 
 const MIDDLE_HEIGHT_KEY = "middle_agent_height_px";
-const MIDDLE_DEFAULT_HEIGHT = 580;
-const MIDDLE_MIN_HEIGHT = 280;
+const MIDDLE_DEFAULT_HEIGHT = 720;
+const MIDDLE_MIN_HEIGHT = 420;
 
 function readStoredMiddleHeight() {
   try {
@@ -143,7 +144,9 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { open } = useEducationUI();
-  const { placement: agentPlacement } = useAgentUiMode();
+  const { placement: agentPlacement, setSurfaceHostEl } = useAgentUiMode();
+  const { dashboard: themeDashboard } = useTheme();
+  const isRetailDashboard = themeDashboard && themeDashboard.kind === "retail";
   useCurrentUserTokenEvent(); // Seed the token chain with current user's session token on mount
   /** Middle layout: auto-opens when placement is 'middle'; collapses via FAB click. */
   const [middleAgentOpen, setMiddleAgentOpen] = useState(
@@ -152,7 +155,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
 
   // ff_show_banking_in_middle_agent — when false (default) the banking column
   // is hidden in the middle-agent layout (banking info comes from the agent /
-  // pop-out). Floating + bottom modes are unaffected. Mirrors the cookie-
+  // pop-out). Floating mode is unaffected. Mirrors the cookie-
   // credentialed read BankingAgent.js uses for ff_heuristic_enabled.
   const [showBankingInMiddle, setShowBankingInMiddle] = useState(false);
 
@@ -187,9 +190,13 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   const [accounts, setAccounts] = useState([]);
   const [showTokenModal, setShowTokenModal] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
-  const [tokenData, setTokenData] = useState(null);
   const [tokenExpiresAt, setTokenExpiresAt] = useState(null);
   const [tokenSecondsLeft, setTokenSecondsLeft] = useState(null);
+  const { publishTokenState } = useSessionToken();
+
+  useEffect(() => {
+    publishTokenState(tokenSecondsLeft, () => setShowTokenModal(true));
+  }, [tokenSecondsLeft, publishTokenState]); // setShowTokenModal is stable
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedAccount, setSelectedAccount] = useState(null);
@@ -295,7 +302,11 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
               setTokenExpiresAt(userRes.data.expiresAt);
           } else {
             const adminRes = await getCachedJson("/api/auth/oauth/status");
-            if (adminRes.data.authenticated) sessionUser = adminRes.data.user;
+            if (adminRes.data.authenticated) {
+              sessionUser = adminRes.data.user;
+              if (adminRes.data.expiresAt)
+                setTokenExpiresAt(adminRes.data.expiresAt);
+            }
           }
         } catch (sessionErr) {
           console.warn("Session check failed:", sessionErr.message);
@@ -428,15 +439,12 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchUserData identity is stable; adding it would re-register on every render
   }, []);
 
-  /** Keep localStorage layout aligned with Agent UI (Middle → split, Bottom → classic). */
+  /** Keep localStorage layout aligned with Agent UI (Middle → split3). */
   useEffect(() => {
     if (agentPlacement === "middle") {
       setMiddleAgentOpen(true);
       setDashboardLayoutState("split3");
       setDashboardLayout("split3");
-    } else if (agentPlacement === "bottom") {
-      setDashboardLayoutState("classic");
-      setDashboardLayout("classic");
     }
 
     // Refresh account data on layout change to prevent account loss (todo #11).
@@ -533,27 +541,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       console.error("Error decoding token:", error);
       return null;
     }
-  };
-
-  // Function to fetch current OAuth tokens
-  const fetchTokenData = async () => {
-    try {
-      const { data } = await axios.get("/api/auth/oauth/token-claims");
-      if (data.authenticated && data.decoded) {
-        setTokenData(data);
-      } else {
-        setTokenData(null);
-      }
-    } catch (error) {
-      console.error("❌ Error fetching token data:", error);
-      setTokenData(null);
-    }
-  };
-
-  // Function to open token modal
-  const openTokenModal = () => {
-    fetchTokenData();
-    setShowTokenModal(true);
   };
 
   useEffect(() => {
@@ -1328,6 +1315,20 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   const accountsAnchorRef = useRef(null);
   const agentColumnRef = useRef(null);
 
+  // Middle column = portal host for the single App-level banking agent.
+  // Mirrors EmbeddedAgentDock's bottom-dock pattern (4b): a stable ref
+  // callback publishes the host element into AgentUiModeContext; the App
+  // single instance portals its floatShell into it. Guarded cleanup avoids a
+  // middle/bottom host race (only clears if still pointing at our element).
+  const [middleHostEl, setMiddleHostEl] = useState(null);
+  const middleHostRefCb = useCallback((el) => setMiddleHostEl(el), []);
+  useEffect(() => {
+    setSurfaceHostEl(middleHostEl);
+    return () => {
+      setSurfaceHostEl((cur) => (cur === middleHostEl ? null : cur));
+    };
+  }, [middleHostEl, setSurfaceHostEl]);
+
   const handleScrollToAccounts = useCallback(() => {
     accountsAnchorRef.current?.scrollIntoView({
       behavior: "smooth",
@@ -1492,7 +1493,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       } else if (error.response?.status === 403) {
         const scopeError = d?.error === "insufficient_scope";
         if (scopeError) {
-          const requiredScope = d?.required_scope || "banking:write";
+          const requiredScope = d?.required_scope || "write";
           const userScopes = d?.user_scopes || [];
           const userScopesStr =
             userScopes.length > 0 ? userScopes.join(", ") : "(none)";
@@ -1589,7 +1590,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       } else if (error.response?.status === 403) {
         const scopeError = d?.error === "insufficient_scope";
         if (scopeError) {
-          const requiredScope = d?.required_scope || "banking:write";
+          const requiredScope = d?.required_scope || "write";
           const userScopes = d?.user_scopes || [];
           const userScopesStr =
             userScopes.length > 0 ? userScopes.join(", ") : "(none)";
@@ -1691,7 +1692,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       } else if (error.response?.status === 403) {
         const scopeError = d?.error === "insufficient_scope";
         if (scopeError) {
-          const requiredScope = d?.required_scope || "banking:write";
+          const requiredScope = d?.required_scope || "write";
           const userScopes = d?.user_scopes || [];
           const userScopesStr =
             userScopes.length > 0 ? userScopes.join(", ") : "(none)";
@@ -2383,7 +2384,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         {(() => {
           const sorted = [...transactions]
             .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-            .slice(0, agentPlacement === "bottom" ? 8 : 20);
+            .slice(0, 20);
 
           if (sorted.length === 0) {
             return (
@@ -2516,11 +2517,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   return (
     <div
       className={`user-dashboard user-dashboard--2026${
-        agentPlacement === "bottom" && dashboardLayout === "classic"
-          ? " user-dashboard--embed-agent"
-          : ""
-      }${
-        agentPlacement === "middle" && middleAgentOpen
+        agentPlacement === "middle"
           ? " user-dashboard--split3"
           : ""
       }${agentPlacement === "none" ? " user-dashboard--float-fab-left" : ""}`}
@@ -2528,7 +2525,6 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       <a href="#main-dashboard-content" className="dash-skip-link">
         Skip to main content
       </a>
-      <DashboardHeader variant="customer" />
       {/* ── Toolbar row with additional actions ────────────────────── */}
       <div className="dashboard-header-stack" style={{ marginTop: 0 }}>
         <div
@@ -2536,16 +2532,9 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
           role="toolbar"
           aria-label="Dashboard actions"
         >
+          <ThemePicker variant="toolbar" />
           <AgentUiModeToggle variant="config" />
           <ThresholdControls />
-          <button
-            type="button"
-            onClick={openTokenModal}
-            className="dashboard-toolbar-btn"
-            title="View OAuth Token Info"
-          >
-            Token Info
-          </button>
           <button
             type="button"
             className="dashboard-toolbar-btn"
@@ -2626,9 +2615,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
                 color: "#fff",
                 border: "none",
               }}
-              onClick={() => {
-                window.location.href = "/api/auth/oauth/login";
-              }}
+              onClick={navigateToCustomerOAuthLogin}
             >
               Sign In
             </button>
@@ -2637,11 +2624,11 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       </div>
 
       {/* ── Token | (split: agent + banking columns) | classic: banking + float reserve ── */}
-      {agentPlacement === "middle" && middleAgentOpen ? (
+      {agentPlacement === "middle" ? (
         <div
           className={`dashboard-content ud-body ud-body--2026 ${splitGridClass(
             showBankingInMiddle,
-          )}`}
+          )}${middleAgentOpen ? "" : " ud-middle-collapsed"}`}
         >
           <aside className="ud-token-rail" aria-label="Token chain">
             <div className="section ud-token-rail__inner">
@@ -2654,21 +2641,15 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
             className="ud-agent-column"
             ref={agentColumnRef}
             aria-label="AI banking assistant"
-            style={{ height: middleHeight, maxHeight: middleHeight }}
             {...(!showBankingInMiddle && {
               id: "main-dashboard-content",
               tabIndex: -1,
             })}
           >
             <div className="embedded-banking-agent ud-dashboard-inline-agent">
-              <BankingAgent
-                user={user}
-                onLogout={onLogout}
-                mode="inline"
-                embeddedFocus={resolveEmbeddedFocus(location.pathname)}
-                splitColumnChrome
-                distinctFloatingChrome
-                showPopOut
+              <div
+                className="ud-dashboard-inline-agent-host"
+                ref={middleHostRefCb}
               />
             </div>
             <button
@@ -2695,19 +2676,38 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
               id="main-dashboard-content"
               tabIndex={-1}
             >
-              {renderBankingMain()}
+              {isRetailDashboard ? (
+                <RetailDashboard data={themeDashboard && themeDashboard.mockData} />
+              ) : (
+                renderBankingMain()
+              )}
             </main>
+          )}
+
+          {/* Collapsed middle: agent column is CSS-hidden (host stays mounted so
+              the portaled BankingAgent keeps its chat state); surface the same
+              float-reserve affordance the else-branch shows so the collapsed
+              visual matches today. */}
+          {!middleAgentOpen && (
+            <aside className="ud-float-reserve" aria-hidden="true">
+              <div className="ud-float-reserve__card">
+                <span className="ud-float-reserve__label">
+                  Floating assistant
+                </span>
+                <p className="ud-float-reserve__hint">
+                  The corner FAB and panel stay in this zone so your balances
+                  and token flow stay readable.
+                </p>
+              </div>
+            </aside>
           )}
         </div>
       ) : (
-        // Bottom-dock or float mode: 3-column grid + optional full-width agent row below
-        // Float mode ('none'): 2-column layout — token rail + content; FAB is a fixed overlay from App.js
-        <div
-          className={`ud-body-outer${agentPlacement === "bottom" ? " ud-body-outer--with-bottom-agent" : ""}`}
-        >
-          <div
-            className={`dashboard-content ud-body ud-body--2026 ud-body--floating${agentPlacement === "none" ? " ud-body--float-mode" : " ud-body--design-3col"}`}
-          >
+        // Float mode ('none'): 2-column layout — token rail + content; FAB is a
+        // fixed overlay from App.js. (Bottom dock removed in Phase 4d; only
+        // 'none' reaches this else-branch now.)
+        <div className="ud-body-outer">
+          <div className="dashboard-content ud-body ud-body--2026 ud-body--floating ud-body--float-mode">
             <aside className="ud-token-rail" aria-label="Token chain">
               <div className="section ud-token-rail__inner">
                 <ExchangeModeToggle />
@@ -2720,23 +2720,14 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
               id="main-dashboard-content"
               tabIndex={-1}
             >
-              {renderBankingMain()}
+              {isRetailDashboard ? (
+                <RetailDashboard data={themeDashboard && themeDashboard.mockData} />
+              ) : (
+                renderBankingMain()
+              )}
             </main>
 
-            {/* Float-reserve column: hidden in bottom mode (agent spans full width) and float mode (FAB is fixed overlay) */}
-            {agentPlacement !== "bottom" && agentPlacement !== "none" && (
-              <aside className="ud-float-reserve" aria-hidden="true">
-                <div className="ud-float-reserve__card">
-                  <span className="ud-float-reserve__label">
-                    Floating assistant
-                  </span>
-                  <p className="ud-float-reserve__hint">
-                    The corner FAB and panel stay in this zone so your balances
-                    and token flow stay readable.
-                  </p>
-                </div>
-              </aside>
-            )}
+            {/* Float mode: no reserve column — the FAB is a fixed overlay from App.js. */}
           </div>
 
           {/* Agent dock spans full content width — no App-level gap */}
@@ -2861,7 +2852,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
       <ConfirmModal
         isOpen={showResetModal}
         title="Reset Demo"
-        message="Clear all agent history, token chain events, and MCP audit logs? You will stay logged in."
+        message="Clear all agent history, token chain events, and MCP audit logs? You will be logged out and the theme will reset to default."
         confirmLabel="Reset"
         danger
         onConfirm={async () => {
@@ -2872,16 +2863,13 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
               credentials: "include",
             });
           } catch (_) {}
-          try {
-            localStorage.removeItem("tokenChainHistory");
-          } catch (_) {}
-          try {
-            localStorage.removeItem("api-traffic-store");
-          } catch (_) {}
-          try {
-            sessionStorage.removeItem("_agent_auto_loaded");
-          } catch (_) {}
-          navigate("/dashboard", { replace: true, state: { resetDemo: true } });
+          // Clear theme storage (onLogout does not know about these keys)
+          try { localStorage.removeItem("api-traffic-store"); } catch (_) {}
+          try { localStorage.removeItem("banking_ui_theme"); } catch (_) {}
+          try { sessionStorage.removeItem("banking_ui_theme"); } catch (_) {}
+          // Use the App-level logout so userLoggedOut flag is set and the
+          // session-check effect fast-paths past the auth endpoints on reload.
+          onLogout();
         }}
         onCancel={() => setShowResetModal(false)}
       />
@@ -3312,312 +3300,20 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         </div>
       )}
 
-      {/* OAuth Token Info Modal */}
+      {/* User Session Token Modal */}
       {showTokenModal && (
         <FloatingPanel
-          title="Your Token Chain"
+          title="User Session Token"
           onClose={() => setShowTokenModal(false)}
-          defaultWidth={780}
-          defaultHeight={Math.min(window.innerHeight - 80, 900)}
-          defaultX={Math.max(0, Math.round((window.innerWidth - 780) / 2))}
+          defaultWidth={820}
+          defaultHeight={Math.min(window.innerHeight - 80, 940)}
+          defaultX={Math.max(0, Math.round((window.innerWidth - 820) / 2))}
           defaultY={60}
-          minWidth={340}
+          minWidth={360}
           minHeight={200}
         >
-          <div
-            style={{ overflowY: "auto", height: "100%", padding: "20px 30px" }}
-          >
-            {tokenData ? (
-              (() => {
-                const { decoded, user, tokenType, expiresAt, hasRefreshToken } =
-                  tokenData;
-                const payload = decoded?.payload || {};
-                const header = decoded?.header || {};
-                const mayAct = payload.may_act;
-                return (
-                  <div className="token-info">
-                    {/* Session summary */}
-                    <div className="token-section">
-                      <h4>Session</h4>
-                      <div className="session-info-grid">
-                        <div className="session-row">
-                          <span className="session-label">User:</span>
-                          <span className="session-value">
-                            {user?.firstName} {user?.lastName} ({user?.email})
-                          </span>
-                        </div>
-                        <div className="session-row">
-                          <div style={{ display: "flex", gap: "2rem" }}>
-                            <div>
-                              <span className="session-label">Role:</span>
-                              <span className="session-value">
-                                {user?.role}
-                              </span>
-                            </div>
-                            <div>
-                              <span className="session-label">Type:</span>
-                              <span className="session-value">
-                                {tokenType || "Bearer"}
-                              </span>
-                            </div>
-                          </div>
-                          {hasRefreshToken && (
-                            <div style={{ width: "100%", marginTop: "0.5rem" }}>
-                              <span
-                                className="session-value"
-                                style={{
-                                  color: "#22c55e",
-                                  display: "inline-block",
-                                }}
-                              >
-                                ✓ refresh token
-                              </span>
-                              <div
-                                style={{
-                                  fontSize: "0.85em",
-                                  color: "#94a3b8",
-                                  marginTop: "4px",
-                                }}
-                              >
-                                Refresh token available — can extend session
-                                without re-login (renews for another 24 hours)
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                        <div className="session-row">
-                          <span className="session-label">Expires:</span>
-                          <span className="session-value">
-                            {expiresAt
-                              ? (() => {
-                                  const now = Date.now();
-                                  const exp = new Date(expiresAt).getTime();
-                                  const msUntilExpiry = exp - now;
-                                  const hoursUntilExpiry = Math.floor(
-                                    msUntilExpiry / (1000 * 60 * 60),
-                                  );
-                                  const minutesUntilExpiry = Math.floor(
-                                    (msUntilExpiry % (1000 * 60 * 60)) /
-                                      (1000 * 60),
-                                  );
-                                  const isExpired = msUntilExpiry <= 0;
-
-                                  return (
-                                    <div
-                                      style={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: "1rem",
-                                      }}
-                                    >
-                                      <span>
-                                        {new Date(expiresAt).toLocaleString()}
-                                      </span>
-                                      <span
-                                        style={{
-                                          color: isExpired
-                                            ? "#ef4444"
-                                            : "#22c55e",
-                                        }}
-                                      >
-                                        {isExpired
-                                          ? "Expired"
-                                          : `${hoursUntilExpiry > 0 ? `${hoursUntilExpiry}h ` : ""}${minutesUntilExpiry}m remaining`}
-                                      </span>
-                                    </div>
-                                  );
-                                })()
-                              : "N/A"}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Key claims */}
-                    <div className="token-section">
-                      <h4
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                        }}
-                      >
-                        <span
-                          style={{
-                            background: "#1e3a5f",
-                            border: "1px solid var(--brand-navy)",
-                            borderRadius: "4px",
-                            padding: "2px 8px",
-                            fontSize: "0.75rem",
-                            color: "#93c5fd",
-                          }}
-                        >
-                          Access Token Claims
-                        </span>
-                        <button
-                          type="button"
-                          className="token-payload-hint"
-                          title="Learn about tokens"
-                          onClick={() => open(EDU.LOGIN_FLOW, "tokens")}
-                        >
-                          ⓘ
-                        </button>
-                      </h4>
-                      <div
-                        style={{
-                          background: "#0f172a",
-                          border: "1px solid #1e3a5f",
-                          borderRadius: "6px",
-                          padding: "10px 14px",
-                          fontSize: "0.8rem",
-                          marginBottom: "8px",
-                        }}
-                      >
-                        <table
-                          style={{
-                            width: "100%",
-                            borderCollapse: "collapse",
-                          }}
-                        >
-                          <tbody>
-                            {[
-                              ["alg", header.alg],
-                              ["sub", payload.sub],
-                              [
-                                "aud",
-                                Array.isArray(payload.aud)
-                                  ? payload.aud.join(", ")
-                                  : payload.aud,
-                              ],
-                              ["scope", payload.scope],
-                              ["iss", payload.iss],
-                              [
-                                "exp",
-                                payload.exp
-                                  ? new Date(
-                                      payload.exp * 1000,
-                                    ).toLocaleString()
-                                  : null,
-                              ],
-                            ]
-                              .filter(([, v]) => v)
-                              .map(([k, v]) => (
-                                <tr
-                                  key={k}
-                                  style={{
-                                    borderBottom: "1px solid #1e2d3d",
-                                  }}
-                                >
-                                  <td
-                                    style={{
-                                      padding: "3px 8px",
-                                      color: "#94a3b8",
-                                      fontFamily: "inherit",
-                                      width: "5rem",
-                                    }}
-                                  >
-                                    {k}
-                                  </td>
-                                  <td
-                                    style={{
-                                      padding: "3px 8px",
-                                      color: "#e2e8f0",
-                                      fontFamily: "inherit",
-                                      wordBreak: "break-all",
-                                    }}
-                                  >
-                                    {String(v)}
-                                  </td>
-                                </tr>
-                              ))}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      {mayAct ? (
-                        <div
-                          style={{
-                            background: "#1e3a5f",
-                            borderRadius: "6px",
-                            padding: "8px 12px",
-                            fontSize: "0.8rem",
-                            color: "#93c5fd",
-                            marginBottom: "8px",
-                          }}
-                        >
-                          ✅ <strong>may_act present</strong> — BFF can exchange
-                          this token (RFC 8693)
-                          <pre
-                            style={{
-                              margin: "4px 0 0",
-                              background: "none",
-                              fontSize: "0.75rem",
-                            }}
-                          >
-                            {JSON.stringify(mayAct, null, 2)}
-                          </pre>
-                        </div>
-                      ) : (
-                        <div
-                          style={{
-                            background: "#7f1d1d",
-                            borderRadius: "6px",
-                            padding: "8px 12px",
-                            fontSize: "0.8rem",
-                            color: "#fca5a5",
-                            marginBottom: "8px",
-                          }}
-                        >
-                          ⚠️ <strong>may_act absent</strong> — add the may_act
-                          claim in your PingOne token policy to enable token
-                          exchange
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Full payload */}
-                    <div className="token-section">
-                      <h4>Full JWT Payload</h4>
-                      <pre
-                        className="token-json"
-                        style={{
-                          background: "#0f172a",
-                          color: "#e2e8f0",
-                          borderRadius: "6px",
-                          padding: "10px",
-                          fontSize: "0.73rem",
-                          overflowX: "auto",
-                          border: "1px solid #1e3a5f",
-                        }}
-                      >
-                        {JSON.stringify(payload, null, 2)}
-                      </pre>
-                    </div>
-                  </div>
-                );
-              })()
-            ) : (
-              <div className="no-token">
-                <p>
-                  No OAuth token data available — make sure you are signed in.
-                </p>
-              </div>
-            )}
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                padding: "12px 0 4px",
-              }}
-            >
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => setShowTokenModal(false)}
-              >
-                Close
-              </button>
-            </div>
+          <div style={{ overflowY: "auto", height: "100%" }}>
+            <OAuthTokenDisplayPage />
           </div>
         </FloatingPanel>
       )}

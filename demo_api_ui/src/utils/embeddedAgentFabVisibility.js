@@ -8,7 +8,7 @@
 export function isBankingAgentDashboardRoute(pathname) {
   if (pathname == null || typeof pathname !== 'string') return false;
   const p = pathname.replace(/\/$/, '') || '/';
-  return p === '/' || p === '/dashboard' || p === '/admin' || p.startsWith('/admin/');
+  return p === '/' || p === '/admin' || p === '/dashboard';
 }
 
 /**
