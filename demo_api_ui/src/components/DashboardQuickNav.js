@@ -17,8 +17,8 @@ export default function DashboardQuickNav({ user }) {
 
   useEffect(() => {
     if (!user || !isDashboardQuickNavRoute(pathname, user)) return;
-    // Home + Dashboard + Agent + [Banking admin] + [Config admin] + API + Logs
-    const count = 5 + (isAdmin ? 2 : 0);
+    // Home + Dashboard + Agent + [Banking admin] + [Config admin] + Settings + Activity Log + API + Logs
+    const count = 6 + (isAdmin ? 2 : 0);
     const height = count * 44; // gap: 0, no inter-button spacing
     // Must target .App directly — CSS declares --quick-nav-stack-height on .App.App--has-quick-nav,
     // which shadows any value inherited from documentElement.
@@ -105,6 +105,15 @@ export default function DashboardQuickNav({ user }) {
           title="Demo settings — toggle feature flags (e.g. dashboard banking column)"
         >
           Settings
+        </Link>
+      )}
+      {!isAdmin && (
+        <Link
+          to="/monitoring/activity-log"
+          className={`dashboard-quick-nav__btn${pathname.startsWith('/monitoring/activity-log') ? ' dashboard-quick-nav__btn--active' : ''}`}
+          title="Live event stream — OAuth, MCP, token, and delegation events"
+        >
+          Activity Log
         </Link>
       )}
       <button type="button" className="dashboard-quick-nav__btn" onClick={openApiPopout} title="Open API traffic in a new window">
