@@ -19,6 +19,7 @@ import "react-toastify/dist/ReactToastify.css";
 
 import Accounts from "./components/Accounts";
 import ActivityLogs from "./components/ActivityLogs";
+import ActivityLogPage from "./components/ActivityLogPage";
 import { ActorTokenEducation } from "./components/ActorTokenEducation";
 import AdminErrorAuditLog from "./components/AdminErrorAuditLog";
 import AdminSideNav from "./components/AdminSideNav";
@@ -1290,6 +1291,16 @@ function AppWithAuth() {
                             element={
                               user && appFlags.enableTokenChainDisplay ? (
                                 <TokenChainDisplay />
+                              ) : (
+                                <Navigate to="/" replace />
+                              )
+                            }
+                          />
+                          <Route
+                            path="/monitoring/activity-log"
+                            element={
+                              user ? (
+                                <ActivityLogPage />
                               ) : (
                                 <Navigate to="/" replace />
                               )

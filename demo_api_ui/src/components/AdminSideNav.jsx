@@ -165,6 +165,7 @@ export default function AdminSideNav({ user }) {
         { label: "MCP Traffic", path: "/mcp-traffic", icon: "mcp" },
         { label: "API Explorer", path: "/monitoring/api-explorer", icon: "api" },
         { label: "Token Chain", path: "/monitoring/token-chain", icon: "lnk" },
+        { label: "Activity Log", path: "/monitoring/activity-log", icon: "log" },
         { label: "Token Diff", path: "/monitoring/token-diff", icon: "≡" },
         {
           label: "Flow Inspector",
