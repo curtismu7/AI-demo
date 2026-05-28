@@ -159,3 +159,99 @@ describe("EducationRoutes.js — critical imports", () => {
     expect(src).not.toContain("banking_api_ui");
   });
 });
+
+// ─── Render smoke tests — catches the "<X> is not a <Route> component" class ─
+//
+// React Router v6 throws synchronously during render if any child of <Routes>
+// is not a <Route>, <React.Fragment>, or a custom element with the same shape.
+// String tests can't see this — the string `<AdminRoutes user={user} />` looks
+// fine but crashes at render. The full-App mount approach hits ESM-parse
+// problems on transitive imports (mermaid, etc.) in the Jest config, so we
+// instead test the failure mode in isolation: render a fake "BrokenRouteGroup"
+// component as a child of <Routes> and assert React Router actually throws.
+// If a future React Router version silently accepts this pattern, the
+// negative test starts failing — and the forbidden-fragment string assertion
+// above remains the merge-safety guard.
+
+describe("Render smoke — Router still rejects route-group component children", () => {
+  const React = require("react");
+  const { render } = require("@testing-library/react");
+  const {
+    MemoryRouter,
+    Navigate,
+    Route,
+    Routes,
+  } = require("react-router-dom");
+
+  test("React Router throws when a <Routes> child is a component returning <Route> fragments (the AdminRoutes/CustomerRoutes/EducationWildcardRoutes bug)", () => {
+    function BrokenRouteGroup() {
+      return React.createElement(
+        React.Fragment,
+        null,
+        React.createElement(Route, {
+          path: "/a",
+          element: React.createElement(Navigate, { to: "/", replace: true }),
+        }),
+      );
+    }
+
+    const consoleErrorSpy = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
+    expect(() =>
+      render(
+        React.createElement(
+          MemoryRouter,
+          { initialEntries: ["/a"] },
+          React.createElement(
+            Routes,
+            null,
+            React.createElement(BrokenRouteGroup),
+          ),
+        ),
+      ),
+    ).toThrow(/is not a <Route> component/);
+
+    consoleErrorSpy.mockRestore();
+  });
+
+  test("PublicRoutes default export renders as a <Route element={...}> without throwing", () => {
+    // PublicRoutes owns its OWN internal <Routes> — that means it is a valid
+    // route ELEMENT (consumed via <Route path=\"/setup/*\" element={<PublicRoutes/>}/>),
+    // not a child of <Routes>. This positive test pairs with the negative
+    // test above to cover both halves of the bug class.
+    const PublicRoutes = require("../routes/PublicRoutes").default;
+
+    const consoleErrorSpy = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
+    expect(() =>
+      render(
+        React.createElement(
+          MemoryRouter,
+          { initialEntries: ["/setup"] },
+          React.createElement(
+            Routes,
+            null,
+            React.createElement(Route, {
+              path: "/setup/*",
+              element: React.createElement(PublicRoutes, {
+                user: null,
+                logout: () => {},
+              }),
+            }),
+          ),
+        ),
+      ),
+    ).not.toThrow();
+
+    const violation = consoleErrorSpy.mock.calls
+      .map((args) => String(args[0]))
+      .find((msg) => /is not a <Route> component/.test(msg));
+    expect(violation).toBeUndefined();
+
+    consoleErrorSpy.mockRestore();
+  });
+});

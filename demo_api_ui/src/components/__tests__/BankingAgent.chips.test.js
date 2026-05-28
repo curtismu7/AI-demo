@@ -18,6 +18,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import BankingAgent from "../BankingAgent";
@@ -411,18 +412,26 @@ describe("Action chips — disabled when consent blocked", () => {
 // action groups only. Verify the popout renders action chips for logged-in users.
 
 describe("Education chips — discovery popout shows action groups (not education labels)", () => {
-  it("discovery popout contains action chips after clicking Actions (inline)", () => {
+  it("discovery popout contains real action chips after clicking Actions (inline)", () => {
     renderAgent({
       user: customerUser,
       mode: "inline",
       distinctFloatingChrome: true,
     });
     fireEvent.click(screen.getByRole("button", { name: /^Actions/i }));
-    // The popout should render at least one action chip group header or chip
-    expect(document.querySelector(".ba-actions-popout")).toBeInTheDocument();
+    const popout = document.querySelector(".ba-actions-popout");
+    expect(popout).toBeInTheDocument();
+    // Real content check: popout must render at least one section header AND
+    // one action chip. The old test only asserted the container existed —
+    // an empty popout would have passed.
+    expect(popout.querySelector(".ba-popout-section-label")).not.toBeNull();
+    expect(popout.querySelectorAll(".ba-popout-list-item").length).toBeGreaterThan(0);
+    // Education labels must NOT appear in the popout (they moved to the EducationBar).
+    expect(within(popout).queryByText("OAuth: Authorization Code + PKCE")).not.toBeInTheDocument();
+    expect(within(popout).queryByText("MCP protocol")).not.toBeInTheDocument();
   });
 
-  it("inline bottom-dock mode: discovery popout opens on Actions click", () => {
+  it("inline bottom-dock mode: discovery popout opens with action chips on Actions click", () => {
     renderAgent({
       user: customerUser,
       mode: "inline",
@@ -430,7 +439,9 @@ describe("Education chips — discovery popout shows action groups (not educatio
       distinctFloatingChrome: true,
     });
     fireEvent.click(screen.getByRole("button", { name: /^Actions/i }));
-    expect(document.querySelector(".ba-actions-popout")).toBeInTheDocument();
+    const popout = document.querySelector(".ba-actions-popout");
+    expect(popout).toBeInTheDocument();
+    expect(popout.querySelectorAll(".ba-popout-list-item").length).toBeGreaterThan(0);
   });
 });
 

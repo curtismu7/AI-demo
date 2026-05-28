@@ -94,7 +94,6 @@ import LogoutPage from "./components/LogoutPage";
 import LogViewer from "./components/LogViewer";
 import MissingCredentialsModal from "./components/MissingCredentialsModal";
 import ServerRestartModal from "./components/ServerRestartModal";
-import SessionExpiryTimer from "./components/SessionExpiryTimer";
 import SessionReauthBanner from "./components/SessionReauthBanner";
 import SpinnerHost from "./components/shared/SpinnerHost";
 import TopNav from "./components/TopNav";
@@ -191,7 +190,7 @@ function AgentFlowPage() {
         🔀 Agent Request Flow
       </h2>
       <p>
-        Use the Banking Agent to trigger a tool call — the request flow panel
+        Use the AI agent to trigger a tool call — the request flow panel
         will appear automatically.
       </p>
     </div>
@@ -308,14 +307,6 @@ function AppWithAuth() {
     <DemoTourProvider>
       <EducationUIProvider>
         <TokenChainProvider activePath={pathname}>
-          <SessionExpiryTimer
-            hideOnPaths={[
-              "/configure",
-              "/demo-data",
-              "/self-service",
-              "/onboarding",
-            ]}
-          />
           <div
             className={`App end-user-nano${isOnDashboard ? " App--on-dashboard" : ""}${hasEmbeddedDockLayout ? " App--has-embedded-dock" : ""}${sessionReauth ? " App--session-reauth" : ""}`}
           >
@@ -357,7 +348,6 @@ function AppWithAuth() {
                     user={user}
                     logout={logout}
                     AgentFlowPage={AgentFlowPage}
-                    appFlags={appFlags}
                   />
                 }
               />
@@ -433,7 +423,16 @@ function AppWithAuth() {
                               )
                             }
                           />
-                          {/* === Admin routes (inlined — see routes/AdminRoutes.js for source-of-truth list) === */}
+                          {/* === Admin routes ===
+                              All admin-only routes live inline here, NOT in a
+                              separate file. React Router v6 requires <Route>
+                              elements to be DIRECT children of <Routes>, so
+                              you can't extract them into a wrapper component
+                              that returns <Route> fragments — see
+                              demo_api_ui/src/__tests__/App.structure.test.js
+                              "Render smoke" tests for the failure mode. To
+                              add a new admin route, add it to this block and
+                              wrap with <AdminRoute user={user}>...</AdminRoute>. */}
                           <Route path="/admin" element={
                             <AdminRoute user={user}>
                               <Dashboard user={user} onLogout={logout} />
@@ -492,16 +491,24 @@ function AppWithAuth() {
                             <Navigate to="/configure?tab=pingone-config" replace />
                           } />
 
-                          {/* === Monitoring routes (use Route wrappers from routes/MonitoringRoutes.js) === */}
+                          {/* === Monitoring routes inside the wildcard (these aren't reachable as
+                              top-level routes — /api-traffic, /mcp-traffic, /dev-tools are top-level
+                              at lines 356-358 and shadow any duplicate here, so don't re-add them.) */}
                           <Route path="/logs" element={<LogsRoute user={user} logout={logout} />} />
-                          <Route path="/api-traffic" element={<ApiTrafficRoute user={user} logout={logout} />} />
-                          <Route path="/mcp-traffic" element={<McpTrafficRoute user={user} logout={logout} />} />
-                          <Route path="/dev-tools" element={<DevToolsRoute user={user} logout={logout} />} />
                           <Route path="/mcp-inspector" element={<McpInspectorRoute user={user} logout={logout} />} />
                           <Route path="/webmcp" element={<WebMcpRoute user={user} logout={logout} />} />
                           <Route path="/agent-flow-inspector" element={<AgentFlowInspectorRoute user={user} logout={logout} />} />
 
-                          {/* === Education routes (inlined — see routes/EducationRoutes.js for source-of-truth list) === */}
+                          {/* === Education / resource routes ===
+                              All non-/architecture/* education routes are
+                              inlined here. The /architecture/* sub-routes
+                              (system, overview, token-flow, flow, phase-266)
+                              live in routes/EducationRoutes.js because that
+                              component owns its OWN internal <Routes> tree
+                              and is a legal route ELEMENT. To add a new
+                              education route below /architecture/*, edit
+                              routes/EducationRoutes.js. To add any other
+                              education/resource route, add it here. */}
                           <Route path="/langchain" element={<LangChainPage />} />
                           <Route path="/mcp-tools" element={
                             user ? <MCPToolsEducation /> : <Navigate to="/" replace />

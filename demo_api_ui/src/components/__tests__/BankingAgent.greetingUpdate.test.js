@@ -48,11 +48,11 @@ jest.mock("../../context/TokenChainContext", () => ({
 jest.mock("../../context/AgentUiModeContext", () => ({
   useAgentUiMode: () => ({ placement: "none", fab: true, setAgentUi: jest.fn() }),
 }));
-jest.mock("../../services/bankingAgentNlService", () => ({
+jest.mock("../../services/demoAgentNlService", () => ({
   fetchNlStatus: jest.fn().mockResolvedValue({ groqConfigured: false, geminiConfigured: false }),
   parseNaturalLanguage: jest.fn().mockResolvedValue({ source: "local", result: { kind: "action", action: { id: "accounts" } } }),
 }));
-jest.mock("../../services/bankingAgentService", () => ({
+jest.mock("../../services/demoAgentService", () => ({
   getMyAccounts: jest.fn().mockResolvedValue([]),
   getAccountBalance: jest.fn().mockResolvedValue({ balance: 100 }),
   getMyTransactions: jest.fn().mockResolvedValue([]),

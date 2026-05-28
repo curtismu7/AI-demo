@@ -1047,7 +1047,7 @@ exports[`SideNav snapshot renders user nav without change 1`] = `
         <div
           class="sidenav-group-label"
         >
-          My Banking
+          My Workspace
         </div>
         <a
           class="sidenav-link"

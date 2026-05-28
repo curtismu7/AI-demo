@@ -52,12 +52,19 @@ export function useAuth() {
     }
   }, []);
 
-  // Public config → IndexedDB (skip when in logout handoff)
+  // Public config → IndexedDB (skip when in logout handoff). After the IDB
+  // write succeeds, dispatch a `publicConfigUpdated` window event so
+  // useAppFlags can re-read — closes the race where useAppFlags' initial
+  // IDB read beats this HTTP+IDB write on a cold visit and stays stuck on
+  // hard-coded defaults until reload.
   useEffect(() => {
     if (localStorage.getItem("userLoggedOut") === "true") return;
     axios
       .get("/api/admin/config")
       .then(({ data }) => savePublicConfig(data.config))
+      .then(() => {
+        window.dispatchEvent(new CustomEvent("publicConfigUpdated"));
+      })
       .catch(() => {});
   }, []);
 

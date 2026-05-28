@@ -28,7 +28,7 @@ import McpParamText from './McpParamText';
 // The Math.random fallback exists only for jsdom test environments where
 // `crypto` is not yet exposed on the global; production paths never hit it.
 const uuid = () =>
-  globalThis.crypto?.randomUUID?.() ??
+  (typeof window !== "undefined" && window.crypto?.randomUUID?.()) ||
   "00000000-0000-4000-8000-".concat(
     Math.floor(Math.random() * 1e12).toString(16).padStart(12, "0"),
   );

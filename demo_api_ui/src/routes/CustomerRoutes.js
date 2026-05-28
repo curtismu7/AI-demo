@@ -6,6 +6,10 @@ import WebMcpPanel from "../components/WebMcpPanel";
  * DashboardContent — extracted from App.js so the /dashboard panel composition
  * (UserDashboard + WebMcpPanel + AuthorizeRulesPanel) lives in one place.
  *
+ * AuthorizeRulesPanel fetches /api/authorize/rules and listMcpTools() on mount
+ * with no user guard internally, so we only render it for authenticated users
+ * — guests on /dashboard would otherwise trigger 401s.
+ *
  * This file's only purpose now is to keep that composition together. The other
  * customer routes (/accounts, /transactions, /profile, etc.) are declared
  * directly in App.js because React Router v6 requires <Route> elements to be
@@ -16,7 +20,7 @@ export function DashboardContent({ user, logout }) {
     <>
       <UserDashboard user={user} onLogout={logout} />
       <WebMcpPanel />
-      <AuthorizeRulesPanel />
+      {user && <AuthorizeRulesPanel />}
     </>
   );
 }

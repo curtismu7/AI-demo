@@ -13,15 +13,16 @@ import UnifiedTokenFlowInspector from "../components/UnifiedTokenFlowInspector";
 import WebMcpPanel from "../components/WebMcpPanel";
 
 // Passed as prop to avoid circular dependency — AgentFlowPage is defined in App.js
-export default function MonitoringRoutes({ user, logout, AgentFlowPage, appFlags }) {
+export default function MonitoringRoutes({ user, logout, AgentFlowPage }) {
   return (
     <AppShell user={user} logout={logout}>
       <Routes>
-        <Route path="token-chain" element={
-          user && appFlags?.enableTokenChainDisplay
-            ? <TokenChainDisplay />
-            : <Navigate to="/" replace />
-        } />
+        {/* Note: token-chain/token-diff/flow-inspector/api-explorer match the
+            pre-refactor behavior — ungated at the /monitoring/* level so deep
+            links work for guests. The wildcard catch-all path for the same
+            slugs in App.js was historically gated; only the top-level path
+            (this one) ever rendered them in practice. */}
+        <Route path="token-chain" element={<TokenChainDisplay />} />
         <Route path="token-diff" element={<TokenDiffPanel />} />
         <Route path="flow-inspector" element={
           <UnifiedTokenFlowInspector floatingByDefault={false} showToggle={false} />
