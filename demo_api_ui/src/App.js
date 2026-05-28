@@ -17,12 +17,12 @@ import {
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-import Accounts from "./components/Accounts";
 import AdminSideNav from "./components/AdminSideNav";
 import AgentFlowDiagramPanel from "./components/AgentFlowDiagramPanel";
 import AuditPage from "./components/AuditPage";
 import AdminRoute from "./routes/AdminRoute";
 import AdminRoutes from "./routes/AdminRoutes";
+import CustomerRoutes, { DashboardContent } from "./routes/CustomerRoutes";
 import EducationRoutes, { EducationWildcardRoutes } from "./routes/EducationRoutes";
 import MonitoringRoutes, {
   ApiTrafficRoute,
@@ -50,31 +50,20 @@ import CimdSimPanel from "./components/CimdSimPanel";
 import ComplianceModalPopout from "./components/ComplianceModalPopout";
 import DemoGuidePopout from "./components/DemoGuidePopout";
 import Dashboard from "./components/Dashboard";
-import DelegatedAccessPage from "./components/DelegatedAccessPage";
-import DelegationPage from "./components/DelegationPage";
+import LandingPage from "./components/LandingPage";
 import DemoServerCheckModal from "./components/DemoServerCheckModal";
 import EmbeddedAgentDock from "./components/EmbeddedAgentDock";
 import EducationPanelsHost from "./components/education/EducationPanelsHost";
 import Footer from "./components/Footer";
-import LandingPage from "./components/LandingPage";
 import LogoutPage from "./components/LogoutPage";
 import LogViewer from "./components/LogViewer";
 import MissingCredentialsModal from "./components/MissingCredentialsModal";
-import Profile from "./components/Profile";
-import SecurityCenter from "./components/SecurityCenter";
 import ServerRestartModal from "./components/ServerRestartModal";
 import SessionExpiryTimer from "./components/SessionExpiryTimer";
 import SessionReauthBanner from "./components/SessionReauthBanner";
 import SpinnerHost from "./components/shared/SpinnerHost";
 import TopNav from "./components/TopNav";
-import TransactionConsentPage from "./components/TransactionConsentPage";
-import Transactions from "./components/Transactions";
 import DemoTourModal from "./components/tour/DemoTourModal";
-import UserAccounts from "./components/UserAccounts";
-import UserDashboard from "./components/UserDashboard";
-import UserTransactions from "./components/UserTransactions";
-import WebMcpPanel from "./components/WebMcpPanel";
-import AuthorizeRulesPanel from "./components/AuthorizeRulesPanel";
 import {
   AgentUiModeProvider,
   useAgentUiMode,
@@ -365,24 +354,12 @@ function AppWithAuth() {
               <Route
                 path="/dashboard"
                 element={
-                  loading ? null : !user ? (
-                    <>
-                      <AdminSideNav user={null} />
-                      <TopNav user={user} onLogout={logout} />
-                      <main className="main-content">
-                        <UserDashboard user={null} onLogout={logout} />
-                        <WebMcpPanel />
-                        <AuthorizeRulesPanel />
-                      </main>
-                    </>
-                  ) : (
+                  loading ? null : (
                     <>
                       <AdminSideNav user={user} />
                       <TopNav user={user} onLogout={logout} />
                       <main className="main-content">
-                        <UserDashboard user={user} onLogout={logout} />
-                        <WebMcpPanel />
-                        <AuthorizeRulesPanel />
+                        <DashboardContent user={user} logout={logout} />
                       </main>
                     </>
                   )
@@ -426,80 +403,11 @@ function AppWithAuth() {
                           <Route path="/api-traffic" element={<ApiTrafficRoute user={user} logout={logout} />} />
                           <Route path="/mcp-traffic" element={<McpTrafficRoute user={user} logout={logout} />} />
                           <Route path="/dev-tools" element={<DevToolsRoute user={user} logout={logout} />} />
-                          <Route
-                            path="/accounts"
-                            element={
-                              user?.role === "admin" ? (
-                                <AdminRoute user={user}>
-                                  <Accounts user={user} onLogout={logout} />
-                                </AdminRoute>
-                              ) : (
-                                <UserAccounts user={user} />
-                              )
-                            }
-                          />
-                          <Route
-                            path="/transactions"
-                            element={
-                              user?.role === "admin" ? (
-                                <AdminRoute user={user}>
-                                  <Transactions user={user} onLogout={logout} />
-                                </AdminRoute>
-                              ) : (
-                                <UserTransactions user={user} />
-                              )
-                            }
-                          />
-                          <Route
-                            path="/transaction-consent"
-                            element={<TransactionConsentPage user={user} />}
-                          />
-                          <Route
-                            path="/delegated-access"
-                            element={
-                              <DelegatedAccessPage
-                                user={user}
-                                onLogout={logout}
-                              />
-                            }
-                          />
-                          <Route
-                            path="/delegation"
-                            element={
-                              user ? (
-                                <DelegationPage user={user} onLogout={logout} />
-                              ) : (
-                                <Navigate to="/" replace />
-                              )
-                            }
-                          />
                           <EducationWildcardRoutes user={user} logout={logout} />
                           <Route path="/mcp-inspector" element={<McpInspectorRoute user={user} logout={logout} />} />
                           <Route path="/webmcp" element={<WebMcpRoute user={user} logout={logout} />} />
                           <Route path="/agent-flow-inspector" element={<AgentFlowInspectorRoute user={user} logout={logout} />} />
-                          {/* User-friendly self-service routes */}
-                          <Route
-                            path="/profile"
-                            element={<Profile user={user} />}
-                          />
-                          <Route
-                            path="/security"
-                            element={<SecurityCenter user={user} />}
-                          />
-                          {/* Catch-all: unknown routes redirect to dashboard instead of blank/404 */}
-                          <Route
-                            path="*"
-                            element={
-                              <Navigate
-                                to={
-                                  user?.role === "admin"
-                                    ? "/admin"
-                                    : "/dashboard"
-                                }
-                                replace
-                              />
-                            }
-                          />
+                          <CustomerRoutes user={user} logout={logout} />
                         </Routes>
                         {backgroundLocation &&
                           fullLocation.pathname === "/audit" && (
