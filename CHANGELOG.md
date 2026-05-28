@@ -17,6 +17,11 @@ Versions use calendar dates: `YYYY.MM.DD`.
 ## [Unreleased]
 
 ### Added
+- MCP Results tab now populated when tools are called via LLM agent path (`executeBffTool`) — was only recorded on the chip/HTTP path before
+- `ff_use_pinggateway` feature flag + `mcp_pinggateway_url` configStore key — route MCP traffic through PingGateway instead of Node gateway
+- `anthropic_api_key` configStore key with `ANTHROPIC_API_KEY` env fallback
+- Per-vertical `llmChipGroups` in all 5 vertical configs; `BankingChips` reads them from the active vertical manifest
+- `isP1AZActive()` predicate in `demo_mcp_gateway/src/config.ts` — single source of truth for P1AZ activation check
 - `authorize_failover_mode` configStore key (default: `fallback_simulated`) — explicit policy for when PingOne Authorize is unreachable; `deny` (503 fail-closed), `permit` (fail-open), or `fallback_simulated` (switch to in-process engine)
 - **Agent reasoning token telemetry** — `agentReasoningClient` now passes `inputTokens` and `outputTokens` through to the caller, enabling client-side token accounting in agent invocations
 

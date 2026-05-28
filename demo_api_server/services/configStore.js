@@ -241,6 +241,7 @@ ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic 
   // Ping-hosted preview tenant. New clones work out of the box once the API key
   // is supplied via /setup or HELIX_API_KEY in .env — see docs/helix-setup.md
   // "Public demo Helix agent" section.
+  anthropic_api_key:          { public: false, default: '' },
   helix_base_url:             { public: true,  default: 'https://openam-helix.forgeblocks.com' },
   helix_api_key:              { public: false, default: '' },
   helix_environment_id:       { public: true,  default: 'fe213c3c-9c1d-4bdb-954a-a22879dad26d' },
@@ -954,7 +955,8 @@ class ConfigStore {
       pingone_worker_token_client_secret:   ['PINGONE_WORKER_TOKEN_CLIENT_SECRET', 'PINGONE_WORKER_CLIENT_SECRET'],
       pingone_worker_token_auth_method:     ['PINGONE_WORKER_TOKEN_AUTH_METHOD'],
 
-      // Ollama
+      // Anthropic / Ollama LLM providers
+      anthropic_api_key:                    ['ANTHROPIC_API_KEY'],
       ollama_base_url:                      ['OLLAMA_BASE_URL'],
       ollama_model:                         ['OLLAMA_MODEL'],
 

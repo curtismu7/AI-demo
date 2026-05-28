@@ -104,6 +104,9 @@ git checkout <last-version-tag> -- <key-file>
 | Feature | Status | Key files | Test file |
 |---|---|---|---|
 | `ff_agent_results_panel` feature flag — controls visibility of floating results panel in agent UI (default `false`; results appear inline in chat regardless) | experimental | `demo_api_server/services/configStore.js` | — |
+| MCP Results tab — records tool calls from the LLM agent path (executeBffTool) into mcpToolAuditStore; polled by Token Chain panel every 15 s | active | `demo_api_server/services/demoAgentLangGraphService.js`, `demo_api_server/services/mcpToolAuditStore.js` | — |
+| `ff_use_pinggateway` feature flag — routes MCP traffic through PingGateway (port 3006) instead of Node gateway (port 3005) | experimental | `demo_api_server/services/configStore.js`, `demo_api_server/services/agentMcpTokenService.js` | — |
+| Per-vertical LLM chip groups — `llmChipGroups` in vertical config JSONs; BankingChips reads from active manifest | active | `demo_api_server/config/verticals/*.json`, `demo_api_ui/src/components/BankingChips.jsx` | — |
 | `ff_agent_restrictions` feature flag + tier-resolution service — derives read/write capability tier from `scope-topology.json` riskLevel; `isAgentRestricted()` evaluates user agentRestrictions attribute (read/write/none) against required tier | experimental | `demo_api_server/services/agentRestrictionsService.js`, `demo_api_server/services/configStore.js` | `demo_api_server/tests/agentRestrictionsService.test.js` |
 | Agent UI placement — Middle / Bottom / Float + optional FAB | active | `banking_api_ui/src/context/AgentUiModeContext.js`, `banking_api_ui/src/components/AgentUiModeToggle.js` | `u:context/__tests__/AgentUiModeContext.test.js`, `u:utils/__tests__/embeddedAgentFabVisibility.test.js` |
 | Floating agent FAB (Float placement) | active | `banking_api_ui/src/components/BankingAgent.js` | `u:utils/__tests__/embeddedAgentFabVisibility.test.js` |
