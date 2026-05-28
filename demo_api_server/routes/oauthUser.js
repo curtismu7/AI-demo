@@ -391,9 +391,9 @@ router.get('/callback', async (req, res) => {
     } else {
       // Update existing user with OAuth data
       user = await dataStore.updateUser(user.id, {
-        email: oauthUser.email,
-        firstName: oauthUser.firstName,
-        lastName: oauthUser.lastName,
+        ...(oauthUser.email ? { email: oauthUser.email } : {}),
+        ...(oauthUser.firstName ? { firstName: oauthUser.firstName } : {}),
+        ...(oauthUser.lastName ? { lastName: oauthUser.lastName } : {}),
         role: oauthUser.role,
         oauthProvider: oauthUser.oauthProvider,
         oauthId: oauthUser.oauthId
