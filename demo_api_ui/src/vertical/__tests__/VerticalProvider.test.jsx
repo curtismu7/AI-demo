@@ -102,4 +102,48 @@ describe('VerticalProvider', () => {
     act(() => FakeES.last.fire('vertical-list-changed', { ids: ['a', 'b'] }));
     expect(received).toBe(true);
   });
+
+  test('401 from /me still renders children (with empty manifest)', async () => {
+    // Unauthenticated users see the landing/login pages — the provider must
+    // NOT block first paint when /api/verticals/me returns 401.
+    global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 401 });
+    class FakeES {
+      constructor() { FakeES.last = this; }
+      addEventListener() {}
+      close() {}
+    }
+    global.EventSource = FakeES;
+
+    function NullProbe() {
+      const v = useVertical();
+      return <div data-testid="null-probe">{String(v.pageManifest === null)}</div>;
+    }
+
+    const { findByTestId } = render(
+      <MemoryRouter><VerticalProvider><NullProbe /></VerticalProvider></MemoryRouter>
+    );
+    const probe = await findByTestId('null-probe');
+    expect(probe.textContent).toBe('true');
+  });
+
+  test('fetch network error still renders children (with empty manifest)', async () => {
+    global.fetch = jest.fn().mockRejectedValue(new Error('offline'));
+    class FakeES {
+      constructor() { FakeES.last = this; }
+      addEventListener() {}
+      close() {}
+    }
+    global.EventSource = FakeES;
+
+    function NullProbe() {
+      const v = useVertical();
+      return <div data-testid="null-probe">{String(v.pageManifest === null)}</div>;
+    }
+
+    const { findByTestId } = render(
+      <MemoryRouter><VerticalProvider><NullProbe /></VerticalProvider></MemoryRouter>
+    );
+    const probe = await findByTestId('null-probe');
+    expect(probe.textContent).toBe('true');
+  });
 });

@@ -26,7 +26,18 @@ export function VerticalProvider({ children }) {
   const doFetch = useCallback(async () => {
     try {
       const res = await fetch('/api/verticals/me', { credentials: 'include' });
-      if (!res.ok) return;
+      if (!res.ok) {
+        // 401 (unauthenticated) is normal on landing/login/marketing pages.
+        // Hydrate with an empty state so children can still render.
+        setState({
+          activeId: null,
+          pageManifest: null,
+          pageMockData: null,
+          adminManifest: null,
+          isAdmin: false,
+        });
+        return;
+      }
       const data = await res.json();
       setState(data);
       if (data.pageManifest) {
@@ -35,7 +46,15 @@ export function VerticalProvider({ children }) {
           || `${data.pageManifest.identity.displayName} · PingOne AI`;
       }
     } catch (_) {
-      // Network errors are silent — SSE will trigger another refetch on the next event.
+      // Network errors: hydrate with empty state so children render. SSE will
+      // trigger another refetch when the server becomes reachable.
+      setState((cur) => cur ?? {
+        activeId: null,
+        pageManifest: null,
+        pageMockData: null,
+        adminManifest: null,
+        isAdmin: false,
+      });
     }
   }, []);
 
