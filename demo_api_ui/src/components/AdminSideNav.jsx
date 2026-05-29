@@ -309,6 +309,11 @@ export default function AdminSideNav({ user }) {
           path: "/architecture/token-flow",
           icon: "lnk",
         },
+        {
+          label: "Token Flow (Interactive)",
+          icon: "lnk",
+          action: () => window.open("/architecture/token-flow.html", "_blank", "noopener"),
+        },
         { label: "Interactive Flow", path: "/architecture/flow", icon: ">" },
         {
           label: "Phase 266 — 3 Paths",
