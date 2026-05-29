@@ -134,6 +134,7 @@ const appConfigRoutes = require('./routes/appConfig');
 const configCredentialsRoutes = require('./routes/configCredentials');
 const thresholdsRoutes = require('./routes/thresholds');
 const verticalConfigRoutes = require('./routes/verticalConfig');
+const verticalManifestRoutes = require('./routes/verticalManifest');
 const pingoneAuditRoutes = require('./routes/pingoneAudit');
 const pingoneTestRoutes = require('./routes/pingoneTestRoutes');
 const tokenDisplayRoutes = require('./routes/tokenDisplay');
@@ -456,6 +457,15 @@ try {
 } catch (err) {
     console.warn('[server] banking-resource-server.db init failed:', err.message);
     // Routes /accounts and /transactions will 500 until fixed; recovery: delete the file and restart.
+}
+
+// Initialize vertical manifest singleton (seeds from /verticals on disk if present)
+try {
+    const { verticalManifest } = require('./services/verticalManifest');
+    verticalManifest.init();
+} catch (err) {
+    console.warn('[server] verticalManifest init failed:', err.message);
+    // Routes /api/verticals will 500 until fixed; recovery: ensure verticalManifest service is valid and restart.
 }
 
 // Restore session user from signed _auth cookie when in-memory session is empty.
@@ -1001,6 +1011,7 @@ app.use('/api/api-calls', apiCallTrackerRoutes);
 app.use('/api/admin/app-config', authenticateToken, appConfigRoutes);
 app.use('/api/config/vertical', verticalConfigRoutes);
 app.use('/api/config/verticals', verticalConfigRoutes);
+app.use('/api/verticals', authenticateToken, verticalManifestRoutes);
 app.use('/api/config/credentials', configCredentialsRoutes);
 app.use('/api/config/thresholds', thresholdsRoutes);
 
