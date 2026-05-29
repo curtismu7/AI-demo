@@ -738,6 +738,7 @@ demo_api_ui/tests/e2e/verticals.live-switch.e2e.spec.js
 - **Ergonomic mock-data shape editor** — add/remove fields from records visually, instead of editing JSON.
 - **Derive `featurePage.accent*` variants** at render time from `accentColor` (Section 5 behavior change).
 - **Rebuild chip catalog, dashboard layout, feature page UI** — the actual visual rewrite per vertical.
+- **Setup-page "Themes" tab** — new tab in the install/setup wizard letting the operator pick (a) the **boot-time default vertical** (what `activeId` is set to on fresh install if unset) and (b) the **reset-target vertical** (what `POST /reset-all` returns to instead of hard-coded `banking`). User request 2026-05-29. Mechanically: add a new configStore key for the reset target, change the `POST /reset-all` route handler to read it, and add a section to the setup wizard that POSTs both values. Independent of the Cycle 2 visual rewrite; can be done first.
 
 ---
 
