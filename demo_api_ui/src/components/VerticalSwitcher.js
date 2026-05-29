@@ -13,10 +13,21 @@ export default function VerticalSwitcher({ variant = 'nav' }) {
   const [switching, setSwitching] = useState(false);
 
   useEffect(() => {
+    // GET /api/verticals/list returns a plain array of { id, displayName }.
     fetch('/api/verticals/list', { credentials: 'include' })
-      .then(r => r.ok ? r.json() : { verticals: [] })
-      .then(data => setVerticals(data.verticals || []))
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setVerticals(Array.isArray(data) ? data : []))
       .catch(() => {});
+    // Re-fetch on vertical-list-changed (clone / delete) so the switcher stays
+    // in sync without a full reload.
+    const onListChanged = () => {
+      fetch('/api/verticals/list', { credentials: 'include' })
+        .then(r => r.ok ? r.json() : [])
+        .then(data => setVerticals(Array.isArray(data) ? data : []))
+        .catch(() => {});
+    };
+    window.addEventListener('vertical-list-changed', onListChanged);
+    return () => window.removeEventListener('vertical-list-changed', onListChanged);
   }, []);
 
   const handleSwitch = async (id) => {

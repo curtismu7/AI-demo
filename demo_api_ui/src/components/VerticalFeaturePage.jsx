@@ -14,7 +14,7 @@ function fmtPct(rate) {
 
 function formatValue(value, fmt, currency) {
   if (fmt === 'money') return fmtMoney(value, currency);
-  if (fmt === 'pct')   return fmtPct(value);
+  if (fmt === 'percent') return fmtPct(value);
   return String(value ?? '');
 }
 

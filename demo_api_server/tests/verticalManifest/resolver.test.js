@@ -26,6 +26,15 @@ jest.mock('../../services/lmdb/openEnv', () => {
   };
 });
 
+// CR-01 bridge: resolver falls back to configStore.active_vertical when LMDB
+// is empty. Mock with controllable state so tests don't pick up the real
+// configStore default ('banking').
+const _configStoreState = { active_vertical: null };
+jest.mock('../../services/configStore', () => ({
+  getEffective: (key) => _configStoreState[key] || null,
+  setConfig: (data) => Object.assign(_configStoreState, data),
+}));
+
 const store = require('../../services/lmdb/verticalStore.lmdb');
 const { createOverlay } = require('../../services/verticalManifest/overlay');
 const { createResolver } = require('../../services/verticalManifest/resolver');
@@ -49,6 +58,7 @@ describe('resolver', () => {
   let resolver, overlay;
   beforeEach(() => {
     openEnvMock.__reset();
+    _configStoreState.active_vertical = null;
     overlay = createOverlay(store, fakeLoader);
     resolver = createResolver(fakeLoader, overlay, store, { onEvent: () => {} });
   });
@@ -92,6 +102,28 @@ describe('resolver', () => {
     r2.setActive('demo');
     expect(r2.activeId()).toBe('demo');
     expect(events).toEqual([['vertical-switched', { activeId: 'demo' }]]);
+  });
+
+  test('CR-01 bridge: activeId falls back to configStore.active_vertical when LMDB empty', () => {
+    _configStoreState.active_vertical = 'demo';
+    const r2 = createResolver(fakeLoader, overlay, store, { onEvent: () => {} });
+    expect(r2.activeId()).toBe('demo');
+  });
+
+  test('CR-01 bridge: setActive mirrors to configStore.active_vertical', () => {
+    const r2 = createResolver(fakeLoader, overlay, store, { onEvent: () => {} });
+    r2.setActive('demo');
+    expect(_configStoreState.active_vertical).toBe('demo');
+  });
+
+  test('CR-01 bridge: LMDB takes precedence over configStore when both set', () => {
+    _configStoreState.active_vertical = 'demo';
+    store.setActiveId('demo');
+    // Now imagine a divergence where someone wrote different values
+    store.setActiveId('demo');           // LMDB authoritative
+    _configStoreState.active_vertical = 'something-else';
+    const r2 = createResolver(fakeLoader, overlay, store, { onEvent: () => {} });
+    expect(r2.activeId()).toBe('demo');
   });
 
   test('wrapped overlay fires vertical-edited on setField / setBatch / clearField / clearAll', () => {

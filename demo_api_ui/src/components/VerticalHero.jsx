@@ -10,10 +10,10 @@ function formatValue(value, format) {
       return String(Math.round(Number(value)));
     case "date":
       return new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-    case "tier": {
-      const tier = String(value).toLowerCase();
-      const color = tier === "gold" ? "#b45309" : tier === "silver" ? "#6b7280" : "#92400e";
-      return <span style={{ color, fontWeight: 700 }}>{value}</span>;
+    case "percent": {
+      const n = Number(value);
+      if (Number.isNaN(n)) return String(value);
+      return n.toFixed(2) + "%";
     }
     case "text":
     default:

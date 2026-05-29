@@ -3,6 +3,19 @@
 const mergeWith = require('lodash.mergewith');
 const { ManifestSchema } = require('./schema');
 
+// CR-01 bridge: the legacy `active_vertical` configStore key is still read by
+// routes/accounts.js, routes/oauthUser.js, and data/store.js for account
+// reseeding. We mirror the new LMDB active id into configStore on every
+// setActive() so those legacy reads see the same value, and fall back to
+// configStore on read when LMDB is empty (fresh installs / first boot).
+let _configStore = null;
+function _getConfigStore() {
+  if (_configStore !== null) return _configStore;
+  try { _configStore = require('../configStore'); }
+  catch (_) { _configStore = false; }
+  return _configStore;
+}
+
 function arrayCustomizer(_, src) {
   if (Array.isArray(src)) return src;
 }
@@ -93,10 +106,27 @@ function createResolver(loader, overlay, store, { onEvent } = { onEvent: () => {
     if (typeof loader.removeFromCache === 'function') loader.removeFromCache(id);
   }
 
-  function activeId() { return store.getActiveId(); }
+  function activeId() {
+    const lmdbValue = store.getActiveId();
+    if (lmdbValue) return lmdbValue;
+    // Bridge: read configStore as fallback so fresh installs (where LMDB is
+    // empty but configStore has 'banking' as the implicit default) don't
+    // disagree with routes/accounts.js / data/store.js / routes/oauthUser.js.
+    const cs = _getConfigStore();
+    if (cs && typeof cs.getEffective === 'function') {
+      const csValue = cs.getEffective('active_vertical');
+      if (csValue) return csValue;
+    }
+    return null;
+  }
 
   function setActive(id) {
     store.setActiveId(id);
+    // Mirror to configStore so the 3 legacy reads stay in sync.
+    const cs = _getConfigStore();
+    if (cs && typeof cs.setConfig === 'function') {
+      try { cs.setConfig({ active_vertical: id }); } catch (_) { /* ignore */ }
+    }
     onEvent('vertical-switched', { activeId: id });
   }
 
