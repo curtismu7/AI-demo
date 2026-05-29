@@ -141,6 +141,15 @@ Real banking applications use professional typography. Emojis break the enterpri
 - `mastra_agent/src/agentFactory.ts` — constructs the OpenAI provider via `createOpenAI({ baseURL, apiKey })` from `@ai-sdk/openai` (already a dep), then passes `provider(model)` as the Mastra Agent's `model`. Previously took a bare `model: string` which Mastra's Agent constructor doesn't accept at runtime.
 - `mastra_agent/src/runHandler.ts` — passes `{baseUrl, apiKey, model}` to `buildAgent()` instead of a bare model string.
 - `mastra_agent/package.json` — bumped `@ai-sdk/openai` from `^1.0.0` to `^2.0.0` (AI SDK v5). `@mastra/core@^1.37.0`'s `agent.stream()` rejects AI SDK v4 models at runtime with "Please use AI SDK v5+ models or call the streamLegacy() method instead". `streamLegacy()` works but is documented as deprecated; the v5 upgrade is the maintained path.
+- `demo_api_server/routes/agentRun.js` — `FRAMEWORK_PORTS.langchain` fixed from 8889 → 8888. LangChain agent runs three listeners (uvicorn :8888 AG-UI /run SSE, websockets :8889 chat WS, health :8890); the BFF was proxying `/run` to the chat WS port, which closed every raw HTTP connection. Module now also exports `FRAMEWORK_PORTS` so the routing test can import the real constant instead of a re-declared copy that silently drifts.
+- `demo_api_server/tests/agentRun.framework-routing.test.js` — rewrote to import `FRAMEWORK_PORTS` from the route module (the previous version had its own copy of the map that masked the 8889 bug). Added explicit assertion that the exported map matches the expected ports.
+- `langchain_agent/src/agui/event_types.py` — `ErrorEvent.type` changed from `"ERROR"` → `"RUN_ERROR"`, added optional `run_id` / `thread_id` fields. AG-UI terminal-error contract is `RUN_ERROR`; emitting `ERROR` left the dock empty for the same reason the Python agents did.
+- `langchain_agent/src/agui/emitter.py` — `on_error()` no longer emits `RunFinished` after the error event. The RUN_ERROR is itself terminal.
+- `langchain_agent/src/agent/langchain_mcp_agent.py` — added `astream_events()` to the inner `BasicChatAgent` fallback class. When MCP tool setup fails (e.g. no MCP scopes) and the agent falls back to `BasicChatAgent`, the AG-UI streaming loop in `message_processor.py:818` calls `self._graph.astream_events(...)` and crashed with AttributeError because the basic agent never implemented streaming. The new method calls `self.llm.astream(...)` and yields `on_chat_model_stream` events in the LangGraph shape the processor expects.
+- 8 unit-test files updated to reflect the changed config field names, build_agent signatures, and emitter event shapes — see the §1 regression list and the test bodies. Highlights: `openai_agent/tests/test_config.py` exercises both `AGENT_LLM_*` and the legacy `OPENAI_*` fallback; pydantic and openai emitter tests assert exactly `[RUN_ERROR]` (no trailing RUN_FINISHED); mastra `agentFactory.test.ts` asserts `createOpenAI({ baseURL, apiKey })` is called with the configured values.
+- `tests/integration/test-agents-e2e.sh` (new) — preflights LM Studio + all 4 agent ports, POSTs `/run` to each, asserts SSE response includes RUN_STARTED + (RUN_FINISHED or TEXT_MESSAGE_CONTENT) and no RUN_ERROR. Fails loud if any prerequisite is missing.
+- `scripts/run-all-tests.sh` — added pytest + jest steps for openai_agent, pydantic_agent, mastra_agent.
+- `package.json` — new scripts: `test:openai-agent`, `test:pydantic-agent`, `test:mastra-agent`, `test:agents` (runs all 3 in sequence), `verify:agents` (runs the e2e integration script).
 - `run.sh` — added `mastra_agent` to `SVC_LIST`/`SVC_BUILD` (was missing — could lead to missing `dist/index.js` on a fresh clone). Added a `PY_AGENTS=(openai_agent pydantic_agent)` loop right after the Node `SVC_LIST` loop that detects a broken/missing `.venv` (the pydantic_agent venv directory existed but had no `bin/python` binary — a stub from a previous broken setup), recreates it via `python3 -m venv .venv`, and runs `pip install -r requirements.txt`. Loud failure on any error. Removed the `[[ -f src/main.py ]]` / `[[ -f dist/index.js ]]` launch guards per CLAUDE.md "Don't guard launches with `[[ -f dist/index.js ]]`" — silent skips were exactly the failure mode that produced the empty dock.
 
 **What was broken (multiple compounding):**
@@ -164,13 +173,20 @@ Real banking applications use professional typography. Emojis break the enterpri
 **Verify:**
 ```bash
 cd demo_api_ui && npm run build                                # exit 0
-cd demo_api_ui && npx jest App.structure --no-coverage         # 25/25 pass
-./run.sh stop && ./run.sh                                      # all 4 agents listening on 8889/8891/8892/8893
+cd demo_api_ui && npx jest App.structure --no-coverage         # 25/27 pass (2 pre-existing JSX-parser failures unrelated)
+npm run test:agents                                            # 53/53 — openai 14, pydantic 16, mastra 23
+( cd demo_api_server && npx jest agentRun.framework-routing --forceExit )  # 7/7
+( cd langchain_agent && bash scripts/run-pytest.sh tests/agui/test_event_types.py )  # 5/5
+./run.sh stop && ./run.sh                                      # all 4 agents listening on 8888/8891/8892/8893
+bash tests/integration/test-agents-e2e.sh                      # 9/9 with HELIX_API_KEY set
+                                                               # or 8/9 with LANGCHAIN_LLM_PROVIDER=lmstudio if Helix is unconfigured
 # Manual: dock title on CareConnect reads "AI Care Assistant"
 # Manual: in Feature Flags UI flip llm_framework → openai_agents, send a chat → reply comes from LM Studio
 # Manual: flip to pydantic_ai → reply comes from LM Studio via pydantic-ai
 # Manual: flip to mastra → reply comes from LM Studio via @ai-sdk/openai
 ```
+
+**Operator note (LangChain agent + Helix):** The LangChain agent defaults to Helix as its LLM provider (`langchain_agent/src/config/settings.py:73`). On a box without `HELIX_API_KEY` set, langchain `/run` will return a valid `RUN_ERROR` SSE with the 401 message — which is now correctly surfaced in the dock thanks to the emitter fix. To run langchain through LM Studio instead, set `LANGCHAIN_LLM_PROVIDER=lmstudio` in the environment before `./run.sh`.
 
 ---
 

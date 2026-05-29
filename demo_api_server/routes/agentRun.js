@@ -31,8 +31,12 @@ router.use(agentSessionMiddleware);
 // Helpers
 // ---------------------------------------------------------------------------
 
+// LangChain agent runs three listeners: uvicorn :8888 (AG-UI /run SSE),
+// websockets :8889 (legacy chat WS), health :8890. Proxy /run to :8888 — the
+// previous 8889 routing hit the WebSocket port and silently failed because
+// raw HTTP requests are closed by the websockets handler.
 const FRAMEWORK_PORTS = {
-  langchain:     8889,
+  langchain:     8888,
   openai_agents: 8891,
   mastra:        8892,
   pydantic_ai:   8893,
@@ -269,3 +273,6 @@ router.post('/run', async (req, res) => {
 });
 
 module.exports = router;
+// Exported for the framework-routing test so it asserts against the actual
+// constants instead of a re-declared copy that can silently drift.
+module.exports.FRAMEWORK_PORTS = FRAMEWORK_PORTS;

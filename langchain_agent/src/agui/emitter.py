@@ -99,5 +99,12 @@ class AGUIEventEmitter:
         await self._emit(ToolCallEnd(tool_call_id=tc_id))
 
     async def on_error(self, error: Exception, **kwargs) -> None:
-        await self._emit(ErrorEvent(message=str(error), code="AGENT_ERROR"))
-        await self._emit(RunFinished(run_id=self._run_id, thread_id=self._thread_id))
+        # RUN_ERROR is the AG-UI terminal-error event the BFF and React hook
+        # (useAgentRun.js) actually handle. RUN_FINISHED is NOT emitted after
+        # RUN_ERROR — the stream is considered terminated by the error.
+        await self._emit(ErrorEvent(
+            message=str(error),
+            code="AGENT_ERROR",
+            run_id=self._run_id,
+            thread_id=self._thread_id,
+        ))

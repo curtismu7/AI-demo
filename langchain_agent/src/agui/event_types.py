@@ -124,12 +124,26 @@ class CustomEvent:
 
 @dataclass
 class ErrorEvent:
+    """AG-UI terminal-error event.
+
+    Emits as type='RUN_ERROR' to match the BFF (routes/agentRun.js) and React
+    hook (useAgentRun.js) contract — they only handle RUN_ERROR / RUN_FINISHED.
+    A prior 'ERROR' type left the dock empty because no handler matched.
+    run_id / thread_id are included so the UI can correlate the failure to
+    the originating run.
+    """
     message: str
     code: Optional[str] = None
-    type: str = field(default="ERROR", init=False)
+    run_id: Optional[str] = None
+    thread_id: Optional[str] = None
+    type: str = field(default="RUN_ERROR", init=False)
 
     def to_dict(self) -> Dict[str, Any]:
         d: Dict[str, Any] = {"type": self.type, "message": self.message}
         if self.code:
             d["code"] = self.code
+        if self.run_id:
+            d["runId"] = self.run_id
+        if self.thread_id:
+            d["threadId"] = self.thread_id
         return d

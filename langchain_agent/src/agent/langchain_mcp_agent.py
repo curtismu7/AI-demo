@@ -293,6 +293,45 @@ Remember to maintain conversation context and provide helpful, accurate response
                 from types import SimpleNamespace
                 return SimpleNamespace(values={"messages": []})
 
+            async def astream_events(self, inputs, config=None, version="v2"):
+                """Yield AG-UI–shaped streaming events from a tool-less LLM call.
+
+                message_processor.py's AG-UI loop reads `on_chat_model_stream`
+                events with `data.chunk.content`. Without this method the
+                processor crashes with `BasicChatAgent has no attribute
+                astream_events` whenever MCP tool setup fails and the agent
+                falls back to BasicChatAgent (the no-tools path).
+                """
+                from langchain_core.messages import AIMessageChunk
+                messages = inputs.get("messages", [])
+                llm_messages = []
+                for msg in messages:
+                    if hasattr(msg, "content"):
+                        cls = msg.__class__.__name__
+                        if cls == "SystemMessage":
+                            llm_messages.append({"role": "system", "content": msg.content})
+                        elif cls == "HumanMessage":
+                            llm_messages.append({"role": "user", "content": msg.content})
+                        else:
+                            llm_messages.append({"role": "assistant", "content": msg.content})
+                if not llm_messages:
+                    return
+                try:
+                    async for chunk in self.llm.astream(llm_messages):
+                        text = getattr(chunk, "content", "") or ""
+                        if not text:
+                            continue
+                        yield {
+                            "event": "on_chat_model_stream",
+                            "data": {"chunk": AIMessageChunk(content=text)},
+                        }
+                except Exception as e:
+                    # Surface as a single on_chat_model_stream so the AG-UI emitter
+                    # writes something to the dock rather than the loop silently
+                    # ending with no TEXT_MESSAGE_* events.
+                    logger.error("BasicChatAgent.astream_events LLM error: %s", e)
+                    raise
+
         return BasicChatAgent(llm)
     
     def _is_authorization_complete_message(self, message: str) -> bool:

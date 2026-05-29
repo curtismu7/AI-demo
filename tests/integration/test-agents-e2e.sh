@@ -27,10 +27,10 @@ LMS_BASE="${LMSTUDIO_BASE_URL:-http://localhost:1234}"
 LMS_BASE="${LMS_BASE%/v1}"
 CURL_TIMEOUT=45
 
-# Per-agent: name, AG-UI /run SSE port. langchain_agent runs THREE listeners
-# (uvicorn :8888 for /run SSE, websockets :8889 for chat WS, health :8890) —
-# the BFF's FRAMEWORK_PORTS.langchain references the chat WS port, which is
-# WRONG for AG-UI proxying. We test the actual /run SSE port here regardless.
+# Per-agent: name, AG-UI /run SSE port. langchain_agent runs three listeners
+# (uvicorn :8888 for /run SSE, websockets :8889 for chat WS, health :8890);
+# the AG-UI proxy in routes/agentRun.js targets :8888 (verified by the
+# agentRun.framework-routing.test.js suite).
 AGENT_NAMES=(langchain openai_agents mastra pydantic_ai)
 AGENT_PORTS=(8888       8891         8892    8893)
 
