@@ -16,11 +16,18 @@ jest.mock('@mastra/core/agent', () => {
   };
 });
 
+// createOpenAI must be mocked too because agentFactory pulls it in transitively.
+jest.mock('@ai-sdk/openai', () => ({
+  createOpenAI: jest.fn(() => (modelId: string) => ({ __mockModel: modelId })),
+}));
+
 jest.mock('../src/config', () => ({
   getConfig: () => ({
     bffToolUrl: 'http://127.0.0.1:3001/internal/agent-tool',
     bffInternalSecret: 'secret',
-    model: 'gpt-4o',
+    llmApiKey: 'lm-studio',
+    llmBaseUrl: 'http://localhost:1234/v1',
+    model: 'google/gemma-4-e2b',
     port: 8892,
     host: '127.0.0.1',
   }),
@@ -45,7 +52,8 @@ const RUN_PAYLOAD = {
     bffToolUrl: 'http://127.0.0.1:3001/internal/agent-tool',
     bffInternalSecret: 'secret',
     sessionId: 'sess_abc',
-    model: 'gpt-4o',
+    // Empty model so we exercise the cfg.model fallback path.
+    model: '',
   },
 };
 

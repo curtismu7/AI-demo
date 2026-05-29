@@ -44,9 +44,14 @@ async def test_tool_start_emits_tool_call_start(captured):
 
 
 @pytest.mark.asyncio
-async def test_error_emits_error_event(captured):
+async def test_error_emits_run_error_event(captured):
+    """on_error() emits RUN_ERROR (not ERROR). useAgentRun.js only handles
+    RUN_ERROR; an ERROR event would leave the dock empty."""
     events, sink = captured
     emitter = AGUIEmitter(RUN_ID, THREAD_ID, sink)
     await emitter.on_error("something failed")
-    assert events[0]["type"] == "ERROR"
+    assert events[0]["type"] == "RUN_ERROR"
     assert events[0]["code"] == "AGENT_ERROR"
+    assert events[0]["message"] == "something failed"
+    assert events[0]["runId"] == RUN_ID
+    assert events[0]["threadId"] == THREAD_ID

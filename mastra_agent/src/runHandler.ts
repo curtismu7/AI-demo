@@ -30,7 +30,9 @@ export async function handleRun(req: Request, res: Response): Promise<void> {
     bffInternalSecret: cfg.bffInternalSecret,
     sessionId,
   };
-  const model = (ctx.model as string | undefined) ?? cfg.model;
+  // Per-run model override from BFF context wins; falls back to env-resolved
+  // default (LM Studio's loaded model).
+  const model = (ctx.model as string | undefined) || cfg.model;
 
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
@@ -43,7 +45,11 @@ export async function handleRun(req: Request, res: Response): Promise<void> {
 
   try {
     await emitter.onRunStart();
-    const agent = buildAgent(toolSchemas, runCtx, model);
+    const agent = buildAgent(toolSchemas, runCtx, {
+      baseUrl: cfg.llmBaseUrl,
+      apiKey: cfg.llmApiKey,
+      model,
+    });
     const userMessage =
       [...messages].reverse().find((m) => m.role === 'user')?.content ?? '';
 

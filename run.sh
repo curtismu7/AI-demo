@@ -732,9 +732,9 @@ fi
 # need extra `npm install` flags (demo_api_ui needs --legacy-peer-deps for
 # CRA/typescript peerOptional). Loud failure on any error — silent skips here
 # are exactly how we got cryptic MODULE_NOT_FOUND in service logs.
-SVC_LIST=(demo_api_server demo_mcp_server demo_api_ui      demo_mcp_gateway demo_hitl_service demo_agent_service demo_mcp_invest demo_mortgage_service)
-SVC_BUILD=(""                "ts"               ""                  "ts"                ""                   "ts"                  "ts"               "")
-SVC_INSTALL_FLAGS=(""        ""                 "--legacy-peer-deps" ""                  ""                   ""                    ""                 "")
+SVC_LIST=(demo_api_server demo_mcp_server demo_api_ui      demo_mcp_gateway demo_hitl_service demo_agent_service demo_mcp_invest demo_mortgage_service mastra_agent)
+SVC_BUILD=(""                "ts"               ""                  "ts"                ""                   "ts"                  "ts"               ""                    "ts")
+SVC_INSTALL_FLAGS=(""        ""                 "--legacy-peer-deps" ""                  ""                   ""                    ""                 ""                    "")
 
 for i in "${!SVC_LIST[@]}"; do
   svc="${SVC_LIST[$i]}"
@@ -754,6 +754,35 @@ for i in "${!SVC_LIST[@]}"; do
     if ! (cd "$BASEDIR/$svc" && npm run build); then
       err "Build failed for $svc — aborting startup."
       err "  Fix the TypeScript errors above, then re-run ./run.sh"
+      exit 1
+    fi
+  fi
+done
+
+# ── Python agent dependency check (openai_agent + pydantic_agent) ────────────
+# These services were silently crashing on a missing-deps or stub-venv state
+# because they weren't in SVC_LIST. CLAUDE.md warns explicitly about silent
+# skips here. We verify each .venv exists AND has a working python binary
+# (a stub venv with no bin/python is what crashed pydantic_agent last run),
+# then install requirements.txt. Loud failure on any error.
+PY_AGENTS=(openai_agent pydantic_agent)
+for svc in "${PY_AGENTS[@]}"; do
+  [[ -d "$BASEDIR/$svc" ]] || continue
+  venv_python="$BASEDIR/$svc/.venv/bin/python"
+  if [[ ! -x "$venv_python" ]]; then
+    echo "[PYENV] Creating .venv for $svc..."
+    # Remove any stub .venv directory first so python3 -m venv can recreate it
+    # cleanly. A directory without bin/python is what we're recovering from.
+    rm -rf "$BASEDIR/$svc/.venv"
+    if ! (cd "$BASEDIR/$svc" && python3 -m venv .venv); then
+      err "python3 -m venv failed for $svc — aborting startup."
+      err "  Verify python3 is installed (\`python3 --version\` should be 3.10+)."
+      exit 1
+    fi
+    echo "[PKG] Installing Python dependencies for $svc..."
+    if ! (cd "$BASEDIR/$svc" && .venv/bin/pip install --quiet -r requirements.txt); then
+      err "pip install failed for $svc — aborting startup."
+      err "  Fix the error above, then re-run ./run.sh"
       exit 1
     fi
   fi
@@ -993,42 +1022,35 @@ if [[ -f "$BASEDIR/langchain_agent/src/main.py" ]]; then
 fi
 
 # ── OpenAI Agents SDK (port 8891) ────────────────────────────────────────────
-if [[ -f "$BASEDIR/openai_agent/src/main.py" ]]; then
-  echo "[OASDK] Starting OpenAI Agents SDK service (:8891)..."
-  (
-    cd "$BASEDIR/openai_agent"
-    if [[ -x ".venv/bin/python" ]]; then
-      PY=".venv/bin/python"
-    elif [[ -x "venv/bin/python" ]]; then
-      PY="venv/bin/python"
-    else
-      PY="python3"
-    fi
-    "$PY" -m src.main >> "$LOG_OASDK" 2>&1
-  ) &
-  echo $! > "$PID_OASDK"
-fi
+# Launches unconditionally — the dep-install loop above will exit non-zero
+# before this point if openai_agent/.venv is missing or broken. A file-
+# existence guard here would silently skip launch and produce the "no agent"
+# class of failure CLAUDE.md warns about.
+echo "[OASDK] Starting OpenAI Agents SDK service (:8891)..."
+(
+  cd "$BASEDIR/openai_agent"
+  .venv/bin/python -m src.main >> "$LOG_OASDK" 2>&1
+) &
+echo $! > "$PID_OASDK"
 
 # ── Mastra Agent (port 8892) ─────────────────────────────────────────────────
-if [[ -f "$BASEDIR/mastra_agent/dist/index.js" ]]; then
-  echo "[MASTRA] Starting Mastra Agent (:8892)..."
-  (
-    cd "$BASEDIR/mastra_agent"
-    node dist/index.js >> "$LOG_MASTRA" 2>&1
-  ) &
-  echo $! > "$PID_MASTRA"
-fi
+# Mastra is in SVC_LIST above — install + build are guaranteed before this
+# point. Launch unconditionally; if dist/index.js is missing, MODULE_NOT_FOUND
+# in the log is a clearer failure than a silent skip.
+echo "[MASTRA] Starting Mastra Agent (:8892)..."
+(
+  cd "$BASEDIR/mastra_agent"
+  node dist/index.js >> "$LOG_MASTRA" 2>&1
+) &
+echo $! > "$PID_MASTRA"
 
 # ── Pydantic AI Agent (port 8893) ────────────────────────────────────────────
-if [[ -f "$BASEDIR/pydantic_agent/src/main.py" ]]; then
-  echo "[PYDANTIC] Starting Pydantic AI Agent (:8893)..."
-  (
-    cd "$BASEDIR/pydantic_agent"
-    PY=".venv/bin/python"
-    "$PY" -m src.main >> "$LOG_PYDANTIC" 2>&1
-  ) &
-  echo $! > "$PID_PYDANTIC"
-fi
+echo "[PYDANTIC] Starting Pydantic AI Agent (:8893)..."
+(
+  cd "$BASEDIR/pydantic_agent"
+  .venv/bin/python -m src.main >> "$LOG_PYDANTIC" 2>&1
+) &
+echo $! > "$PID_PYDANTIC"
 
 # ── LM Studio auto-configure ─────────────────────────────────────────────────
 # If LM Studio's local server is running (default :1234), ensure the target

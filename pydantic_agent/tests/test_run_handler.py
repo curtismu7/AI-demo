@@ -3,8 +3,9 @@ import json
 import os
 from unittest.mock import patch, AsyncMock, MagicMock
 
-# Provide required env vars before importing config-dependent modules
-os.environ.setdefault("OPENAI_API_KEY", "test-key")
+# Provide BFF_INTERNAL_SECRET; AGENT_LLM_* defaults to LM Studio so no key
+# is needed. (Regression: the previous test set OPENAI_API_KEY because the
+# old config.py crashed at import without it.)
 os.environ.setdefault("BFF_INTERNAL_SECRET", "test-secret")
 
 from fastapi.testclient import TestClient
@@ -25,7 +26,8 @@ RUN_PAYLOAD = {
         "bffToolUrl": "http://127.0.0.1:3001/internal/agent-tool",
         "bffInternalSecret": "secret",
         "sessionId": "sess_abc",
-        "model": "gpt-4o",
+        # Empty model intentionally to exercise the cfg.LLM_MODEL fallback.
+        "model": "",
     },
 }
 
@@ -97,7 +99,9 @@ def test_run_emits_text_content_events():
     assert "".join(e["delta"] for e in content_events) == "Hello world"
 
 
-def test_run_emits_error_event_on_exception():
+def test_run_emits_run_error_event_on_exception():
+    """When the agent raises, the stream must emit RUN_ERROR (not ERROR) so
+    the UI dock surfaces the failure instead of rendering an empty pane."""
     mock_agent = MagicMock()
     mock_agent.run_stream.side_effect = RuntimeError("LLM failed")
 
@@ -106,6 +110,20 @@ def test_run_emits_error_event_on_exception():
         client = TestClient(app)
         resp = client.post("/run", json=RUN_PAYLOAD)
     events = _parse_sse(resp.text)
-    error_events = [e for e in events if e["type"] == "ERROR"]
+    error_events = [e for e in events if e["type"] == "RUN_ERROR"]
     assert len(error_events) == 1
     assert "LLM failed" in error_events[0]["message"]
+
+
+def test_run_forwards_llm_provider_config_to_build_agent():
+    """build_agent must be called with cfg.LLM_BASE_URL and cfg.LLM_API_KEY,
+    not just a bare model URI like 'openai:gpt-4o'. This is the regression
+    that broke LM Studio routing."""
+    with patch("src.run_handler.build_agent", return_value=_make_mock_agent()) as mock_build:
+        from src.main import app
+        client = TestClient(app)
+        client.post("/run", json=RUN_PAYLOAD)
+        call_kwargs = mock_build.call_args.kwargs
+        assert "base_url" in call_kwargs
+        assert "api_key" in call_kwargs
+        assert "model_name" in call_kwargs

@@ -6,6 +6,7 @@ from fastapi.responses import StreamingResponse
 from .agent_factory import build_agent
 from .agui_emitter import AGUIEmitter
 from .models import BffDeps
+from . import config as cfg
 
 
 async def handle_run(request: Request) -> StreamingResponse:
@@ -16,10 +17,15 @@ async def handle_run(request: Request) -> StreamingResponse:
     tool_schemas: list[dict] = body.get("tools", [])
     ctx_data: dict = body.get("context", {})
 
-    bff_tool_url: str = ctx_data.get("bffToolUrl", "")
-    bff_internal_secret: str = ctx_data.get("bffInternalSecret", "")
+    bff_tool_url: str = ctx_data.get("bffToolUrl") or cfg.BFF_INTERNAL_TOOL_URL
+    # BFF doesn't include its internal secret in the run context (the secret
+    # lives on the BFF, not in payloads). Fall back to the same env-resolved
+    # value the agent will use for its own /internal/agent-tool callbacks.
+    bff_internal_secret: str = ctx_data.get("bffInternalSecret") or cfg.BFF_INTERNAL_SECRET
     session_id: str = ctx_data.get("sessionId", "")
-    model: str = ctx_data.get("model", "gpt-4o")
+    # Per-run model override from BFF context wins; falls back to the env-
+    # resolved default (LM Studio's loaded model).
+    model: str = ctx_data.get("model") or cfg.LLM_MODEL
 
     deps = BffDeps(
         bff_tool_url=bff_tool_url,
@@ -33,7 +39,12 @@ async def handle_run(request: Request) -> StreamingResponse:
             user_message = msg.get("content", "")
             break
 
-    agent = build_agent(tool_schemas, f"openai:{model}")
+    agent = build_agent(
+        tool_schemas,
+        model_name=model,
+        base_url=cfg.LLM_BASE_URL,
+        api_key=cfg.LLM_API_KEY,
+    )
 
     async def stream_events() -> AsyncIterator[str]:
         collected: list[str] = []

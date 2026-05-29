@@ -331,8 +331,8 @@ const FLAG_REGISTRY = [
       'Changes take effect immediately — no restart required. ' +
       'Only switch to a framework whose service is running.',
     type:         'enum',
-    options:      ['openai_agents', 'langchain', 'mastra', 'pydantic_ai'],
-    defaultValue: 'openai_agents',
+    options:      ['langchain', 'openai_agents', 'mastra', 'pydantic_ai'],
+    defaultValue: 'langchain',
   },
   {
     id:           'ff_authorize_rules_panel',

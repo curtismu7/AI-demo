@@ -47,9 +47,16 @@ async def test_tool_call_sequence(sink_and_emitter):
 
 
 @pytest.mark.asyncio
-async def test_error_emits_error_and_finished(sink_and_emitter):
+async def test_error_emits_run_error_with_message(sink_and_emitter):
+    """on_error() emits a single RUN_ERROR event. The previous (ERROR +
+    RUN_FINISHED) shape left the UI dock empty because useAgentRun.js
+    only handles RUN_ERROR. RUN_FINISHED is NOT emitted after RUN_ERROR
+    (the stream is considered terminated by the error)."""
     collected, emitter = sink_and_emitter
     await emitter.on_error(RuntimeError("boom"))
     types = [e["type"] for e in collected]
-    assert "ERROR" in types
-    assert "RUN_FINISHED" in types
+    assert types == ["RUN_ERROR"], f"expected exactly [RUN_ERROR], got {types}"
+    assert collected[0]["message"] == "boom"
+    assert collected[0]["code"] == "AGENT_ERROR"
+    assert collected[0]["runId"] == "r1"
+    assert collected[0]["threadId"] == "t1"

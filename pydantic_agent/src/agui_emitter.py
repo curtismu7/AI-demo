@@ -39,4 +39,13 @@ class AGUIEmitter:
         await self._emit({"type": "TOOL_CALL_END", "toolCallId": tool_call_id})
 
     async def on_error(self, message: str) -> None:
-        await self._emit({"type": "ERROR", "message": message, "code": "AGENT_ERROR"})
+        # RUN_ERROR is the AG-UI event the BFF and UI hook (useAgentRun.js) both
+        # handle. Emitting ERROR alone leaves the dock empty because the hook
+        # only listens for RUN_ERROR / RUN_FINISHED.
+        await self._emit({
+            "type": "RUN_ERROR",
+            "runId": self.run_id,
+            "threadId": self.thread_id,
+            "message": message,
+            "code": "AGENT_ERROR",
+        })

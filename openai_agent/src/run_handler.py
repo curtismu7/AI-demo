@@ -33,17 +33,20 @@ async def agent_run(request: Request) -> StreamingResponse:
 
     bff_tool_url = ctx.get("bffToolUrl", "")
     session_id = ctx.get("sessionId", "")
-    model = ctx.get("model", "gpt-4o")
 
     cfg = get_config()
+    # Per-run overrides from BFF context win over server-side defaults. Empty
+    # strings fall back to config so the operator can leave context.model unset.
+    model = ctx.get("model") or cfg.model
     run_ctx = {
         "bff_tool_url": bff_tool_url or cfg.bff_tool_url,
         "bff_internal_secret": cfg.bff_internal_secret,
         "session_id": session_id,
+        "base_url": cfg.llm_base_url,
     }
 
     return StreamingResponse(
-        _stream(run_id, thread_id, messages, tool_schemas, run_ctx, model, cfg.openai_api_key),
+        _stream(run_id, thread_id, messages, tool_schemas, run_ctx, model, cfg.llm_api_key),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
