@@ -180,6 +180,14 @@ async function evaluateMcpFirstTool({
   acr,
   amount = null,
   transactionType = null,
+  // HITL receipt (Phase: receipt-aware PERMIT). When the BFF/gateway has
+  // verified an approved, caller-bound HITL challenge for THIS tool call, it
+  // sets hitlApproved=true. A verified receipt discharges ONLY the
+  // HITL_CONSENT gate — never STEP_UP (an approval is not an MFA) and never the
+  // audience-mismatch / deny gates (those run first, below). This engine trusts
+  // the boolean; provenance is bound by the caller's verifyHitlReceipt. The
+  // live PingAuthorize path must apply the SAME rule (parity invariant).
+  hitlApproved = false,
 }) {
   const decisionId = `sim-mcp-${Date.now()}-${++_seq}`;
   const parameters = {
@@ -193,6 +201,7 @@ async function evaluateMcpFirstTool({
     ...(acr ? { Acr: acr } : {}),
     ...(transactionType ? { TransactionType: transactionType } : {}),
     ...(amount != null ? { Amount: amount } : {}),
+    ...(hitlApproved ? { HitlApproved: true } : {}),
     Timestamp: new Date().toISOString(),
   };
 
@@ -261,7 +270,7 @@ async function evaluateMcpFirstTool({
         reason: `Simulated policy DENY: tool "${toolName}" is in SIMULATED_MCP_DENY_TOOLS.`,
       },
     };
-  } else if (hitlRequired) {
+  } else if (hitlRequired && !hitlApproved) {
     out = {
       decision: 'INDETERMINATE',
       stepUpRequired: false,
@@ -273,6 +282,21 @@ async function evaluateMcpFirstTool({
         decision: 'INDETERMINATE',
         obligations: [{ type: 'HITL', detail: 'Simulated Authorize obligation — human approval required.' }],
         reason: `Simulated policy HITL: tool "${toolName}" is in SIMULATED_MCP_HITL_TOOLS.`,
+      },
+    };
+  } else if (hitlRequired && hitlApproved) {
+    // Tool-name HITL gate discharged by a verified receipt → PERMIT.
+    out = {
+      decision: 'PERMIT',
+      stepUpRequired: false,
+      hitlRequired: false,
+      path: 'simulated',
+      decisionId,
+      raw: {
+        ...rawBase,
+        decision: 'PERMIT',
+        obligations: [],
+        reason: `Simulated policy HITL for tool "${toolName}" satisfied by approved HITL receipt.`,
       },
     };
   } else if (transactionType && amount != null) {
@@ -329,7 +353,7 @@ async function evaluateMcpFirstTool({
           decisionId,
           raw: { ...rawBase, decision: 'INDETERMINATE', obligations: mcpCandidates, enforced: 'STEP_UP', reason: `Amount $${amount} >= step-up threshold $${stepUpAmount}.` },
         };
-      } else if (mcpFlags.consentRequired) {
+      } else if (mcpFlags.consentRequired && !hitlApproved) {
         out = {
           decision: 'INDETERMINATE',
           stepUpRequired: false,
@@ -337,6 +361,19 @@ async function evaluateMcpFirstTool({
           path: 'simulated',
           decisionId,
           raw: { ...rawBase, decision: 'INDETERMINATE', obligations: mcpCandidates, enforced: 'HITL_CONSENT', reason: `Amount $${amount} >= confirm threshold $${confirmAmount}.` },
+        };
+      } else if (mcpFlags.consentRequired && hitlApproved) {
+        // Confirm-threshold HITL_CONSENT gate discharged by a verified receipt
+        // → PERMIT. Step-up is handled by the branch above and is unreachable
+        // here (mcpFlags.stepUpRequired wins first), so a receipt can never
+        // satisfy MFA.
+        out = {
+          decision: 'PERMIT',
+          stepUpRequired: false,
+          hitlRequired: false,
+          path: 'simulated',
+          decisionId,
+          raw: { ...rawBase, decision: 'PERMIT', obligations: [], enforced: 'HITL_CONSENT_SATISFIED', reason: `Amount $${amount} >= confirm threshold $${confirmAmount} satisfied by approved HITL receipt.` },
         };
       } else {
         out = {

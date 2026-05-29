@@ -12,15 +12,74 @@ This is a **completely standalone** project — it can be handed to anyone and r
 
 | Component | Port | Description |
 |---|---|---|
-| `banking_api_ui` | 4000 | React frontend (admin + end-user dashboards) |
-| `banking_api_server` | 3001 | Express REST API — **Backend-for-Frontend (BFF)** with PingOne OAuth; tokens stay server-side |
-| `banking_mcp_server` | 8080 | TypeScript MCP tool server for the AI agent |
-| `banking_mcp_gateway` | 3005 | MCP Security Gateway — enforces policies and performs token exchange |
-| `banking_agent_service` | 3006 | LangGraph reasoning service for the canonical agent (driven by BFF) |
-| `banking_hitl_service` | 3009 | Human-in-the-Loop consent challenge service |
-| `banking_mcp_invest` | 8081 | Specialized MCP server for investment tools |
-| `banking_mortgage_service` | 8082 | Mortgage service backend |
-| `langchain_agent` | 8888 | Python LangChain + OpenAI demo agent (separate cross-stack exhibit) |
+| `demo_api_ui` | 4000 | React frontend (admin + end-user dashboards) |
+| `demo_api_server` | 3001 | Express REST API — **Backend-for-Frontend (BFF)** with PingOne OAuth; tokens stay server-side |
+| `demo_mcp_server` | 8080 | TypeScript MCP tool server for banking tools |
+| `demo_mcp_invest` | 8081 | TypeScript MCP server for investment tools |
+| `demo_mortgage_service` | 8082 | Mortgage REST resource server (Path A — X-API-Key conversion at gateway) |
+| `demo_mcp_gateway` | 3005 | MCP Security Gateway — RFC 8693 re-exchange + PingAuthorize policy enforcement |
+| `demo_agent_service` | 3006 | AG-UI runner; streams `STATE_DELTA` events back to the BFF over SSE |
+| `demo_hitl_service` | 3009 | Human-in-the-Loop consent challenge service |
+| `langchain_agent` | 8888 | LangChain (Python) agent runtime — selectable via `configStore.llm_framework` |
+| `openai_agent` | 8891 | OpenAI Agents SDK (Python) runtime |
+| `mastra_agent` | 8892 | Mastra (TypeScript) runtime |
+| `pydantic_agent` | 8893 | Pydantic AI (Python) runtime |
+
+## Architecture
+
+System architecture with token flow. **Interactive version** (layer toggles, scenario highlighting, JWT payload cards, token-issue connector lines) is served by the UI:
+
+- Running app: [`/architecture/token-flow.html`](https://api.ping.demo:4000/architecture/token-flow.html)
+- Source: [`demo_api_ui/public/architecture/token-flow.html`](demo_api_ui/public/architecture/token-flow.html)
+- Spec: [`docs/superpowers/specs/2026-05-29-architecture-diagram-token-overlay-design.md`](docs/superpowers/specs/2026-05-29-architecture-diagram-token-overlay-design.md)
+
+Static mermaid companion (no interactivity, embeddable in docs):
+
+```mermaid
+flowchart LR
+  classDef client    fill:#fbfcff,stroke:#c9d1e3,color:#0e1a2b
+  classDef bff       fill:#ecf6f5,stroke:#d8eceb,color:#0a5550
+  classDef agent     fill:#eef0fa,stroke:#dde2f2,color:#3a4a8c
+  classDef gw        fill:#fff6f0,stroke:#f5d9c4,color:#b35a1f
+  classDef hitl      fill:#f5dde2,stroke:#e9b8c2,color:#a13348
+  classDef mcp       fill:#dfeada,stroke:#bbcfae,color:#4a6b3a
+  classDef ping      fill:#f7eccf,stroke:#e8d4a8,color:#a87317
+
+  UI["demo_api_ui :4000<br/>React SPA · cookie session"]:::client
+  SRV["demo_api_server :3001<br/>BFF · token custodian"]:::bff
+  AGSVC["demo_agent_service :3006<br/>AG-UI runner (SSE)"]:::agent
+  LC["langchain_agent :8888"]:::agent
+  OA["openai_agent :8891"]:::agent
+  MS["mastra_agent :8892"]:::agent
+  PD["pydantic_agent :8893"]:::agent
+  EXT["External agent<br/>N8N · Bedrock · custom"]:::agent
+  GATE["demo_mcp_gateway :3005<br/>RFC 8693 re-exchange"]:::gw
+  HITL["demo_hitl_service :3009"]:::hitl
+  MBANK["demo_mcp_server :8080<br/>Banking MCP"]:::mcp
+  MINV["demo_mcp_invest :8081"]:::mcp
+  MMORT["demo_mortgage_service :8082"]:::mcp
+  POAUTH["PingOne OAuth / AS<br/>RFC 8693 · introspect · JWKS"]:::ping
+  PAAM["PingOne AAM<br/>Authorize policy"]:::ping
+
+  UI -->|"HTTPS · cookie"| SRV
+  UI -.->|"302 → /authorize · PKCE · code back"| POAUTH
+  EXT -.->|"POST /api/agent/delegate"| SRV
+  SRV -->|"AG-UI · SSE · STATE_DELTA"| AGSVC
+  SRV -.->|"HTTP /run · WS :8889"| LC
+  SRV -.->|"HTTP /run"| OA
+  SRV -.->|"HTTP /run"| MS
+  SRV -.->|"HTTP /run"| PD
+  SRV -->|"WS · JSON-RPC + MCP Gateway token"| GATE
+  SRV -->|"RFC 8693 · introspect (RFC 7662)"| POAUTH
+  GATE -->|"WS · aud:mcp_banking"| MBANK
+  GATE -->|"WS · aud:mcp_invest"| MINV
+  GATE -.->|"REST · X-API-Key"| MMORT
+  GATE -->|"authorize · introspect"| PAAM
+  GATE -.->|"/challenges · poll"| HITL
+  MBANK -.->|"BFF /api/* · banking data fetch"| SRV
+```
+
+Full mermaid source: [`docs/architecture-token-flow.mmd`](docs/architecture-token-flow.mmd).
 
 ## New Machine Setup
 
@@ -36,7 +95,7 @@ The installer:
 
 1. Confirms the install directory (defaults to `./AI-demo` in your current dir; you can hit Enter or abort).
 2. Clones the repo (or pulls latest if it already exists).
-3. Runs `npm run setup:fresh` inside it — which prompts for PingOne worker creds via a localhost browser form, provisions all PingOne resources, and writes `banking_api_server/.env`.
+3. Runs `npm run setup:fresh` inside it — which prompts for PingOne worker creds via a localhost browser form, provisions all PingOne resources, and writes `demo_api_server/.env`.
 
 When done: `cd AI-demo && ./run-demo.sh`. That's it.
 
@@ -196,7 +255,7 @@ What it does (4 phases — each can be skipped via `--keep-*` flags):
 |-------|--------------|
 | 1. Stop services | `./run-demo.sh stop` — gracefully stops API, UI, MCP server, MCP gateway, agent service, MCP invest, HITL, LangChain agent. |
 | 2. Wipe PingOne env | Type-the-env-id confirmation, then deletes every Demo app, resource server, group, custom attribute, and demo user in your PingOne env. |
-| 3. Delete local state | Removes `banking_api_server/.env`, `data/persistent/`, `data/sessions.db*`, `data/backups/`, `certs/`, `setup.log`. |
+| 3. Delete local state | Removes `demo_api_server/.env`, `data/persistent/`, `data/sessions.db*`, `data/backups/`, `certs/`, `setup.log`. |
 | 4. Delete node_modules | Removes `node_modules/` + `dist/` in all 7 Node services (~2 GB). |
 
 Skip individual phases:
@@ -291,21 +350,21 @@ disconnected network), here's the full set — all seven Node services need
 
 ```bash
 # Plain JS — install only
-cd banking_api_server   && npm install                       && cd ..
-cd banking_hitl_service && npm install                       && cd ..
-cd banking_mortgage_service && npm install                   && cd ..
+cd demo_api_server   && npm install                       && cd ..
+cd demo_hitl_service && npm install                       && cd ..
+cd demo_mortgage_service && npm install                   && cd ..
 
 # React app (CRA) — install with --legacy-peer-deps; build is handled at runtime
-cd banking_api_ui       && npm install --legacy-peer-deps    && cd ..
+cd demo_api_ui       && npm install --legacy-peer-deps    && cd ..
 
 # TypeScript services — install + tsc compile to dist/
-cd banking_mcp_server   && npm install && npm run build      && cd ..
-cd banking_mcp_gateway  && npm install && npm run build      && cd ..
-cd banking_agent_service && npm install && npm run build     && cd ..
-cd banking_mcp_invest   && npm install && npm run build      && cd ..
+cd demo_mcp_server   && npm install && npm run build      && cd ..
+cd demo_mcp_gateway  && npm install && npm run build      && cd ..
+cd demo_agent_service && npm install && npm run build     && cd ..
+cd demo_mcp_invest   && npm install && npm run build      && cd ..
 ```
 
-> `banking_api_ui` ships an `.npmrc` with `legacy-peer-deps=true` so plain `npm install` also works there — the explicit flag above is belt-and-suspenders if `.npmrc` is ever lost. CRA/`react-scripts` has an unresolvable `peerOptional` for TypeScript that npm 7+ rejects by default.
+> `demo_api_ui` ships an `.npmrc` with `legacy-peer-deps=true` so plain `npm install` also works there — the explicit flag above is belt-and-suspenders if `.npmrc` is ever lost. CRA/`react-scripts` has an unresolvable `peerOptional` for TypeScript that npm 7+ rejects by default.
 
 #### 3. Start all services
 
@@ -327,7 +386,7 @@ cd /path/to/AI-demo   # if you're not already there
 
 #### 4. Provision PingOne (recommended) — `npm run setup:fresh`
 
-This single command creates everything PingOne needs (resource servers, scopes, applications, demo users with passwords) and writes the credentials to `banking_api_server/.env`. It pops a localhost form for your worker creds, so you don't paste secrets into a terminal.
+This single command creates everything PingOne needs (resource servers, scopes, applications, demo users with passwords) and writes the credentials to `demo_api_server/.env`. It pops a localhost form for your worker creds, so you don't paste secrets into a terminal.
 
 **Step 1 (you, in PingOne Admin Console):** create a worker app with the **Identity Data Admin** role. Note the Environment ID, Region, Client ID, and Client Secret.
 
@@ -344,13 +403,13 @@ The browser pops a form. Submit your four worker creds. The script:
 3. Creates **7 applications** (Admin, User, MCP Server, Worker, MCP Exchanger, MCP Gateway, Agent)
 4. Creates two demo users with generated passwords (`bankuser`, `bankadmin`)
 5. Adds the `bankingPrincipalUserId` schema attribute and SPEL/may_act token claims
-6. Writes `banking_api_server/.env` with all the new client IDs and secrets (preserving your `SESSION_SECRET` so `config.db` stays decryptable)
+6. Writes `demo_api_server/.env` with all the new client IDs and secrets (preserving your `SESSION_SECRET` so `config.db` stays decryptable)
 
 The script is **idempotent** — re-running it on a fully-provisioned environment reports "exists" for each resource and exits cleanly.
 
 **Other modes:**
 - `npm run setup:fresh -- --no-browser` — terminal prompts only (SSH / headless boxes)
-- `cd banking_api_server && npm run pingone:bootstrap:ci` with `PINGONE_BOOTSTRAP_*` env vars set — non-interactive (CI / automation)
+- `cd demo_api_server && npm run pingone:bootstrap:ci` with `PINGONE_BOOTSTRAP_*` env vars set — non-interactive (CI / automation)
 
 **Prefer to enter credentials manually instead?** Open **[https://api.ping.demo:4000/configure](https://api.ping.demo:4000/configure)** in your browser after `./run-demo.sh` and enter your PingOne Environment ID and OAuth client credentials. The app saves them to `config.db` — no restart needed. Note: this manual path only sets the admin/user OAuth clients. The MCP gateway and agent service still need `MCP_GW_CLIENT_ID` / `AGENT_CLIENT_ID` in `.env`, which `setup:fresh` provides automatically.
 
@@ -365,9 +424,9 @@ If you already have a working setup on Machine A and want to bring it to Machine
 #### On Machine A — export
 
 ```bash
-cd banking_api_server
+cd demo_api_server
 npm run data:export
-# Creates banking-export-<timestamp>.tar.gz in banking_api_server/
+# Creates banking-export-<timestamp>.tar.gz in demo_api_server/
 ```
 
 The archive includes `config.db`, `banking.db`, all data files, and `.env`.  
@@ -426,9 +485,9 @@ Open **[https://api.ping.demo:4000/configure](https://api.ping.demo:4000/configu
 | Browser shows cert error | Certs not generated or CA not trusted | Run `mkcert -install` then `cd certs && mkcert api.ping.demo localhost 127.0.0.1` |
 | `api.ping.demo` doesn't resolve | `/etc/hosts` entry missing | `echo '127.0.0.1 api.ping.demo' \| sudo tee -a /etc/hosts` |
 | `/configure` shows all fields blank after import | `.env` encryption key mismatch | Re-import with the original archive; ensure `.env` from the source machine was included |
-| `better-sqlite3` binary error on start | Node version mismatch (binary built against a different Node major) | `nvm use 20 && cd banking_api_server && npm rebuild better-sqlite3` |
+| `better-sqlite3` binary error on start | Node version mismatch (binary built against a different Node major) | `nvm use 20 && cd demo_api_server && npm rebuild better-sqlite3` |
 | Import fails with "server is running" | Server must be stopped before import | `./run-demo.sh stop` then retry import |
-| `npm install` in `banking_api_ui` fails with `ERESOLVE` (typescript / react-scripts) | CRA's `peerOptional` typescript range trips npm 7+ resolver | `npm install --legacy-peer-deps` (or restore `banking_api_ui/.npmrc` containing `legacy-peer-deps=true`) |
+| `npm install` in `demo_api_ui` fails with `ERESOLVE` (typescript / react-scripts) | CRA's `peerOptional` typescript range trips npm 7+ resolver | `npm install --legacy-peer-deps` (or restore `demo_api_ui/.npmrc` containing `legacy-peer-deps=true`) |
 
 ---
 
@@ -458,10 +517,10 @@ npm run test:e2e:ui                        # Full E2E UI test suite
 npm run test:session                       # Session + BFF token tests
 ```
 
-From within `banking_api_server/`, you can run targeted test suites:
+From within `demo_api_server/`, you can run targeted test suites:
 
 ```bash
-cd banking_api_server
+cd demo_api_server
 npx jest oauthStatus.regression oauthStatus.integration hitlRoute.regression hitlRoute.integration
 npx jest --testPathPattern='step-up-gate|authorize-gate'
 ```
@@ -475,8 +534,8 @@ All development must follow the patterns documented in **[CLAUDE.md](CLAUDE.md)*
 **Key development conventions:**
 - **Minimal diff discipline** — touch only what the task requires; no while-I'm-here cleanup
 - **Read REGRESSION_PLAN.md § 0–1** before editing files listed there
-- **UI build required** — `cd banking_api_ui && npm run build` must exit 0 after any UI change
-- **Token custody rule** — the BFF (banking_api_server) is the sole token custodian; tokens never reach the browser
+- **UI build required** — `cd demo_api_ui && npm run build` must exit 0 after any UI change
+- **Token custody rule** — the BFF (demo_api_server) is the sole token custodian; tokens never reach the browser
 - **Quote secrets in .env** — special characters like `~`, `-`, `.` break shell parsing if unquoted
 - **No hardcoded localhost** — all OAuth redirect URIs use the configured host (`api.ping.demo` by default), never hardcoded `localhost:3001` / `localhost:4000`
 
@@ -488,12 +547,12 @@ See **[CONTEXT.md](CONTEXT.md)** for glossary of terms (BFF, gateway, agent, con
 ┌─────────────────────────────────────────────────────────┐
 │              Banking Digital Assistant                    │
 │                                                           │
-│  banking_api_ui (:4000)   ←→   banking_api_server (:3001) │
+│  demo_api_ui (:4000)   ←→   demo_api_server (:3001) │
 │       React UI                  Express banking API        │
 │                                    ↑ JWT validation        │
 │                                    │ via PingOne JWKS      │
 │                                                           │
-│  langchain_agent (:8888)  ←→   banking_mcp_server (:8080) │
+│  langchain_agent (:8888)  ←→   demo_mcp_server (:8080) │
 │    LangChain + OpenAI           MCP tools for banking      │
 │           ↓ Token Exchange                                 │
 │    oauth-playground (:3001)  (or PingOne directly)        │
@@ -524,26 +583,26 @@ See **[README (mermaid).md](README%20(mermaid).md)** for detailed token operatio
 |---|---|---|
 | AS endpoints | `openam-*.forgeblocks.com/am/oauth2/...` | `auth.pingone.com/{envId}/as/...` |
 | Token validation | **Runtime-switchable** (Phase 97): `introspection` (RFC 7662, default — real-time, detects revoked) or `jwt` (RFC 7519, fast, offline). Toggle via Config UI or `POST /api/config/validation-mode`. Set default with `VALIDATION_MODE` env var. | Same modes available |
-| Token Exchange | Not implemented | Implemented — `banking_api_server/services/agentMcpTokenService.js` performs RFC 8693 exchange on every `POST /api/mcp/tool` when `MCP_RESOURCE_URI` is set |
+| Token Exchange | Not implemented | Implemented — `demo_api_server/services/agentMcpTokenService.js` performs RFC 8693 exchange on every `POST /api/mcp/tool` when `MCP_RESOURCE_URI` is set |
 | MCP server config | `PINGONE_BASE_URL=*.PingOneentity.com` | `PINGONE_BASE_URL=https://auth.pingone.com/{envId}/as` |
 
 ## Services
 
 | Service | Port | Description |
 |---|---|---|
-| `banking_api_server` | 3001 | Express REST API — banking accounts, transactions, admin; **sole token custodian** |
-| `banking_api_ui` | 4000 | React frontend for admin/customer portal |
-| `banking_mcp_server` | 8080 | TypeScript MCP server — exposes banking tools to AI agents |
-| `banking_mcp_gateway` | 3005 | MCP Security Gateway — enforces policies, re-exchanges tokens, routes to MCP servers |
-| `banking_agent_service` | 3006 | LangGraph reasoning service for the canonical agent |
-| `banking_hitl_service` | 3009 | Human-in-the-Loop consent challenge service |
-| `banking_mcp_invest` | 8081 | Specialized MCP server for investment tools |
-| `banking_mortgage_service` | 8082 | Mortgage service backend |
+| `demo_api_server` | 3001 | Express REST API — banking accounts, transactions, admin; **sole token custodian** |
+| `demo_api_ui` | 4000 | React frontend for admin/customer portal |
+| `demo_mcp_server` | 8080 | TypeScript MCP server — exposes banking tools to AI agents |
+| `demo_mcp_gateway` | 3005 | MCP Security Gateway — enforces policies, re-exchanges tokens, routes to MCP servers |
+| `demo_agent_service` | 3006 | LangGraph reasoning service for the canonical agent |
+| `demo_hitl_service` | 3009 | Human-in-the-Loop consent challenge service |
+| `demo_mcp_invest` | 8081 | Specialized MCP server for investment tools |
+| `demo_mortgage_service` | 8082 | Mortgage service backend |
 | `langchain_agent` | 8888 | Python LangChain + OpenAI demo agent (cross-stack exhibit) |
 
 ## Token Exchange Flow (RFC 8693)
 
-The **Backend-for-Frontend (BFF)** — the `banking_api_server` — performs RFC 8693 Token Exchange on the **server side** — the browser never sees raw OAuth tokens. On every `POST /api/mcp/tool` call, `agentMcpTokenService.js` runs:
+The **Backend-for-Frontend (BFF)** — the `demo_api_server` — performs RFC 8693 Token Exchange on the **server side** — the browser never sees raw OAuth tokens. On every `POST /api/mcp/tool` call, `agentMcpTokenService.js` runs:
 
 ```text
 1. Retrieve the user access token (stored in server-side session)
@@ -554,7 +613,7 @@ The **Backend-for-Frontend (BFF)** — the `banking_api_server` — performs RFC
      audience = <MCP_RESOURCE_URI>          -- binds audience to MCP server
      scope = <tool-scopes>                  -- e.g. banking:accounts:read
 3. PingOne validates may_act, issues the MCP access token (delegated, MCP audience)
-4. BFF opens WebSocket to banking_mcp_server with the MCP access token as Bearer
+4. BFF opens WebSocket to demo_mcp_server with the MCP access token as Bearer
 ```
 
 Optional delegation path (`USE_AGENT_ACTOR_FOR_MCP=true`):
@@ -670,7 +729,7 @@ Create a local `.env.vercel.local` file (gitignored) to track your Vercel enviro
 | `PINGONE_AI_CORE_USER_CLIENT_SECRET` | Customer OAuth client secret |
 | `PINGONE_AI_CORE_USER_REDIRECT_URI` | `https://<vercel-url>/api/auth/oauth/user/callback` |
 | `REACT_APP_CLIENT_URL` | `https://<vercel-url>.vercel.app` |
-| `MCP_SERVER_URL` | `wss://…` — deploy `banking_mcp_server` to Railway/Render/Fly (Vercel doesn't support WebSocket) |
+| `MCP_SERVER_URL` | `wss://…` — deploy `demo_mcp_server` to Railway/Render/Fly (Vercel doesn't support WebSocket) |
 | `NODE_ENV` | `production` |
 | `CORS_ORIGIN` | Same as `REACT_APP_CLIENT_URL` |
 
@@ -720,7 +779,7 @@ Add these to your PingOne application after getting your Vercel URL:
 | File | Purpose |
 |---|---|
 | `.env.vercel.local` | Your local copy (gitignored) — create manually; see Vercel Deployment section above |
-| `banking_api_server/.env` | Local dev config (PingOne credentials, port) |
-| `banking_mcp_server/.env.development` | MCP server config (copy to `.env` before running) |
+| `demo_api_server/.env` | Local dev config (PingOne credentials, port) |
+| `demo_mcp_server/.env.development` | MCP server config (copy to `.env` before running) |
 | `langchain_agent/.env` | Agent config (OpenAI key, PingOne endpoints) |
-| `banking_api_ui/.env` | React frontend config |
+| `demo_api_ui/.env` | React frontend config |

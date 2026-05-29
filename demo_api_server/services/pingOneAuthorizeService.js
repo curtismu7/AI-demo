@@ -235,6 +235,15 @@ async function evaluateMcpToolDelegation({
   nestedActClientId,
   mcpResourceUri,
   acr,
+  // HITL receipt (receipt-aware PERMIT). When the BFF/gateway has verified an
+  // approved, caller-bound HITL challenge for THIS tool call, it sets
+  // hitlApproved=true. We only FORWARD it as a decision parameter — the Trust
+  // Framework policy is what flips INDETERMINATE→PERMIT when it sees
+  // HitlApproved==true on a confirm-gated call. The policy must NOT let a
+  // receipt satisfy a STEP_UP obligation (parity with the simulated engine,
+  // where step-up wins before the consent branch). Emitted only when true,
+  // matching the conditional-spread style of Acr (and the simulated engine).
+  hitlApproved = false,
 }) {
   const creds = _getCredentials();
   const endpointId = decisionEndpointId || creds.mcpDecisionEndpointId;
@@ -257,6 +266,7 @@ async function evaluateMcpToolDelegation({
     NestedActClientId: nestedActClientId || '', // from act.act.client_id || act.act.sub
     McpResourceUri: mcpResourceUri || '',    // expected MCP resource URI from config
     ...(acr ? { Acr: acr } : {}),
+    ...(hitlApproved ? { HitlApproved: true } : {}),
     Timestamp: new Date().toISOString(),
   };
 

@@ -1163,6 +1163,51 @@ Commits: gateway `7edb211e`, BFF `380b46bf`, agent-service `1912c3d1`.
 
 **Do not break:** see the new §1 row "langchain auth-code flow must send PKCE S256". The `code_challenge`/`code_challenge_method=S256` on the authorize URL, the per-request single-use `code_verifier` in `_pending_authorizations[state]`, and forwarding it on the callback are the load-bearing invariants; the existing `_generate_state`/`validate_state` BL-03 session-binding + expiry semantics must not regress.
 
+### 2026-05-29 — Receipt-aware PERMIT in live PingAuthorize (`evaluateMcpToolDelegation`)
+**Change (not a bug):** `pingOneAuthorizeService.evaluateMcpToolDelegation` now accepts
+`hitlApproved` (default `false`) and forwards it as a `HitlApproved: true` decision
+parameter (conditional-spread, only when true) — parity pair to the mock-authz entry
+below. **The code only forwards the flag; the Trust Framework policy is what flips
+INDETERMINATE→PERMIT** when it sees `HitlApproved==true` on a confirm-gated call. The
+response→flag mapping (`_classifyDecisionObligations`) is unchanged. Note this path
+uses `DecisionContext: 'McpFirstTool'` and carries no `Amount`/`TransactionType`
+(unlike the simulated engine's `McpToolCall` shape) — the policy reads amount from
+the token/context, not the param block.
+**Load-bearing invariants (encode in the TF policy):**
+- The policy must NOT let a receipt satisfy a `STEP_UP` obligation (an approval ≠ MFA),
+  matching the simulated engine where step-up wins before the consent branch.
+- Audience-mismatch / DENY stay policy-side and are unaffected by `HitlApproved`.
+**Tests:** `src/__tests__/mcpDelegationParity.test.js` — 2 new cases (forwards-when-true,
+omits-when-absent) assert the POST body. Verified on disk: 159 passed across 10
+authorize/gate suites (simulatedAuthorizeService, authorize.parity, mcpDelegationParity,
+mcpFirstToolGate.live, mcpToolAuthorizationService, thresholdDecisions,
+thresholdsToSimulatedAuthorize, r1LocalAuthzRemoval, authorize-gate, step-up-gate).
+**Inert without the TF policy edit** — see the plan doc's remaining items.
+
+### 2026-05-29 — Receipt-aware PERMIT in mock authz (`evaluateMcpFirstTool`)
+**Change (not a bug):** `simulatedAuthorizeService.evaluateMcpFirstTool` now accepts
+`hitlApproved` (default `false`). A verified HITL receipt discharges **only** the
+`HITL_CONSENT` gate → returns PERMIT instead of `INDETERMINATE`. This is the mock/
+default-demo half of making the authorization engine (not just the gateway) the
+receipt-aware PERMIT authority on agent HITL retries — see
+`docs/superpowers/plans/2026-05-29-hitl-receipt-aware-permit.md`.
+**Load-bearing invariants (do not regress):**
+- Step-up is **NOT** dischargeable by a receipt — `mcpFlags.stepUpRequired` wins
+  before the consent branch, so an approval never satisfies MFA.
+- Audience-mismatch DENY and deny-amount still run first; `hitlApproved=true`
+  never overrides them.
+- `HitlApproved` is surfaced in `raw.parameters` only when true (conditional-spread
+  style, matching `acr`/`Amount`). Parity: the live `evaluateMcpToolDelegation` and
+  gateway `buildAuthorizeParameters` must apply the SAME rule when their slices land.
+**Tests:** `src/__tests__/simulatedAuthorizeService.test.js` — new `HITL receipt
+(hitlApproved)` describe block (7 tests). Verified: 124 passed across the authorize
+suite set (simulatedAuthorizeService, authorize.parity, mcpToolAuthorizationService,
+thresholdDecisions, thresholdsToSimulatedAuthorize, simulatedAgentRestrictions,
+r1LocalAuthzRemoval).
+**Remaining (not in this slice):** live PingAuthorize param, BFF gate + pipeline
+receipt verification (Option 1 symmetric), gateway HTTP call-site parity, Trust
+Framework `HitlApproved` policy rule.
+
 ### 2026-05-15 — Architecture-menu diagram accuracy pass (port collision fixed; token-flow/flow/Phase-266 brought current)
 
 **Files changed:**

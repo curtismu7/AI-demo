@@ -235,6 +235,66 @@ describe('simulatedAuthorizeService', () => {
     });
   });
 
+  // ──────────────────────────────────────────────────────────────────────
+  // HITL receipt (hitlApproved) — receipt-aware PERMIT on retry.
+  //
+  // A verified HITL receipt discharges ONLY the HITL_CONSENT gate. Step-up
+  // (MFA), audience-mismatch, and deny gates are NOT dischargeable by a
+  // receipt. The BFF/gateway verifies the receipt's caller-binding before
+  // setting hitlApproved=true; this engine trusts that boolean. The live
+  // PingAuthorize path must apply the SAME rule (parity invariant).
+  // ──────────────────────────────────────────────────────────────────────
+  describe('evaluateMcpFirstTool — HITL receipt (hitlApproved)', () => {
+    const BASE = { userId: 'u-mcp', toolName: 'create_transfer', tokenAudience: 'https://mcp.example', actClientId: 'bff', acr: '' };
+
+    it('confirm-threshold HITL flips to PERMIT when hitlApproved=true', async () => {
+      const r = await evaluateMcpFirstTool({ ...BASE, amount: SIMULATED_CONFIRM_AMOUNT_USD, transactionType: 'transfer', hitlApproved: true });
+      expect(r.decision).toBe('PERMIT');
+      expect(r.hitlRequired).toBe(false);
+      expect(r.stepUpRequired).toBe(false);
+    });
+
+    it('confirm-threshold still HITL when hitlApproved is absent (default unchanged)', async () => {
+      const r = await evaluateMcpFirstTool({ ...BASE, amount: SIMULATED_CONFIRM_AMOUNT_USD, transactionType: 'transfer' });
+      expect(r.decision).toBe('INDETERMINATE');
+      expect(r.hitlRequired).toBe(true);
+    });
+
+    it('step-up is NOT dischargeable by a HITL receipt', async () => {
+      const r = await evaluateMcpFirstTool({ ...BASE, amount: SIMULATED_POLICY_STEPUP_USD, transactionType: 'transfer', hitlApproved: true });
+      expect(r.decision).toBe('INDETERMINATE');
+      expect(r.stepUpRequired).toBe(true);
+      expect(r.hitlRequired).toBe(false);
+    });
+
+    it('audience-mismatch DENY still wins over hitlApproved', async () => {
+      const r = await evaluateMcpFirstTool({
+        ...BASE,
+        amount: SIMULATED_CONFIRM_AMOUNT_USD,
+        transactionType: 'transfer',
+        tokenAudience: 'intermediate.2x.ping.demo',
+        mcpResourceUri: 'final.2x.ping.demo',
+        hitlApproved: true,
+      });
+      expect(r.decision).toBe('DENY');
+    });
+
+    it('deny-amount still wins over hitlApproved', async () => {
+      const r = await evaluateMcpFirstTool({ ...BASE, amount: SIMULATED_DENY_AMOUNT_USD + 1, transactionType: 'transfer', hitlApproved: true });
+      expect(r.decision).toBe('DENY');
+    });
+
+    it('surfaces HitlApproved in decision parameters when true', async () => {
+      const r = await evaluateMcpFirstTool({ ...BASE, amount: SIMULATED_CONFIRM_AMOUNT_USD, transactionType: 'transfer', hitlApproved: true });
+      expect(r.raw.parameters.HitlApproved).toBe(true);
+    });
+
+    it('omits HitlApproved from parameters when false (conditional-spread style)', async () => {
+      const r = await evaluateMcpFirstTool({ ...BASE, amount: SIMULATED_CONFIRM_AMOUNT_USD, transactionType: 'transfer' });
+      expect(r.raw.parameters.HitlApproved).toBeUndefined();
+    });
+  });
+
   describe('isSimulatedModeEnabled', () => {
     it('returns true when configStore.get has ff_authorize_simulated true (no getEffective)', () => {
       expect(isSimulatedModeEnabled({ get: (k) => (k === 'ff_authorize_simulated' ? 'true' : null) })).toBe(true);
