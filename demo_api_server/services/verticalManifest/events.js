@@ -3,8 +3,7 @@ function createEvents({ getInitialActiveId } = {}) {
 
   function _send(res, type, payload) {
     try {
-      res.write(`event: ${type}\n`);
-      res.write(`data: ${JSON.stringify(payload)}\n\n`);
+      res.write(`event: ${type}\ndata: ${JSON.stringify(payload)}\n\n`);
     } catch (_) {
       // Res may be closed; the close handler removes it.
     }
@@ -22,6 +21,7 @@ function createEvents({ getInitialActiveId } = {}) {
       res.setHeader('X-Accel-Buffering', 'no');
     }
     if (typeof res.writeHead === 'function') res.writeHead(200);
+    if (typeof res.flushHeaders === 'function') res.flushHeaders();
     clients.add(res);
 
     // Hydration: send current active id immediately so client can skip a /me round-trip.
