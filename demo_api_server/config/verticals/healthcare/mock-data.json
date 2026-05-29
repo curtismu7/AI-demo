@@ -1,0 +1,60 @@
+{
+  "heroStats": {
+    "nextAppointment": "2026-06-03",
+    "activePrescriptions": 3,
+    "outstandingBalance": 142.5,
+    "coverageStatus": "Active"
+  },
+  "patientRecords": [
+    {
+      "id": "pr1",
+      "name": "Alex Johnson",
+      "dob": "1985-04-12",
+      "provider": "Dr. Sarah Chen",
+      "coverageType": "PPO",
+      "coverageStatus": "Active"
+    },
+    {
+      "id": "pr2",
+      "name": "Alex Johnson",
+      "dob": "1985-04-12",
+      "provider": "Dr. Marcus Webb",
+      "coverageType": "HMO",
+      "coverageStatus": "Active"
+    },
+    {
+      "id": "pr3",
+      "name": "Alex Johnson",
+      "dob": "1985-04-12",
+      "provider": "Dr. Priya Nair",
+      "coverageType": "PPO",
+      "coverageStatus": "Inactive"
+    }
+  ],
+  "billingHistory": [
+    {
+      "id": "b1",
+      "procedureCode": "99213",
+      "date": "2026-04-10",
+      "insurer": "BlueCross",
+      "amountBilled": 220,
+      "status": "Paid"
+    },
+    {
+      "id": "b2",
+      "procedureCode": "90837",
+      "date": "2026-04-22",
+      "insurer": "BlueCross",
+      "amountBilled": 180,
+      "status": "Pending"
+    },
+    {
+      "id": "b3",
+      "procedureCode": "93000",
+      "date": "2026-05-01",
+      "insurer": "BlueCross",
+      "amountBilled": 95,
+      "status": "Denied"
+    }
+  ]
+}

@@ -1,0 +1,214 @@
+{
+  "id": "workforce",
+  "schemaVersion": 3,
+  "identity": {
+    "displayName": "WX Workforce",
+    "headerTitle": "WX Workforce",
+    "documentTitle": "WX Workforce · PingOne AI IAM Core",
+    "logoAlt": "WX Workforce logo",
+    "tagline": "AI-Powered HR & Workforce Demo",
+    "logoPath": "/branding/workforce-logo.svg"
+  },
+  "theme": {
+    "cssVars": {
+      "--app-primary-red": "#4c1d95",
+      "--app-primary-red-hover": "#3b0764",
+      "--app-primary-red-mid": "#7c3aed",
+      "--app-primary-red-border": "#6d28d9",
+      "--brand-dashboard-header-start": "#4c1d95",
+      "--brand-dashboard-header-end": "#7c3aed",
+      "--brand-app-shell-hero-start": "#4c1d95",
+      "--brand-app-shell-hero-end": "#7c3aed",
+      "--theme-accent": "#a78bfa",
+      "--brand-dashboard-header-text": "#ffffff"
+    }
+  },
+  "terminology": {
+    "account": "Account",
+    "accounts": "Accounts",
+    "accountTypes": [
+      "PTO Balance",
+      "Benefits Allowance",
+      "Expense Budget"
+    ],
+    "transaction": "Request",
+    "transactions": "Requests",
+    "transactionTypes": [
+      "Time Off Request",
+      "Expense Report",
+      "Benefits Claim",
+      "Reimbursement"
+    ],
+    "balance": "Balance",
+    "agent": "HR Assistant",
+    "dashboard": "My Workspace",
+    "highValueAction": "Expense Approval",
+    "highValueLabel": "High-value expense"
+  },
+  "agent": {
+    "persona": "HR Assistant",
+    "greeting": "Hi {name}! I'm your HR Assistant. I can help you check PTO balance, submit expense reports, or review benefits. What would you like to do?",
+    "systemPromptFlavor": "You are a WX Workforce HR assistant. Help employees check PTO balances, submit expense reports, review benefits, and track reimbursements. Use HR language: accounts are PTO balances, benefits allowances, or expense budgets, transactions are requests or submissions, balance is PTO or budget balance. Be professional and direct."
+  },
+  "dashboard": {
+    "kind": "workforce",
+    "chips": [
+      {
+        "key": "balance",
+        "label": "PTO Balance"
+      },
+      {
+        "key": "accounts",
+        "label": "My Benefits"
+      },
+      {
+        "key": "transactions",
+        "label": "Request History"
+      },
+      {
+        "key": "transfer",
+        "label": "Submit Request"
+      },
+      {
+        "key": "feature",
+        "label": "Show Expense Report"
+      }
+    ],
+    "hero": {
+      "cards": [
+        {
+          "label": "Next Pay Date",
+          "dataKey": "heroStats.nextPayDate",
+          "format": "date"
+        },
+        {
+          "label": "PTO Balance",
+          "dataKey": "heroStats.ptoBalance",
+          "format": "count"
+        },
+        {
+          "label": "Open Enrollments",
+          "dataKey": "heroStats.openEnrollments",
+          "format": "count"
+        },
+        {
+          "label": "Team Size",
+          "dataKey": "heroStats.teamSize",
+          "format": "count"
+        }
+      ]
+    },
+    "llmChipGroups": {
+      "Pay": [
+        {
+          "id": "wf_payday",
+          "label": "Next payday",
+          "message": "When is my next payday?"
+        },
+        {
+          "id": "wf_paystubs",
+          "label": "Recent pay stubs",
+          "message": "Show my last 3 pay stubs"
+        }
+      ],
+      "Benefits": [
+        {
+          "id": "wf_enrolled",
+          "label": "My benefits",
+          "message": "What benefits am I enrolled in?"
+        },
+        {
+          "id": "wf_enrollment",
+          "label": "Open enrollment",
+          "message": "When does open enrollment close?"
+        }
+      ],
+      "Time Off": [
+        {
+          "id": "wf_pto",
+          "label": "PTO balance",
+          "message": "How much PTO do I have left?"
+        },
+        {
+          "id": "wf_pending",
+          "label": "Pending requests",
+          "message": "Show my pending time-off requests"
+        }
+      ],
+      "Team": [
+        {
+          "id": "wf_schedules",
+          "label": "Team schedules",
+          "message": "Show my direct reports' schedules"
+        },
+        {
+          "id": "wf_out",
+          "label": "Who's out?",
+          "message": "Who is out of office this week?"
+        }
+      ]
+    }
+  },
+  "scopes": {
+    "read": "read",
+    "write": "write",
+    "transfer": "transfer",
+    "featureScope": "expense:read"
+  },
+  "featurePage": {
+    "mcpTool": "show_expense_report",
+    "pageTitle": "Expense Report",
+    "badgeLabel": "API-KEY PATH",
+    "accentColor": "#4c1d95",
+    "dataKey": "expenseReport",
+    "fields": [
+      {
+        "label": "Report ID",
+        "path": "reportId"
+      },
+      {
+        "label": "Category",
+        "path": "category"
+      },
+      {
+        "label": "Description",
+        "path": "description"
+      },
+      {
+        "label": "Amount",
+        "path": "amount",
+        "format": "money",
+        "accent": true
+      },
+      {
+        "label": "Submitted",
+        "path": "submittedDate"
+      },
+      {
+        "label": "Status",
+        "path": "status"
+      },
+      {
+        "label": "Approver",
+        "path": "approver"
+      },
+      {
+        "label": "Reimbursement date",
+        "path": "reimbursementDate"
+      }
+    ],
+    "sectionTitle": "Report details",
+    "emptyPrompt": "show expense report",
+    "scopeError": "The agent's access token does not carry the expense:read scope. Sign out and sign back in to consent to expense report access, then try \"Show Expense Report\" again."
+  },
+  "demoUsers": {
+    "customer": {
+      "hint": "demoUser",
+      "passwordHint": "Tigers7&"
+    },
+    "admin": {
+      "hint": "demoAdmin",
+      "passwordHint": "Tigers7&"
+    }
+  }
+}

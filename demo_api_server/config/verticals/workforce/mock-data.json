@@ -1,0 +1,68 @@
+{
+  "heroStats": {
+    "nextPayDate": "2026-06-06",
+    "ptoBalance": 14,
+    "openEnrollments": 2,
+    "teamSize": 8
+  },
+  "benefits": [
+    {
+      "id": "ben1",
+      "name": "Medical",
+      "planType": "PPO",
+      "enrollmentStatus": "Enrolled",
+      "coverageTier": "Employee + Family",
+      "nextRenewal": "2027-01-01"
+    },
+    {
+      "id": "ben2",
+      "name": "Dental",
+      "planType": "DPPO",
+      "enrollmentStatus": "Enrolled",
+      "coverageTier": "Employee Only",
+      "nextRenewal": "2027-01-01"
+    },
+    {
+      "id": "ben3",
+      "name": "Vision",
+      "planType": "VSP",
+      "enrollmentStatus": "Not Enrolled",
+      "coverageTier": "—",
+      "nextRenewal": "2027-01-01"
+    },
+    {
+      "id": "ben4",
+      "name": "401(k)",
+      "planType": "Roth",
+      "enrollmentStatus": "Enrolled",
+      "coverageTier": "6% contribution",
+      "nextRenewal": "—"
+    }
+  ],
+  "payrollHistory": [
+    {
+      "id": "pay1",
+      "payPeriod": "2026-05-01 – 2026-05-15",
+      "grossPay": 4166.67,
+      "deductions": 1041.67,
+      "netPay": 3125,
+      "paymentMethod": "Direct Deposit"
+    },
+    {
+      "id": "pay2",
+      "payPeriod": "2026-04-16 – 2026-04-30",
+      "grossPay": 4166.67,
+      "deductions": 1041.67,
+      "netPay": 3125,
+      "paymentMethod": "Direct Deposit"
+    },
+    {
+      "id": "pay3",
+      "payPeriod": "2026-04-01 – 2026-04-15",
+      "grossPay": 4166.67,
+      "deductions": 1041.67,
+      "netPay": 3125,
+      "paymentMethod": "Direct Deposit"
+    }
+  ]
+}

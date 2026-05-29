@@ -29,11 +29,26 @@ function normalizeFormat(value) {
   return FORMAT_NORMALIZATIONS[value] || value;
 }
 
+// Remove all leaf keys whose value is `null` (treat null as "absent" — legacy
+// manifests use null for unset optional fields; Zod `.optional()` rejects null).
+function stripNulls(obj) {
+  if (obj === null || typeof obj !== 'object') return;
+  if (Array.isArray(obj)) {
+    for (const item of obj) stripNulls(item);
+    return;
+  }
+  for (const k of Object.keys(obj)) {
+    if (obj[k] === null) delete obj[k];
+    else stripNulls(obj[k]);
+  }
+}
+
 function transformOne(oldManifest) {
   const newId = ID_RENAMES[oldManifest.id] || oldManifest.id;
   const m = JSON.parse(JSON.stringify(oldManifest));
   m.id = newId;
   m.schemaVersion = 3;
+  stripNulls(m);
 
   // Split mock data out of dashboard.
   let mockData = {};

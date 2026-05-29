@@ -1,0 +1,219 @@
+{
+  "id": "healthcare",
+  "schemaVersion": 3,
+  "identity": {
+    "displayName": "CareConnect",
+    "headerTitle": "CareConnect",
+    "documentTitle": "CareConnect · PingOne AI IAM Core",
+    "logoAlt": "CareConnect logo",
+    "tagline": "AI-Powered Healthcare Demo",
+    "logoPath": "/branding/careconnect-logo.svg"
+  },
+  "theme": {
+    "cssVars": {
+      "--app-primary-red": "#0f766e",
+      "--app-primary-red-hover": "#0d6b64",
+      "--app-primary-red-mid": "#14b8a6",
+      "--app-primary-red-border": "#0d9488",
+      "--brand-dashboard-header-start": "#0f766e",
+      "--brand-dashboard-header-end": "#0d9488",
+      "--brand-app-shell-hero-start": "#0f766e",
+      "--brand-app-shell-hero-end": "#0d9488",
+      "--theme-accent": "#14b8a6",
+      "--brand-dashboard-header-text": "#ffffff"
+    }
+  },
+  "terminology": {
+    "account": "Patient Record",
+    "accounts": "Patient Records",
+    "accountTypes": [
+      "Primary Care",
+      "Specialist",
+      "Mental Health"
+    ],
+    "transaction": "Appointment",
+    "transactions": "Appointments",
+    "transactionTypes": [
+      "Check-in",
+      "Consultation",
+      "Records Release",
+      "Referral"
+    ],
+    "balance": "Coverage",
+    "agent": "Care Assistant",
+    "dashboard": "My Health",
+    "highValueAction": "Records Release",
+    "highValueLabel": "High-sensitivity records release"
+  },
+  "agent": {
+    "persona": "Care Assistant",
+    "greeting": "Hi {name}! I can review your appointments, check coverage details, and help you manage records requests. I'll walk you through the consent flows as we go. What do you need?",
+    "systemPromptFlavor": "You are a PingHealth patient assistant. Help patients view their insurance coverage, check patient records, review appointment history, and understand their benefits. Use healthcare language: accounts are patient records, transactions are appointments, consultations, or referrals, balance is coverage amount. Respond with appropriate care and clarity."
+  },
+  "dashboard": {
+    "kind": "healthcare",
+    "chips": [
+      {
+        "key": "balance",
+        "label": "Check Coverage"
+      },
+      {
+        "key": "accounts",
+        "label": "My Records"
+      },
+      {
+        "key": "transactions",
+        "label": "Appointments"
+      },
+      {
+        "key": "transfer",
+        "label": "Release Records"
+      },
+      {
+        "key": "feature",
+        "label": "Show Health Record"
+      }
+    ],
+    "hero": {
+      "cards": [
+        {
+          "label": "Next Appointment",
+          "dataKey": "heroStats.nextAppointment",
+          "format": "date"
+        },
+        {
+          "label": "Active Prescriptions",
+          "dataKey": "heroStats.activePrescriptions",
+          "format": "count"
+        },
+        {
+          "label": "Outstanding Balance",
+          "dataKey": "heroStats.outstandingBalance",
+          "format": "money"
+        },
+        {
+          "label": "Coverage Status",
+          "dataKey": "heroStats.coverageStatus",
+          "format": "text"
+        }
+      ]
+    },
+    "llmChipGroups": {
+      "Appointments": [
+        {
+          "id": "hc_next_appt",
+          "label": "Next appointment",
+          "message": "When is my next appointment?"
+        },
+        {
+          "id": "hc_specialists",
+          "label": "Specialist visits",
+          "message": "Show upcoming specialist visits"
+        }
+      ],
+      "Prescriptions": [
+        {
+          "id": "hc_active_rx",
+          "label": "Active prescriptions",
+          "message": "List my active prescriptions"
+        },
+        {
+          "id": "hc_refills",
+          "label": "Refills due",
+          "message": "What prescription refills are due this week?"
+        }
+      ],
+      "Billing": [
+        {
+          "id": "hc_balance",
+          "label": "What do I owe?",
+          "message": "What do I owe from my last visit?"
+        },
+        {
+          "id": "hc_pending",
+          "label": "Pending claims",
+          "message": "Show claims pending insurance review"
+        }
+      ],
+      "Coverage": [
+        {
+          "id": "hc_deductible",
+          "label": "Deductible status",
+          "message": "What's my deductible status this year?"
+        },
+        {
+          "id": "hc_covered",
+          "label": "Is this covered?",
+          "message": "Is a specialist referral covered under my plan?"
+        }
+      ]
+    }
+  },
+  "scopes": {
+    "read": "read",
+    "write": "write",
+    "transfer": "transfer",
+    "featureScope": "records:read"
+  },
+  "featurePage": {
+    "mcpTool": "show_health_record",
+    "pageTitle": "Health Record",
+    "badgeLabel": "API-KEY PATH",
+    "accentColor": "#0f766e",
+    "dataKey": "healthRecord",
+    "fields": [
+      {
+        "label": "Record ID",
+        "path": "recordId"
+      },
+      {
+        "label": "Record type",
+        "path": "recordType"
+      },
+      {
+        "label": "Provider",
+        "path": "provider"
+      },
+      {
+        "label": "Facility",
+        "path": "facility"
+      },
+      {
+        "label": "Visit date",
+        "path": "visitDate"
+      },
+      {
+        "label": "Covered amount",
+        "path": "coveredAmount",
+        "format": "money",
+        "accent": true
+      },
+      {
+        "label": "Copay",
+        "path": "copay",
+        "format": "money"
+      },
+      {
+        "label": "Status",
+        "path": "status"
+      },
+      {
+        "label": "Coverage plan",
+        "path": "coveragePlan"
+      }
+    ],
+    "sectionTitle": "Record details",
+    "emptyPrompt": "show health record",
+    "scopeError": "The agent's access token does not carry the records:read scope. Sign out and sign back in to consent to health record access, then try \"Show Health Record\" again."
+  },
+  "demoUsers": {
+    "customer": {
+      "hint": "demoUser",
+      "passwordHint": "Tigers7&"
+    },
+    "admin": {
+      "hint": "demoAdmin",
+      "passwordHint": "Tigers7&"
+    }
+  }
+}

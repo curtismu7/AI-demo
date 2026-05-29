@@ -1,6 +1,6 @@
 {
-  "id": "admin",
-  "schemaVersion": 2,
+  "id": "admin-console",
+  "schemaVersion": 3,
   "identity": {
     "displayName": "Admin Console",
     "headerTitle": "Admin Console",
@@ -26,10 +26,17 @@
   "terminology": {
     "account": "Account",
     "accounts": "Accounts",
-    "accountTypes": ["Checking", "Savings"],
+    "accountTypes": [
+      "Checking",
+      "Savings"
+    ],
     "transaction": "Transaction",
     "transactions": "Transactions",
-    "transactionTypes": ["Deposit", "Withdrawal", "Transfer"],
+    "transactionTypes": [
+      "Deposit",
+      "Withdrawal",
+      "Transfer"
+    ],
     "balance": "Balance",
     "agent": "Admin Agent",
     "dashboard": "Admin Console",
@@ -44,19 +51,34 @@
   "dashboard": {
     "kind": "admin",
     "chips": [
-      { "key": "lookup_customer", "label": "Look Up Customer" },
-      { "key": "get_customer_transactions", "label": "View Transactions" },
-      { "key": "get_customer_profile", "label": "View Profile" },
-      { "key": "freeze_account", "label": "Freeze Account" }
-    ],
-    "mockData": null
+      {
+        "key": "lookup_customer",
+        "label": "Look Up Customer"
+      },
+      {
+        "key": "get_customer_transactions",
+        "label": "View Transactions"
+      },
+      {
+        "key": "get_customer_profile",
+        "label": "View Profile"
+      },
+      {
+        "key": "freeze_account",
+        "label": "Freeze Account"
+      }
+    ]
   },
   "scopes": {
     "read": "admin:read",
     "write": "admin:write",
+    "transfer": "transfer",
     "featureScope": "users:manage"
   },
   "demoUsers": {
-    "admin": { "hint": "demoAdmin", "passwordHint": "Tigers7&" }
+    "admin": {
+      "hint": "demoAdmin",
+      "passwordHint": "Tigers7&"
+    }
   }
 }

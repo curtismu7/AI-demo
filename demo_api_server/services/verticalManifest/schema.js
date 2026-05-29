@@ -57,8 +57,8 @@ const ManifestSchema = z.object({
         dataKey: z.string(),
         format: FormatEnum,
       })),
-    }),
-    llmChipGroups: z.record(z.string(), z.array(ChipSchema)),
+    }).optional(),
+    llmChipGroups: z.record(z.string(), z.array(ChipSchema)).optional(),
   }).optional(),
 
   scopes: z.object({

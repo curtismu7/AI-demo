@@ -1,0 +1,94 @@
+{
+  "heroStats": {
+    "gearValue": 644,
+    "activeRentals": 2,
+    "loyaltyTier": "Gold",
+    "lastPurchase": "2026-04-27"
+  },
+  "products": [
+    {
+      "id": "p1",
+      "sku": "SS-NK-RUN",
+      "name": "Nike Pegasus 41",
+      "price": 140,
+      "stock": "In Stock",
+      "category": "Running"
+    },
+    {
+      "id": "p2",
+      "sku": "SS-UA-HVY",
+      "name": "Under Armour Hoodie",
+      "price": 75,
+      "stock": "In Stock",
+      "category": "Apparel"
+    },
+    {
+      "id": "p3",
+      "sku": "SS-TW-GOLF",
+      "name": "Titleist Pro V1 (12)",
+      "price": 55,
+      "stock": "Low Stock",
+      "category": "Golf"
+    },
+    {
+      "id": "p4",
+      "sku": "SS-YNX-MAT",
+      "name": "Yonex Badminton Racket",
+      "price": 120,
+      "stock": "In Stock",
+      "category": "Racket"
+    },
+    {
+      "id": "p5",
+      "sku": "SS-GRM-WCH",
+      "name": "Garmin Forerunner 265",
+      "price": 449,
+      "stock": "In Stock",
+      "category": "Wearable"
+    }
+  ],
+  "orders": [
+    {
+      "id": "o1",
+      "product": "Nike Pegasus 41",
+      "sku": "SS-NK-RUN",
+      "amount": 140,
+      "status": "Delivered",
+      "date": "2026-04-18"
+    },
+    {
+      "id": "o2",
+      "product": "Garmin Forerunner 265",
+      "sku": "SS-GRM-WCH",
+      "amount": 449,
+      "status": "Shipped",
+      "date": "2026-04-25"
+    },
+    {
+      "id": "o3",
+      "product": "Titleist Pro V1",
+      "sku": "SS-TW-GOLF",
+      "amount": 55,
+      "status": "Processing",
+      "date": "2026-04-27"
+    }
+  ],
+  "rentals": [
+    {
+      "id": "r1",
+      "item": "Trek Marlin 8 Mountain Bike",
+      "sku": "SS-TREK-MB8",
+      "dueDate": "2026-05-30",
+      "dailyRate": 45,
+      "status": "Active"
+    },
+    {
+      "id": "r2",
+      "item": "Rossignol Ski Set",
+      "sku": "SS-RS-SKI",
+      "dueDate": "2026-06-01",
+      "dailyRate": 60,
+      "status": "Active"
+    }
+  ]
+}
