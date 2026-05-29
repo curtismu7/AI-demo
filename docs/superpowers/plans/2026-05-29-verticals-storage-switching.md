@@ -18,6 +18,14 @@ This plan deviates from the spec in one mechanical detail. Captured here so revi
 
 **Plan uses:** a dedicated `services/lmdb/verticalStore.lmdb.js` module, sibling to `delegationStore.lmdb.js` and `demoAccountStore.lmdb.js`. **Why:** `configStore.setConfig()` requires the key to exist in `FIELD_DEFS` (see [demo_api_server/services/configStore.js:625-650](demo_api_server/services/configStore.js#L625-L650)), and vertical overlay keys are dynamic (`vertical.overlay.healthcare`, `vertical.overlay.test-clone`, ...). The repo's established pattern for dynamic per-concern persistence is a dedicated LMDB store, not configStore. The spec's user-visible intent (survives restart, admin-edited via UI, propagates via SSE) is preserved; only the underlying store changes. This deviation does not require a spec amendment because the storage backend isn't part of the design contract — it's an implementation detail.
 
+**Spec said:** Task 3 used `process.env.LMDB_PATH` to redirect the LMDB file location for test isolation.
+
+**Implementation discovered during Task 3:** the repo doesn't expose `LMDB_PATH` as an env var — `services/lmdb/openEnv.js` hardcodes the path. The LMDB env path is `data/persistent/lmdb` and shared across all `*.lmdb.js` modules via `openEnv()`'s named-DB pattern. **Resolution:** the test files for Tasks 3, 5, 6, 9, 10, 11, 12 use `jest.mock('../../services/lmdb/openEnv', ...)` with an in-memory `Map`-backed fake instead. Documented inline in each test file. No spec impact.
+
+**Spec said (Task 22):** delete `demo_api_ui/src/context/ThemeContext.js` in the cutover commit.
+
+**Adjusted scope:** during Task 22, also patch `demo_api_ui/src/components/agent-clinical/AgentClinicalHost.jsx` to import `useVertical` from the new `vertical/useVertical` module instead of `useTheme` from `../../context/ThemeContext`. **Why:** the dormant `agent-clinical/` components (built by a parallel agent, paused awaiting this rewrite) are the only remaining `useTheme` consumer once Cycle 1 migrates the listed files. The migration is mechanical (two lines): `import { useVertical } from '../../vertical/useVertical';` and `const { pageManifest } = useVertical(); const identity = pageManifest?.identity; const terminology = pageManifest?.terminology;`. This avoids leaving a `useTheme` compatibility shim behind. The parallel agent's other 4 integration files (`UserDashboard.js`, `App.js`, `AgentUiModeContext.js`, `featureFlags.js`, `configStore.js`) stay parked in stash for them to apply post-cutover.
+
 ---
 
 ## File structure (created / modified / deleted)
