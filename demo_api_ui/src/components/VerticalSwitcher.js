@@ -1,6 +1,6 @@
 // banking_api_ui/src/components/VerticalSwitcher.js
 import React, { useState, useEffect } from 'react';
-import { useVertical } from '../context/VerticalContext';
+import { useVertical } from '../vertical/useVertical';
 import './VerticalSwitcher.css';
 
 /**
@@ -8,24 +8,29 @@ import './VerticalSwitcher.css';
  * Can be placed in the top nav or on the Config page.
  */
 export default function VerticalSwitcher({ variant = 'nav' }) {
-  const { vertical, switchVertical } = useVertical();
+  const { activeId } = useVertical();
   const [verticals, setVerticals] = useState([]);
   const [switching, setSwitching] = useState(false);
 
   useEffect(() => {
-    fetch('/api/config/verticals/list', { credentials: 'include' })
+    fetch('/api/verticals/list', { credentials: 'include' })
       .then(r => r.ok ? r.json() : { verticals: [] })
       .then(data => setVerticals(data.verticals || []))
       .catch(() => {});
   }, []);
 
   const handleSwitch = async (id) => {
-    if (id === vertical?.id || switching) return;
+    if (id === activeId || switching) return;
     setSwitching(true);
     try {
-      await switchVertical(id);
+      await fetch('/api/verticals/active', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
     } catch {
-      // error is set in context
+      // ignore
     } finally {
       setSwitching(false);
     }
@@ -41,10 +46,10 @@ export default function VerticalSwitcher({ variant = 'nav' }) {
             <button
               type="button"
               key={v.id}
-              className={`vertical-switcher__pill${v.id === vertical?.id ? ' vertical-switcher__pill--active' : ''}`}
+              className={`vertical-switcher__pill${v.id === activeId ? ' vertical-switcher__pill--active' : ''}`}
               onClick={() => handleSwitch(v.id)}
               disabled={switching}
-              style={v.id === vertical?.id && v.theme?.primary ? { borderColor: v.theme.primary, background: `${v.theme.primary}10` } : undefined}
+              style={v.id === activeId && v.theme?.primary ? { borderColor: v.theme.primary, background: `${v.theme.primary}10` } : undefined}
             >
               <span
                 className="vertical-switcher__dot"
@@ -64,7 +69,7 @@ export default function VerticalSwitcher({ variant = 'nav' }) {
     <div className="vertical-switcher vertical-switcher--nav">
       <select
         className="vertical-switcher__select"
-        value={vertical?.id || 'banking'}
+        value={activeId || 'banking'}
         onChange={(e) => handleSwitch(e.target.value)}
         disabled={switching}
         aria-label="Switch demo vertical"

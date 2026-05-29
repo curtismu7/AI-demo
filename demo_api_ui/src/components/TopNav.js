@@ -1,10 +1,9 @@
 import { MdAccountBalance, MdLogin, MdSearch } from "react-icons/md";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useSessionToken } from "../context/SessionTokenContext";
-import { useTheme } from "../context/ThemeContext";
+import { useVertical } from "../vertical/useVertical";
 import { navigateToCustomerOAuthLogin } from "../utils/authUi";
 import AgentUiModeToggle from "./AgentUiModeToggle";
-import ThemePicker from "./ThemePicker";
 import ThresholdControls from "./ThresholdControls";
 import UserMenu from "./UserMenu";
 import "./TopNav.css";
@@ -12,7 +11,8 @@ import "./TopNav.css";
 export default function TopNav({ user, onLogout }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { identity } = useTheme();
+  const { pageManifest } = useVertical();
+  const identity = pageManifest?.identity;
   const { tokenSecondsLeft, openTokenModal } = useSessionToken();
   const brandName = (identity && (identity.headerTitle || identity.displayName)) || 'AI Demo';
 
@@ -122,7 +122,6 @@ export default function TopNav({ user, onLogout }) {
               confirmation modal can stay co-located with `onLogout`. */}
           {location.pathname === '/dashboard' && (
             <div className="topnav-dashboard-controls" role="toolbar" aria-label="Dashboard actions">
-              <ThemePicker variant="toolbar" />
               <AgentUiModeToggle variant="config" />
               <ThresholdControls />
               <button

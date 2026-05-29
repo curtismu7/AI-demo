@@ -3,18 +3,18 @@
 // ThemeContext is the single source of truth for all theme state; this
 // thin adapter preserves the historical useIndustryBranding() API for its
 // many consumers. Intentionally retained — not slated for removal.
-import { useTheme } from './ThemeContext';
+import { useVertical } from '../vertical/useVertical';
 
 export function IndustryBrandingProvider({ children }) {
   return children;
 }
 
 export function useIndustryBranding() {
-  const t = useTheme();
-  const id = t.themeId || 'bx_finance';
+  const { activeId, pageManifest } = useVertical();
+  const id = activeId || 'bx_finance';
   return {
     industryId: id,
-    preset: { id, shortName: t.identity ? t.identity.displayName : 'AI Demo', logoPath: t.identity ? t.identity.logoPath : '/super-bank-icon.png' },
+    preset: { id, shortName: pageManifest?.identity?.displayName || 'AI Demo', logoPath: pageManifest?.identity?.logoPath || '/super-bank-icon.png' },
     setIndustryId: () => {},
     applyIndustryId: () => {},
   };

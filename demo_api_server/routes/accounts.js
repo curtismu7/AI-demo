@@ -6,7 +6,7 @@ const { blockInDemoMode } = require('../middleware/demoMode');
 const demoScenarioStore = require('../services/demoScenarioStore');
 const posthog = require('../services/posthog');
 const configStore = require('../services/configStore');
-const { VERTICAL_PRIMARY_TYPE } = require('../config/verticalPrimaryTypes');
+const { verticalManifest } = require('../services/verticalManifest');
 
 // Guard: only one reseed can run at a time to prevent concurrent duplicate-account creation.
 const _reseedGuard = { inProgress: false };
@@ -231,7 +231,10 @@ router.get('/my', authenticateToken, async (req, res) => {
     let userAccounts = dataStore.getAccountsByUserId(req.user.id);
 
     const activeVertical = configStore.getEffective('active_vertical') || 'banking';
-    const expectedPrimaryType = VERTICAL_PRIMARY_TYPE[activeVertical];
+    // Primary accountType derived from active vertical's manifest
+    // (was hardcoded VERTICAL_PRIMARY_TYPE map; now read from manifest.terminology.accountTypes[0]).
+    const activeManifestEntry = verticalManifest.loader.get(activeVertical);
+    const expectedPrimaryType = activeManifestEntry?.manifest?.terminology?.accountTypes?.[0];
 
     // For the banking vertical, also check the legacy loan completeness guard.
     const hasChecking = () => userAccounts.some(a => (a.accountType || a.type) === 'CHECKING' || (a.accountType || a.type) === 'checking');

@@ -1,5 +1,5 @@
 import React from "react";
-import { useTheme } from "../context/ThemeContext";
+import { useVertical } from "../vertical/useVertical";
 
 function formatValue(value, format) {
   if (value === null || value === undefined) return "—";
@@ -28,10 +28,11 @@ function resolveValue(dataKey, heroStats) {
 }
 
 export default function VerticalHero() {
-  const { dashboard } = useTheme();
+  const { pageManifest, pageMockData } = useVertical();
+  const dashboard = pageManifest?.dashboard;
   if (!dashboard?.hero?.cards) return null;
 
-  const heroStats = dashboard.mockData?.heroStats || {};
+  const heroStats = pageMockData?.heroStats || {};
 
   return (
     <div className="vertical-hero">

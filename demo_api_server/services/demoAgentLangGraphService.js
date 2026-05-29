@@ -18,7 +18,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { logDelegationEvent } = require('../middleware/delegationAuditLogger');
-const { getActiveManifest, getActiveVertical } = require('./verticalConfigService');
+const { verticalManifest } = require('./verticalManifest');
 const { recordToolCall: recordMcpToolCall } = require('./mcpToolAuditStore');
 
 /**
@@ -650,7 +650,7 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
       : configStore.getEffective('ff_heuristic_enabled') !== 'false';
 
     if (heuristicEnabled) {
-      const heuristic = parseHeuristic(message, getActiveVertical());
+      const heuristic = parseHeuristic(message, verticalManifest.resolver.activeId());
       if (heuristic && heuristic.kind === 'banking') {
         const heuristicResult = await executeHeuristicBanking(heuristic, userId, userToken, req, subjectToken);
         if (heuristicResult) {
@@ -756,7 +756,7 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
       } catch (e) { /* audit must never break the request path */ }
     }
 
-    const activeManifest = getActiveManifest();
+    const activeManifest = verticalManifest.resolver.resolve(verticalManifest.resolver.activeId());
     const toolSchemas = buildToolSchemasForAgentForVertical(activeManifest);
     const systemPrompt = activeManifest?.agent?.systemPromptFlavor;
     // HITL/consent note: real transfer-consent enforcement is the deterministic

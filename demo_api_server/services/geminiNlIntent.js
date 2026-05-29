@@ -11,7 +11,7 @@ const { parseHeuristic, EDU } = require('./nlIntentParser');
 const { sanitizeNlResult } = require('./nlIntentSanitize');
 const { callHelixAgent } = require('./helixLlmService');
 const configStore = require('./configStore');
-const { getActiveVertical } = require('./verticalConfigService');
+const { verticalManifest } = require('./verticalManifest');
 
 const { base: SYSTEM_BASE, themes: THEME_OVERRIDES } =
   require(path.join(__dirname, '../../docs/HELIX_AGENT_DIRECTIVES.json'));
@@ -152,7 +152,7 @@ async function parseNaturalLanguage(message, context = {}, provider = 'auto', la
   // not "disable heuristic" — if every LLM falls through, we still want the heuristic
   // answer instead of a canned "I didn't catch that" UI fallback.
   const heuristicEnabled = configStore.getEffective('ff_heuristic_enabled') !== 'false';
-  const activeVertical = getActiveVertical();
+  const activeVertical = verticalManifest.resolver.activeId();
   const heuristicResult = parseHeuristic(message, activeVertical);
 
   // provider:"heuristic" = heuristic-only mode (Quick Action chips, no LLM configured).

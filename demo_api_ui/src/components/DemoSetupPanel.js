@@ -11,7 +11,7 @@ import { fetchDemoScenario, saveDemoScenario } from '../services/demoScenarioSer
 import { performLogout } from '../services/logout';
 import { AGENT_MCP_SCOPE_CATALOG, DEFAULT_AGENT_MCP_ALLOWED_SCOPES } from '../config/agentMcpScopes';
 import { useIndustryBranding } from '../context/IndustryBrandingContext';
-import { useVertical } from '../context/VerticalContext';
+import { useVertical } from '../vertical/useVertical';
 import VerticalSwitcher from './VerticalSwitcher';
 import PingOneAudit from './PingOneAudit';
 import './DemoDataPage.css';
@@ -67,7 +67,7 @@ function defaultAccountProfile(type, accountHolderName) {
 
 export default function DemoSetupPanel() {
   useIndustryBranding();
-  const { vertical } = useVertical();
+  const { activeId: vertical } = useVertical();
 
   // Build account type slots dynamically based on vertical — memoized to prevent useEffect re-runs
   const ACCOUNT_TYPES = useMemo(() => {

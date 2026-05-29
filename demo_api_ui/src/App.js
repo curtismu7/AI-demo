@@ -109,7 +109,8 @@ import { IndustryBrandingProvider } from "./context/IndustryBrandingContext";
 import { SessionTokenProvider } from "./context/SessionTokenContext";
 import { SpinnerProvider } from "./context/SpinnerContext";
 import { TokenChainProvider } from "./context/TokenChainContext";
-import { VerticalProvider } from "./context/VerticalContext";
+import { VerticalEditorPage } from "./vertical/AdminEditor/VerticalEditorPage";
+import { VerticalProvider } from "./vertical/VerticalProvider";
 import { monitorApiHealth } from "./services/bankingRestartNotificationService";
 import { useAuth } from "./hooks/useAuth";
 import { useAppFlags } from "./hooks/useAppFlags";
@@ -445,6 +446,9 @@ function AppWithAuth() {
                           } />
                           <Route path="/admin/vault" element={
                             <AdminRoute user={user}><AdminVaultPage /></AdminRoute>
+                          } />
+                          <Route path="/admin/verticals" element={
+                            <AdminRoute user={user}><VerticalEditorPage /></AdminRoute>
                           } />
                           <Route path="/users" element={
                             <AdminRoute user={user}>

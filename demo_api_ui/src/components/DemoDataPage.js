@@ -10,7 +10,7 @@ import { AGENT_MCP_SCOPE_CATALOG, DEFAULT_AGENT_MCP_ALLOWED_SCOPES } from '../co
 import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import { useIndustryBranding } from '../context/IndustryBrandingContext';
-import { useVertical } from '../context/VerticalContext';
+import { useVertical } from '../vertical/useVertical';
 import VerticalSwitcher from './VerticalSwitcher';
 import PingOneAudit from './PingOneAudit';
 import './UserDashboard.css';
@@ -78,7 +78,7 @@ function defaultAccountProfile(type, accountHolderName) {
  */
 export default function DemoDataPage({ user, onLogout }) {
   const { preset: industryPreset } = useIndustryBranding();
-  const { vertical } = useVertical();
+  const { activeId: vertical } = useVertical();
   const navigate = useNavigate();
   const { open } = useEducationUI();
   const dashboardPath = user?.role === 'admin' ? '/admin' : '/dashboard';

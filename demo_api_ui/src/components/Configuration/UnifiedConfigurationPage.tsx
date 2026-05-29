@@ -17,7 +17,6 @@ import bffAxios from "../../services/bffAxios";
 import { useAgentUiMode } from "../../context/AgentUiModeContext";
 import { useEducationUI } from "../../context/EducationUIContext";
 import { useIndustryBranding } from "../../context/IndustryBrandingContext";
-import { useTheme } from "../../context/ThemeContext";
 import "./UnifiedConfigurationPage.css";
 import { MCPToolsEducation } from "../MCPToolsEducation";
 import DemoSetupPanel from "../DemoSetupPanel";
@@ -596,16 +595,12 @@ const ConfigurationHeader: FC<{
   saveStatus: "idle" | "saving" | "saved" | "error";
   onSave: () => void;
   onReset: () => void;
-  onThemeToggle?: () => void;
-  theme?: string;
 }> = ({
   title,
   subtitle,
   saveStatus,
   onSave,
   onReset,
-  onThemeToggle,
-  theme,
 }) => (
   <header className="configuration-header">
     <div className="configuration-header__content">
@@ -614,20 +609,6 @@ const ConfigurationHeader: FC<{
         <p className="configuration-header__subtitle">{subtitle}</p>
       </div>
       <div className="configuration-header__actions">
-        {onThemeToggle && (
-          <button
-            type="button"
-            onClick={onThemeToggle}
-            className="configuration-header__btn configuration-header__btn--theme"
-            title={
-              theme === "dark"
-                ? "Switch to light theme"
-                : "Switch to dark theme"
-            }
-          >
-            {theme === "dark" ? "☀️ Light" : "🌙 Dark"}
-          </button>
-        )}
         <button
           type="button"
           onClick={onReset}
@@ -1844,7 +1825,6 @@ const UnifiedConfigurationPage: FC<{
   const { placement: ctxAgentUiMode, setAgentUi } = useAgentUiMode();
   useEducationUI();
   const { industryId: ctxIndustryId, applyIndustryId } = useIndustryBranding();
-  const { theme, toggleTheme } = useTheme();
   const isAdminUser = (user as { role?: string } | null)?.role === "admin";
 
   // Load config
@@ -3788,8 +3768,6 @@ const UnifiedConfigurationPage: FC<{
         saveStatus={state.saveStatus}
         onSave={saveConfiguration}
         onReset={resetConfiguration}
-        onThemeToggle={toggleTheme}
-        theme={theme}
       />
 
       <ConfigurationTabs

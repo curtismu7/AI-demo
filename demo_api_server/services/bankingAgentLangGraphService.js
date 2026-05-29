@@ -12,7 +12,18 @@ const { parseHeuristic, buildCatalogMessage } = require('./nlIntentParser');
 const { resolveAgentMode } = require('./agentModeResolver');
 const configStore = require('./configStore');
 const dataStore = require('../data/store');
-const { getActiveManifest, getSeedFile } = require('./verticalConfigService');
+const { verticalManifest } = require('./verticalManifest');
+
+// Read tool descriptions directly from the data/seeds/<id>.js CommonJS module.
+// Seed files own LLM-facing tool descriptions; this is a parallel persistence
+// layer pre-dating the manifest system. Cycle 2 may merge seeds into manifests.
+function getSeedToolDescriptions(verticalId) {
+  try {
+    return require(path.join(__dirname, '..', 'data', 'seeds', `${verticalId}.js`)).toolDescriptions || {};
+  } catch (_) {
+    return {};
+  }
+}
 const axios = require('axios');
 const https = require('https');
 const fs = require('fs');
@@ -102,7 +113,7 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null, su
   const sessionRole = req?.session?.user?.role;
   const isAdmin = sessionRole === 'admin';
 
-  const manifest = getActiveManifest();
+  const manifest = verticalManifest.resolver.resolve(verticalManifest.resolver.activeId());
   const term = manifest?.terminology || {};
   const termAccount = term.account || 'Account';
   const termAccounts = term.accounts || 'accounts';
@@ -403,9 +414,9 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null, su
  * `.properties`. No hand-duplicated schemas.
  */
 function buildToolSchemasForAgent() {
-  const manifest = getActiveManifest();
+  const manifest = verticalManifest.resolver.resolve(verticalManifest.resolver.activeId());
   const verticalId = manifest?.id || 'banking';
-  const verticalDescs = getSeedFile(verticalId).toolDescriptions || {};
+  const verticalDescs = getSeedToolDescriptions(verticalId);
   const tools = getBankingToolDefinitions();
   return tools.map((tool) => {
     let inputSchema;

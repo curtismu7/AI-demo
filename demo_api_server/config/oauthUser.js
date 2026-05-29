@@ -8,7 +8,7 @@
 const configStore = require('../services/configStore');
 const { getScopesForUserType, BANKING_SCOPES, COMPOUND_SCOPES } = require('./scopes');
 const endpointResolver = require('../services/oauthEndpointResolver');
-const { getActiveManifest } = require('../services/verticalConfigService');
+const { verticalManifest } = require('../services/verticalManifest');
 
 const config = {
   get environmentId()         { return configStore.getEffective('pingone_environment_id'); },
@@ -60,7 +60,7 @@ const config = {
       // topology's ai:agent:read naming reconciliation is a separate
       // follow-up — see REGRESSION_PLAN §4.)
       const bankingScopes = ['openid', 'profile', 'email', 'offline_access', 'read', 'write', 'transfer', BANKING_SCOPES.AI_AGENT, COMPOUND_SCOPES.MORTGAGE_READ];
-      const featureScope = getActiveManifest()?.scopes?.featureScope;
+      const featureScope = verticalManifest.resolver.resolve(verticalManifest.resolver.activeId())?.scopes?.featureScope;
       return featureScope ? [...bankingScopes, featureScope] : bankingScopes;
     }
     const role = configStore.getEffective('user_role') || 'customer';

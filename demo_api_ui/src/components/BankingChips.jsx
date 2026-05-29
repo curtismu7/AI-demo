@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import "./BankingChips.css";
-import { useTheme } from "../context/ThemeContext";
+import { useVertical } from '../vertical/useVertical';
 
 const HEURISTIC_CHIPS = [
   { id: "balance", label: "Check Balance", message: "balance" },
@@ -205,7 +205,8 @@ export default function BankingChips({
   user,
 }) {
   const [expandedCategory, setExpandedCategory] = useState(null);
-  const { dashboard } = useTheme();
+  const { pageManifest } = useVertical();
+  const dashboard = pageManifest?.dashboard;
   const heuristicChips = applyChipLabels(HEURISTIC_CHIPS, dashboard && dashboard.chips);
   const llmChipGroups = dashboard?.llmChipGroups || LLM_CHIPS;
 

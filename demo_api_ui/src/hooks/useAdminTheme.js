@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useTheme } from '../context/ThemeContext';
+import { useVertical } from '../vertical/useVertical';
 
 const ADMIN_CSS_VARS = {
   '--app-primary-red': '#1e293b',
@@ -15,7 +15,8 @@ const ADMIN_CSS_VARS = {
 };
 
 export function useAdminTheme(active = true) {
-  const { cssVars } = useTheme();
+  const { pageManifest } = useVertical();
+  const cssVars = pageManifest?.theme?.cssVars;
 
   useEffect(() => {
     if (!active) return;

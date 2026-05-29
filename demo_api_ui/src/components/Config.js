@@ -8,7 +8,6 @@ import { getHostname, setHostname } from "../services/configService";
 import { useAgentUiMode } from "../context/AgentUiModeContext";
 import { useIndustryBranding } from "../context/IndustryBrandingContext";
 import { DEFAULT_INDUSTRY_ID } from "../config/industryPresets";
-import ThemePicker from "./ThemePicker";
 import {
   AGENT_MCP_SCOPE_CATALOG,
   DEFAULT_AGENT_MCP_ALLOWED_SCOPES,
@@ -22,7 +21,6 @@ import CustomChipsTab from "./CustomChipsTab";
 import AgentModeSelector from "./AgentModeSelector";
 import "../styles/appShellPages.css";
 import "./Config.css";
-import { useTheme } from "../context/ThemeContext";
 
 // ─── Region options ───────────────────────────────────────────────────────────
 const REGION_OPTIONS = [
@@ -1684,7 +1682,6 @@ export default function Config() {
                     Switch the active theme. This is server-wide and uses the same
                     setting as the dashboard theme picker.
                   </p>
-                  <ThemePicker variant="config" />
                 </CollapsibleCard>
 
                 <CollapsibleCard

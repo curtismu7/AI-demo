@@ -3,7 +3,6 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import apiClient from "../services/apiClient";
-import { useTheme } from "../context/ThemeContext";
 import "./SetupPage.css";
 import McpGatewayConfig from "./McpGatewayConfig";
 
@@ -18,7 +17,6 @@ const SUITES = [
 ];
 
 export default function SetupPage() {
-  const { theme, toggleTheme } = useTheme();
   const [activeTab, setActiveTab] = useState("deployment");
   const [planSteps, setPlanSteps] = useState([]);
   const [planLoading, setPlanLoading] = useState(true);
@@ -250,18 +248,6 @@ export default function SetupPage() {
             <Link to="/config" className="sp-header-btn sp-header-btn--solid">
               Application Configuration
             </Link>
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className="sp-header-btn"
-              title={
-                theme === "dark"
-                  ? "Switch to light theme"
-                  : "Switch to dark theme"
-              }
-            >
-              {theme === "dark" ? "Light mode" : "Dark mode"}
-            </button>
           </div>
         </div>
       </header>

@@ -3,7 +3,6 @@ import TokenSecurityTester from "../components/TokenSecurityTester";
 import RedButton from "../components/RedButton";
 import KillSwitchConfirmModal from "../components/KillSwitchConfirmModal";
 import ForensicAuditDashboard from "../components/ForensicAuditDashboard";
-import ThemePicker from "../components/ThemePicker";
 import apiClient from "../services/apiClient";
 import "./Admin.css";
 
@@ -227,19 +226,6 @@ export default function Admin() {
         </div>
       )}
 
-      {activeTab === "branding" && (
-        <div className="admin-section">
-          <h2>Demo Branding</h2>
-          <p className="admin-section-description">
-            Switch the demo branding to show different industry verticals. Selecting
-            Great Buy changes the logo, color scheme, and AI assistant prompt chips to
-            retail-relevant actions (e.g. List My Orders instead of My Accounts).
-          </p>
-          <div style={{ marginTop: "24px", maxWidth: "320px" }}>
-            <ThemePicker variant="toolbar" />
-          </div>
-        </div>
-      )}
 
       <KillSwitchConfirmModal
         isOpen={showKillModal}

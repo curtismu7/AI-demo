@@ -8,7 +8,6 @@ import { useEducationUI } from '../context/EducationUIContext';
 import { EDU } from './education/educationIds';
 import AdminSubPageShell from './AdminSubPageShell';
 import PageNav from './PageNav';
-import { useTheme } from '../context/ThemeContext';
 import ApiCallDisplay from './ApiCallDisplay';
 import { useAppEventsSSE } from '../hooks/useAppEventsSSE';
 
@@ -90,8 +89,6 @@ const flowLabel = (events) => {
 
 const ActivityLogs = ({ user, onLogout }) => {
   const { open } = useEducationUI();
-  const { theme, toggleTheme } = useTheme();
-
   const [activeTab, setActiveTab] = useState('appEvents');
   const [appEvents, setAppEvents] = useState([]);
   const [appEventsLoading, setAppEventsLoading] = useState(false);
@@ -426,14 +423,7 @@ const ActivityLogs = ({ user, onLogout }) => {
   return (
     <AdminSubPageShell
       title="Activity Logs"
-      lead={
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-          <span>View and filter audit trail of API activity.</span>
-          <button type="button" className="app-page-shell__btn" onClick={toggleTheme} title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'} style={{ marginLeft: '1rem' }}>
-            {theme === 'dark' ? 'Light' : 'Dark'}
-          </button>
-        </div>
-      }
+      lead="View and filter audit trail of API activity."
     >
       <PageNav user={user} onLogout={onLogout} title="Activity Logs" />
 

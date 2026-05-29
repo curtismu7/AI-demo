@@ -133,7 +133,6 @@ const {
 const appConfigRoutes = require('./routes/appConfig');
 const configCredentialsRoutes = require('./routes/configCredentials');
 const thresholdsRoutes = require('./routes/thresholds');
-const verticalConfigRoutes = require('./routes/verticalConfig');
 const verticalManifestRoutes = require('./routes/verticalManifest');
 const pingoneAuditRoutes = require('./routes/pingoneAudit');
 const pingoneTestRoutes = require('./routes/pingoneTestRoutes');
@@ -1009,8 +1008,6 @@ app.use('/api/token-chain', authenticateToken, tokenChainRoutes);
 app.use('/api/token-display', authenticateToken, tokenDisplayRoutes);
 app.use('/api/api-calls', apiCallTrackerRoutes);
 app.use('/api/admin/app-config', authenticateToken, appConfigRoutes);
-app.use('/api/config/vertical', verticalConfigRoutes);
-app.use('/api/config/verticals', verticalConfigRoutes);
 app.use('/api/verticals', authenticateToken, verticalManifestRoutes);
 app.use('/api/config/credentials', configCredentialsRoutes);
 app.use('/api/config/thresholds', thresholdsRoutes);

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { performLogout } from '../../services/logout';
 import { useAuth } from '../auth/AuthContext';
-import { useVertical } from '../../context/VerticalContext';
+import { useVertical } from '../../vertical/useVertical';
 import DashboardHero from './DashboardHero';
 import AccountSummary from './AccountSummary';
 import ActionHub from './ActionHub';
@@ -19,7 +19,7 @@ const MobileDashboard = ({
   onOpenEducation 
 }) => {
   const { isAuthenticated } = useAuth();
-  const { vertical: currentVertical } = useVertical();
+  const { activeId: currentVertical } = useVertical();
   const [activeTab, setActiveTab] = useState('home');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 

@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useTheme } from '../context/ThemeContext';
+import { useVertical } from '../vertical/useVertical';
 import './VerticalFeaturePage.css';
 
 function fmtMoney(amt, currency = 'USD') {
@@ -21,7 +21,7 @@ function formatValue(value, fmt, currency) {
 export default function VerticalFeaturePage() {
   const navigate  = useNavigate();
   const location  = useLocation();
-  const { manifest } = useTheme();
+  const { pageManifest: manifest } = useVertical();
 
   const fp  = manifest?.featurePage || null;
   const raw = location.state?.featurePayload || null;

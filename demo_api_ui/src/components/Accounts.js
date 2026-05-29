@@ -7,7 +7,6 @@ import { toastAdminSessionError } from '../utils/dashboardToast';
 import { navigateToAdminOAuthLogin } from '../utils/authUi';
 import AdminSubPageShell from './AdminSubPageShell';
 import PageNav from './PageNav';
-import { useTheme } from '../context/ThemeContext';
 
 const ACCOUNT_TYPE_BADGE_COLORS = {
   checking: 'var(--brand-navy)',
@@ -20,7 +19,6 @@ const ACCOUNT_TYPE_BADGE_COLORS = {
 };
 
 const Accounts = ({ user, onLogout }) => {
-  const { theme, toggleTheme } = useTheme();
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -66,20 +64,7 @@ const Accounts = ({ user, onLogout }) => {
   return (
     <AdminSubPageShell 
       title="Accounts" 
-      lead={
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-          <span>View bank accounts in the demo environment.</span>
-          <button
-            type="button"
-            className="app-page-shell__btn"
-            onClick={toggleTheme}
-            title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-            style={{ marginLeft: '1rem' }}
-          >
-            {theme === 'dark' ? 'Light' : 'Dark'}
-          </button>
-        </div>
-      }
+      lead="View bank accounts in the demo environment."
     >
       <PageNav user={user} onLogout={onLogout} title="Accounts" />
 

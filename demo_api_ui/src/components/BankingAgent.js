@@ -9,7 +9,7 @@ import { createPortal } from "react-dom";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useEducationUIOptional } from "../context/EducationUIContext";
 import { useIndustryBranding } from "../context/IndustryBrandingContext";
-import { useTheme } from "../context/ThemeContext";
+import { useVertical } from "../vertical/useVertical";
 import { useTokenChainOptional } from "../context/TokenChainContext";
 import TokenChainModal from "./TokenChainModal";
 import { navigateToCustomerOAuthLogin } from "../utils/authUi";
@@ -1666,20 +1666,12 @@ export default function BankingAgent({
   const tokenChain = useTokenChainOptional();
   const { chips: customChips, groups: customGroups } = useCustomChips();
   useLangchainProvider();
-  const {
-    theme: appTheme,
-    toggleTheme,
-    agentAppearance,
-    setAgentAppearance,
-    effectiveAgentTheme,
-    agent: themeAgent,
-    manifest: themeManifest,
-    terminology,
-  } = useTheme();
+  const { pageManifest, agentManifest } = useVertical();
+  const themeAgent = agentManifest?.agent;
+  const themeManifest = pageManifest;
+  const terminology = pageManifest?.terminology;
   // Always start collapsed on page load — never restore open state from localStorage.
   const [isOpen, setIsOpen] = useState(false);
-  /** Panel light/dark: default follows page (`auto`); can override in header. */
-  const isDark = effectiveAgentTheme === "dark";
   const [isExpanded, setIsExpanded] = useState(false);
   /** Discovery popout — "All actions" overlay. */
   const [showDiscovery, setShowDiscovery] = useState(false);
@@ -6661,7 +6653,7 @@ export default function BankingAgent({
       {/* Panel */}
       {effectiveIsOpen && (
         <div
-          className={`banking-agent-panel${isDark ? " dark-theme" : " ba-mode-light"}${isExpanded && !isInline ? " ba-expanded" : ""}${isInline ? " ba-mode-inline" : ""}${isBottomDock ? " ba-embedded-bottom-dock" : ""}${splitChrome ? " ba-split-column" : ""}${distinctFloatingChrome && isInline ? " ba-popout-mode" : ""}`}
+          className={`banking-agent-panel ba-mode-light${isExpanded && !isInline ? " ba-expanded" : ""}${isInline ? " ba-mode-inline" : ""}${isBottomDock ? " ba-embedded-bottom-dock" : ""}${splitChrome ? " ba-split-column" : ""}${distinctFloatingChrome && isInline ? " ba-popout-mode" : ""}`}
           role="dialog"
           aria-label={
             isConfigEmbeddedFocus
@@ -7214,32 +7206,6 @@ export default function BankingAgent({
                       )}
                     </div>
                   )}
-                  <div className="ba-popout-section">
-                    <span className="ba-popout-section-label">Settings</span>
-                    <select
-                      className="ba-agent-appearance-select"
-                      value={agentAppearance}
-                      onChange={(e) => setAgentAppearance(e.target.value)}
-                      aria-label="Agent panel theme"
-                      title="Agent: match page theme, or use its own light/dark"
-                    >
-                      <option value="auto">Agent: Match page</option>
-                      <option value="light">Agent: Light</option>
-                      <option value="dark">Agent: Dark</option>
-                    </select>
-                    <button
-                      type="button"
-                      className="ba-icon-btn"
-                      onClick={() => toggleTheme()}
-                      title={
-                        appTheme === "dark"
-                          ? "Page: switch to light mode"
-                          : "Page: switch to dark mode"
-                      }
-                    >
-                      {appTheme === "dark" ? "Day" : "Night"}
-                    </button>
-                  </div>
                   <div className="ba-popout-status-bar">
                     <span
                       className="ba-server-chip"

@@ -37,7 +37,7 @@ import EmbeddedAgentDock from "./EmbeddedAgentDock";
 import FloatingPanel from "./FloatingPanel";
 import "./UserDashboard.css";
 import OAuthTokenDisplayPage from "./OAuthTokenDisplayPage";
-import { useTheme } from "../context/ThemeContext";
+import { useVertical } from "../vertical/useVertical";
 import RetailDashboard from "./RetailDashboard";
 
 /** Format a number as USD currency — $1,234.56 */
@@ -142,7 +142,8 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   const location = useLocation();
   const { open } = useEducationUI();
   const { placement: agentPlacement, setSurfaceHostEl } = useAgentUiMode();
-  const { dashboard: themeDashboard } = useTheme();
+  const { pageManifest, pageMockData } = useVertical();
+  const themeDashboard = pageManifest?.dashboard;
   const isRetailDashboard = themeDashboard && themeDashboard.kind === "retail";
   useCurrentUserTokenEvent(); // Seed the token chain with current user's session token on mount
   /** Middle layout: auto-opens when placement is 'middle'; collapses via FAB click. */
@@ -2585,7 +2586,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
               tabIndex={-1}
             >
               {isRetailDashboard ? (
-                <RetailDashboard data={themeDashboard && themeDashboard.mockData} />
+                <RetailDashboard data={pageMockData} />
               ) : (
                 renderBankingMain()
               )}
@@ -2629,7 +2630,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
               tabIndex={-1}
             >
               {isRetailDashboard ? (
-                <RetailDashboard data={themeDashboard && themeDashboard.mockData} />
+                <RetailDashboard data={pageMockData} />
               ) : (
                 renderBankingMain()
               )}

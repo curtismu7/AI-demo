@@ -17,7 +17,7 @@ const appEventService = require('../services/appEventService');
 const tokenIntrospectionService = require('../services/tokenIntrospectionService');
 const { terminateAllUserSessions } = require('../services/pingOneSessionService');
 const demoScenarioStore = require('../services/demoScenarioStore');
-const { VERTICAL_PRIMARY_TYPE } = require('../config/verticalPrimaryTypes');
+const { verticalManifest } = require('../services/verticalManifest');
 
 const STEP_UP_TTL_MS = 5 * 60 * 1000; // 5 min step-up validity
 
@@ -80,7 +80,10 @@ async function createSampleDataForCustomer(userId, firstName, lastName) {
  */
 async function reseedIfVerticalMismatch(userId, firstName, lastName) {
   const activeVertical = configStore.getEffective('active_vertical') || 'banking';
-  const expectedType = VERTICAL_PRIMARY_TYPE[activeVertical];
+  // Primary accountType derived from active vertical's manifest
+  // (was hardcoded VERTICAL_PRIMARY_TYPE map; now read from manifest.terminology.accountTypes[0]).
+  const activeManifestEntry = verticalManifest.loader.get(activeVertical);
+  const expectedType = activeManifestEntry?.manifest?.terminology?.accountTypes?.[0];
   const existing = dataStore.getAccountsByUserId(userId);
 
   if (existing.length === 0) {

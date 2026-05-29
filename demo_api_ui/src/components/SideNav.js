@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { useEducationUIOptional } from "../context/EducationUIContext";
 import { EDU } from "./education/educationIds";
 import { useIndustryBranding } from "../context/IndustryBrandingContext";
-import { useTheme } from "../context/ThemeContext";
+import { useVertical } from "../vertical/useVertical";
 import KillSwitchConfirmModal from "./KillSwitchConfirmModal";
 import {
   MdLock,
@@ -106,7 +106,9 @@ function buildUserNav(terminology, identity) {
 
 export default function SideNav({ user, onLogout }) {
   const { preset } = useIndustryBranding();
-  const { theme, toggleTheme, terminology, identity } = useTheme();
+  const { pageManifest } = useVertical();
+  const terminology = pageManifest?.terminology;
+  const identity = pageManifest?.identity;
   const [collapsed, setCollapsed] = useState(false);
   const [showKillModal, setShowKillModal] = useState(false);
   const [agentRevoked, setAgentRevoked] = useState(false);
@@ -414,27 +416,8 @@ export default function SideNav({ user, onLogout }) {
         ))}
       </div>
 
-      {/* Footer: theme toggle + logout */}
+      {/* Footer: logout */}
       <div className="sidenav-footer">
-        {/* Theme toggle — global, persists across pages */}
-        <button
-          type="button"
-          className="sidenav-link sidenav-theme-toggle"
-          onClick={toggleTheme}
-          title={
-            theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
-          }
-          aria-label="Toggle dark mode"
-        >
-          <span className="sidenav-link-icon">
-            {theme === "dark" ? "☀️" : "🌙"}
-          </span>
-          {!collapsed && (
-            <span className="sidenav-link-label">
-              {theme === "dark" ? "Light mode" : "Dark mode"}
-            </span>
-          )}
-        </button>
         <button
           type="button"
           className="sidenav-logout-btn"

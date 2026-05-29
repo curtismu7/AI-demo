@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAgentUiMode } from '../context/AgentUiModeContext';
-import { useTheme } from '../context/ThemeContext';
+import { useVertical } from '../vertical/useVertical';
 import { isEmbeddedAgentDockRoute } from '../utils/embeddedAgentFabVisibility';
 import { resolveEmbeddedFocus } from './demoAgentSafety';
 
@@ -43,7 +43,9 @@ const FRAMEWORK_LABELS = {
 export default function EmbeddedAgentDock({ user, agentPlacement }) {
   const { pathname } = useLocation();
   const { setSurfaceHostEl } = useAgentUiMode();
-  const { terminology, identity } = useTheme();
+  const { pageManifest } = useVertical();
+  const terminology = pageManifest?.terminology;
+  const identity = pageManifest?.identity;
   const [hostEl, setHostEl] = useState(null);
   const [frameworkLabel, setFrameworkLabel] = useState(null);
 

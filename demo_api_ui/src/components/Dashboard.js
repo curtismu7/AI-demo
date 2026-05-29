@@ -29,7 +29,6 @@ import OAuthTokenDisplayPage from "./OAuthTokenDisplayPage";
 import WebMcpPanel from "./WebMcpPanel";
 import ConfirmModal from "./ConfirmModal";
 import ThresholdControls from "./ThresholdControls";
-import ThemePicker from "./ThemePicker";
 
 // Decode a JWT into { header, payload, raw } — no component deps
 function decodeToken(token) {
@@ -536,7 +535,6 @@ const Dashboard = ({ user, onLogout }) => {
               >
                 API Calls
               </button>
-              <ThemePicker variant="toolbar" />
               <ThresholdControls />
               <button
                 type="button"
