@@ -1,8 +1,13 @@
 'use strict';
+const fs = require('fs');
+const path = require('path');
 const express = require('express');
 const { verticalManifest } = require('../services/verticalManifest');
 
 const router = express.Router();
+
+const PROTECTED_IDS = new Set(['banking', 'admin-console']);
+const ID_REGEX = /^[a-z][a-z0-9-]*$/;
 
 function requireSession(req, res, next) {
   if (!req.user) return res.status(401).json({ error: 'unauthenticated' });
@@ -30,8 +35,119 @@ router.get('/stream', requireSession, (req, res) => {
   // Don't end — the client keeps it open until they disconnect.
 });
 
-// Export the auth middlewares so Task 12's write endpoints can reuse them
-// without re-declaring.
+// ---- Admin write endpoints ----
+// Specific paths first, parameterized paths last (express routes top-to-bottom).
+
+router.post('/active', requireAdmin, (req, res) => {
+  const { id } = req.body || {};
+  if (!id) return res.status(400).json({ error: 'id required' });
+  if (!verticalManifest.loader.get(id)) return res.status(404).json({ error: 'unknown id' });
+  verticalManifest.resolver.setActive(id);
+  res.status(204).end();
+});
+
+router.post('/reset-all', requireAdmin, (_req, res) => {
+  for (const id of verticalManifest.store.listOverlayIds()) {
+    verticalManifest.resolver.overlay.clearAll(id);
+  }
+  res.status(204).end();
+});
+
+router.post('/snapshot', requireAdmin, (req, res) => {
+  const savedAt = verticalManifest.snapshot.save(req.user.id);
+  res.json({ savedAt });
+});
+
+router.post('/snapshot/restore', requireAdmin, (req, res) => {
+  verticalManifest.snapshot.restore(req.user.id);
+  res.status(204).end();
+});
+
+router.delete('/snapshot', requireAdmin, (req, res) => {
+  verticalManifest.snapshot.clear(req.user.id);
+  res.status(204).end();
+});
+
+router.post('/:sourceId/clone', requireAdmin, (req, res) => {
+  const { sourceId } = req.params;
+  const { newId, displayName } = req.body || {};
+  if (!newId || !displayName) return res.status(400).json({ error: 'newId and displayName required' });
+  if (!ID_REGEX.test(newId)) return res.status(400).json({ error: 'invalid id format' });
+  if (verticalManifest.loader.get(newId)) return res.status(409).json({ error: 'id already exists' });
+  const source = verticalManifest.loader.get(sourceId);
+  if (!source) return res.status(404).json({ error: 'unknown source id' });
+
+  const root = process.env.VERTICAL_SEED_ROOT
+    || path.join(__dirname, '..', 'config', 'verticals');
+  const newDir = path.join(root, newId);
+  fs.mkdirSync(newDir, { recursive: true });
+
+  const newManifest = JSON.parse(JSON.stringify(source.manifest));
+  newManifest.id = newId;
+  newManifest.identity.displayName = displayName;
+  fs.writeFileSync(path.join(newDir, 'manifest.json'), JSON.stringify(newManifest, null, 2));
+  fs.writeFileSync(path.join(newDir, 'mock-data.json'), JSON.stringify(source.mockData || {}, null, 2));
+
+  verticalManifest.loader.reload(newId);
+  verticalManifest.events.emit('vertical-list-changed', { ids: verticalManifest.list().map((v) => v.id) });
+  res.status(201).json({ id: newId, displayName });
+});
+
+router.delete('/:id', requireAdmin, (req, res) => {
+  const { id } = req.params;
+  if (PROTECTED_IDS.has(id)) return res.status(403).json({ error: 'protected id' });
+  if (verticalManifest.resolver.activeId() === id) return res.status(409).json({ error: 'cannot delete active vertical' });
+  if (!verticalManifest.loader.get(id)) return res.status(404).json({ error: 'unknown id' });
+
+  const root = process.env.VERTICAL_SEED_ROOT
+    || path.join(__dirname, '..', 'config', 'verticals');
+  fs.rmSync(path.join(root, id), { recursive: true, force: true });
+  verticalManifest.resolver.overlay.clearAll(id);
+  verticalManifest.resolver.removeFromCache(id);
+  verticalManifest.loader.removeFromCache(id);
+  verticalManifest.events.emit('vertical-list-changed', { ids: verticalManifest.list().map((v) => v.id) });
+  res.status(204).end();
+});
+
+router.post('/:id/overlay/batch', requireAdmin, (req, res) => {
+  const { id } = req.params;
+  const { entries } = req.body || {};
+  if (!Array.isArray(entries)) return res.status(400).json({ error: 'entries array required' });
+  if (!verticalManifest.loader.get(id)) return res.status(404).json({ error: 'unknown id' });
+  try {
+    verticalManifest.resolver.overlay.setBatch(id, entries);
+    res.status(204).end();
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+router.post('/:id/overlay', requireAdmin, (req, res) => {
+  const { id } = req.params;
+  const { path: fieldPath, value } = req.body || {};
+  if (!fieldPath) return res.status(400).json({ error: 'path required' });
+  if (!verticalManifest.loader.get(id)) return res.status(404).json({ error: 'unknown id' });
+  try {
+    verticalManifest.resolver.overlay.setField(id, fieldPath, value);
+    res.status(204).end();
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+router.delete('/:id/overlay', requireAdmin, (req, res) => {
+  const { id } = req.params;
+  const { path: fieldPath } = req.body || {};
+  if (!verticalManifest.loader.get(id)) return res.status(404).json({ error: 'unknown id' });
+  if (fieldPath) {
+    verticalManifest.resolver.overlay.clearField(id, fieldPath);
+  } else {
+    verticalManifest.resolver.overlay.clearAll(id);
+  }
+  res.status(204).end();
+});
+
+// Export the auth middlewares so callers can reuse them without re-declaring.
 router.requireSession = requireSession;
 router.requireAdmin = requireAdmin;
 
