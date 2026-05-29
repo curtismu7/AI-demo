@@ -206,7 +206,7 @@ function AppWithAuth() {
     pathNorm === "/api-traffic" ||
     pathNorm === "/logs" ||
     pathNorm === "/agent";
-  const { placement: agentPlacement, fab: agentFab, surfaceHostEl } = useAgentUiMode();
+  const { placement: agentPlacement, fab: agentFab, surfaceHostEl, clinicalSplit } = useAgentUiMode();
 
   const { user, loading, logout, sessionReauth, setSessionReauth } = useAuth();
   const { appFlags } = useAppFlags();
@@ -295,9 +295,15 @@ function AppWithAuth() {
   // the dock's inline chrome (no floating frame/drag), exactly as the old
   // per-dock <BankingAgent mode="inline" embeddedDockBottom> did. Float and
   // all other surfaces keep the default floating chrome.
-  const singleAgentSurfaceProps = hasEmbeddedDockLayout
-    ? { mode: "inline", embeddedDockBottom: true }
-    : {};
+  // clinicalSplit (set by TalkPane via AgentUiModeContext when ff_agent_clinical_split=on)
+  // takes precedence over hasEmbeddedDockLayout — it renders BankingAgent with
+  // splitColumnChrome so the existing .ba-mode-inline.ba-split-column styles apply.
+  let singleAgentSurfaceProps = {};
+  if (clinicalSplit) {
+    singleAgentSurfaceProps = { mode: "inline", splitColumnChrome: true };
+  } else if (hasEmbeddedDockLayout) {
+    singleAgentSurfaceProps = { mode: "inline", embeddedDockBottom: true };
+  }
 
   /** Slower default dismiss on public landing so OAuth/agent messages are readable (signed-in routes stay 4s). */
   const toastContainerAutoCloseMs =
