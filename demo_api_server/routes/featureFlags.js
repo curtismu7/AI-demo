@@ -318,6 +318,21 @@ const FLAG_REGISTRY = [
     defaultValue: false,
   },
   {
+    id:           'ff_agent_clinical_split',
+    name:         'Agent Clinical Split (2B refined)',
+    category:     'UI / Dashboard',
+    description:
+      'When **ON**, /dashboard renders the 2B-refined clinical split layout ' +
+      '(chat-left, audit-timeline-right) with a Talk · Inspect · Configure tab rail. ' +
+      'Replaces the legacy split3 + token-display chrome. ' +
+      'When **OFF** (default), the existing dashboard layout is unchanged.',
+    impact:
+      'OFF (default) = legacy dashboard chrome unchanged. ' +
+      'ON = clinical split host renders; Theme/Middle-Float/Always-float toggle is hidden.',
+    type:         'boolean',
+    defaultValue: false,
+  },
+  {
     id:           'llm_framework',
     name:         'LLM Agent Framework',
     category:     'UI / Dashboard',

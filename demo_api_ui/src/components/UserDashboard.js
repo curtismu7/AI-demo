@@ -39,6 +39,7 @@ import "./UserDashboard.css";
 import OAuthTokenDisplayPage from "./OAuthTokenDisplayPage";
 import { useVertical } from "../vertical/useVertical";
 import RetailDashboard from "./RetailDashboard";
+import AgentClinicalHost from "./agent-clinical/AgentClinicalHost";
 
 /** Format a number as USD currency — $1,234.56 */
 const fmt = (n) =>
@@ -184,6 +185,35 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
   const [dashboardLayout, setDashboardLayoutState] = useState(() =>
     getDashboardLayout(),
   );
+
+  /**
+   * ff_agent_clinical_split — when on, the dashboard renders the 2B-refined
+   * clinical-split layout instead of the legacy split3 / token-display chrome.
+   * Default off; flipped on via /api/admin/feature-flags or
+   * `?ff_agent_clinical_split=on` (URL override for ad-hoc testing).
+   */
+  const [clinicalSplitEnabled, setClinicalSplitEnabled] = useState(() => {
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      const v = sp.get('ff_agent_clinical_split');
+      return v === 'on' || v === 'true' || v === '1';
+    } catch (_) {
+      return false;
+    }
+  });
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/admin/feature-flags', { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled) return;
+        const f = data?.flags?.find((x) => x.id === 'ff_agent_clinical_split');
+        if (f != null) setClinicalSplitEnabled((cur) => cur || Boolean(f.value));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
   const [user, setUser] = useState(propUser);
   const [accounts, setAccounts] = useState([]);
   const [showTokenModal, setShowTokenModal] = useState(false);
@@ -2516,6 +2546,17 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         <div className="loading" role="status" aria-live="polite">
           Loading your account information…
         </div>
+      </div>
+    );
+  }
+
+  // ff_agent_clinical_split — render the 2B-refined clinical split instead of
+  // the legacy split3 chrome. The clinical layout owns the whole dashboard
+  // area when on; legacy chrome remains unchanged when off.
+  if (clinicalSplitEnabled) {
+    return (
+      <div className="user-dashboard user-dashboard--clinical-split agent-clinical-host">
+        <AgentClinicalHost />
       </div>
     );
   }
