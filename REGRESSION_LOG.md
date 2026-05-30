@@ -5,6 +5,18 @@ Update this file whenever a bug is fixed: add the bug, cause, fix, and test refe
 
 ---
 
+## 2026-05-30 — Banking heuristic help catalog collapsed 10→6 items (themed-branch misfire on the default vertical)
+
+**Symptoms**: In the default banking vertical, the heuristics-only "I can help with:" catalog (shown on an unrecognized phrase / Mode-1 / Helix-unconfigured) dropped from the 10-item hand-authored `CAPABILITY_CATALOG` — losing `deposit`, `withdraw`, `spending summary`, `mortgage` and the example phrasings like "transfer $100 from checking to savings" — down to 6 generic chip-label items. Reply nouns also re-cased ("Your balances" → "Your Balance").
+
+**Root cause**: `resolveActiveVerticalCtx()` (the single source feeding the live heuristic catalog + reply wording) returned `{ terminology, chips }` whenever the active manifest had a `terminology` block. Banking's `config/verticals/banking/manifest.json` HAS a terminology block, so for active=banking the resolver returned a non-null ctx, and `buildCatalogItems` took its themed-derived branch instead of the `if (!term) return CAPABILITY_CATALOG` verbatim branch. The function's own docstring said "or null for banking", but the code never special-cased banking. Introduced pre-Plan-1 in the DRY catalog-builder + ctx-threading commits (`3f7ba1e1`, `eb40876f`, `014005d1`).
+
+**Why it shipped green**: every existing test exercised `buildCatalogMessage()` / `parseHeuristic(msg, 'banking')` with NO ctx argument (or mocked `resolveActiveVerticalCtx → null`, or never called `verticalManifest.init()`), so all tests hit the verbatim branch while the running server (which calls `init()` and passes the resolved ctx) hit the derived branch.
+
+**Fix**: `resolveActiveVerticalCtx()` now returns `null` when the active vertical is `banking` (or unresolved) BEFORE reading terminology — selecting the verbatim catalog/wording, matching the documented contract. Themed verticals still receive their terminology. Surfaced by the high-effort `/code-review` of Plan 1; not caused by Plan 1 (its plugin branch is gated behind `hasPlugin()`, false for banking).
+
+**Tests**: `demo_api_server/tests/nlIntentParser.catalog.test.js` — new `describe('resolveActiveVerticalCtx — live banking path (regression)')` calls `verticalManifest.init()`, sets active=banking, and asserts `resolveActiveVerticalCtx()` is null and the live catalog keeps deposit/withdraw/mortgage and equals the verbatim render. `npx jest nlIntentParser.catalog` → 11 pass.
+
 ## 2026-05-30 — Helix conversational fallback (`helix_fallback`) unreachable when Helix is the selected provider
 
 **Symptoms**: When Helix was the configured NL provider and its JSON intent-router returned `kind:none` or non-JSON (including after the refusal-retry nudge), the user received the silent heuristic result instead of Helix's conversational answer. The documented `source:'helix_fallback'` outcome (and the `answerWithHelix` conversational path) could never fire for the common case where Helix was selected — both the LLM-only `answerWithHelix` block and the heuristic-mode Ollama→answerWithHelix block were dead code behind an early return.

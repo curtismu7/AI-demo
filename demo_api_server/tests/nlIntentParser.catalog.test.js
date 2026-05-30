@@ -87,3 +87,38 @@ describe('vertical-aware catalog (all verticals)', () => {
     expect(res.message).toContain('mortgage');
   });
 });
+
+// Regression: the LIVE path resolves ctx via resolveActiveVerticalCtx() after
+// verticalManifest.init(). Banking's manifest carries a terminology block, so a
+// naive `if (m.terminology)` check would treat banking like a themed vertical and
+// collapse its 10-item hand-authored catalog to 6 chip labels. resolveActiveVerticalCtx
+// must return null for banking. These tests exercise the real resolver (NOT a passed
+// ctx), which is the gap that let the original regression ship green.
+describe('resolveActiveVerticalCtx — live banking path (regression)', () => {
+  const { resolveActiveVerticalCtx } = require('../services/nlIntentParser');
+  const { verticalManifest } = require('../services/verticalManifest');
+
+  let prevActive;
+  beforeAll(() => {
+    verticalManifest.init();
+    prevActive = verticalManifest.resolver.activeId();
+    verticalManifest.resolver.setActive('banking');
+  });
+  afterAll(() => {
+    if (prevActive) verticalManifest.resolver.setActive(prevActive);
+  });
+
+  it('returns null for the banking vertical (selects the verbatim catalog)', () => {
+    expect(resolveActiveVerticalCtx()).toBeNull();
+  });
+
+  it('live banking catalog keeps the full 10-item hand-authored list (deposit/withdraw/mortgage)', () => {
+    const ctx = resolveActiveVerticalCtx();
+    const msg = buildCatalogMessage(ctx);
+    expect(msg).toContain('deposit');
+    expect(msg).toContain('withdraw');
+    expect(msg).toContain('mortgage');
+    // verbatim (null ctx) === explicit-no-arg; both must equal the CAPABILITY_CATALOG render
+    expect(msg).toBe(buildCatalogMessage());
+  });
+});

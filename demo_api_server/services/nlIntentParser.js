@@ -445,7 +445,15 @@ function parseTheme(t, vertical) {
 function resolveActiveVerticalCtx() {
   try {
     const { verticalManifest } = require('./verticalManifest');
-    const m = verticalManifest.resolver.resolve(verticalManifest.resolver.activeId());
+    const activeId = verticalManifest.resolver.activeId();
+    // Banking is the baseline: its hand-authored CAPABILITY_CATALOG and reply
+    // wording ARE the banking domain language, so it must NOT be re-derived from
+    // manifest terminology (banking's manifest carries a terminology block, but
+    // feeding it through buildCatalogItems collapses the 10-item catalog to 6
+    // chip labels and re-cases reply nouns). Returning null here selects the
+    // verbatim path — matching this function's documented "null for banking".
+    if (!activeId || activeId === 'banking') return null;
+    const m = verticalManifest.resolver.resolve(activeId);
     if (m?.terminology) {
       return { terminology: m.terminology, chips: m.dashboard?.chips || m.chips || [] };
     }
