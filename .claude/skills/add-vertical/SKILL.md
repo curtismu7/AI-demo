@@ -1,14 +1,19 @@
 ---
 name: add-vertical
-description: 'Step-by-step checklist for adding a new vertical/theme to the Super Banking demo. USE FOR: implementing a new industry skin (e.g. insurance, fintech, travel), adding chip labels, adding heuristic phrase vocabulary, writing a Helix LLM2 theme directive, and wiring agent persona text. Covers all required touchpoints: vertical JSON manifest, nlIntentParser THEME_VOCAB, HELIX_AGENT_DIRECTIVES.json themes map, HELIX_AGENT_DIRECTIVES_CONSOLE.md, and optional legacy industryPresets.js. DO NOT USE FOR: editing the banking baseline vertical, general OAuth/MCP changes, or UI refactoring outside the vertical config files.'
+description: 'Reference checklist for adding a new vertical/theme to the Super Banking demo (the /new-vertical command automates it). USE FOR: implementing a new industry skin (e.g. insurance, fintech, travel), adding dashboard chips, hero stat cards, llmChipGroups, heuristic phrase vocabulary, a Helix theme directive, agent persona text, and an optional feature page. Covers all touchpoints: the schemaVersion-3 manifest.json + mock-data.json under config/verticals/<id>/, nlIntentParser THEME_VOCAB, HELIX_AGENT_DIRECTIVES.json themes map, HELIX_AGENT_DIRECTIVES_CONSOLE.md, and the cross-service feature-page wiring (gateway + MCP registry + backend). DO NOT USE FOR: editing the banking baseline vertical, general OAuth/MCP changes, or UI refactoring outside the vertical config files.'
 argument-hint: 'Name of the new vertical (e.g. insurance, travel, workforce)'
 ---
 
 # Add a New Vertical / Theme
 
-This skill walks through every file that must be created or updated when adding a new vertical. The
-demo discovers verticals by scanning `demo_api_server/config/verticals/` — there are **no** hardcoded
-vertical ID lists anywhere else. Follow the checklist in order; each step is independently testable.
+This skill is the reference checklist of every file that must be created or updated when adding a new
+vertical. The demo discovers verticals by scanning `demo_api_server/config/verticals/` — there are
+**no** hardcoded vertical ID lists anywhere else. Follow the checklist in order; each step is
+independently testable.
+
+> **For an automated, end-to-end walk-through, run the `/new-vertical` command** — it asks the brand
+> questions one at a time and generates all four touchpoints below, then verifies them. This skill
+> documents what that command produces and is the source of truth if the two ever disagree.
 
 ---
 
@@ -16,14 +21,18 @@ vertical ID lists anywhere else. Follow the checklist in order; each step is ind
 
 ### 1. Create the vertical JSON manifest
 
-**File:** `demo_api_server/config/verticals/<id>.json`
+**File:** `demo_api_server/config/verticals/<id>/manifest.json` (each vertical is a **directory**
+containing `manifest.json` plus an optional `mock-data.json`).
 
-Copy an existing manifest as a starting point (e.g. `healthcare.json`). Mandatory fields:
+Copy an existing manifest as a starting point (e.g. `sporting-goods/manifest.json`). The manifest is
+**Zod-validated** against `demo_api_server/services/verticalManifest/schema.js`. Required fields:
+`id`, `schemaVersion: 3`, `identity.displayName`, `theme.cssVars` (≥1), `agent.persona`. Everything
+else below is recommended but optional.
 
 ```jsonc
 {
-  "id": "<id>",                         // lowercase, no spaces (matches filename stem)
-  "schemaVersion": 2,
+  "id": "<id>",                         // ^[a-z][a-z0-9-]*$ — matches the directory name
+  "schemaVersion": 3,
   "identity": {
     "displayName": "<Brand Name>",
     "headerTitle": "<Brand Name>",
@@ -70,15 +79,40 @@ Copy an existing manifest as a starting point (e.g. `healthcare.json`). Mandator
       { "key": "balance",      "label": "<themed chip label>" },
       { "key": "accounts",     "label": "<themed chip label>" },
       { "key": "transactions", "label": "<themed chip label>" },
-      { "key": "transfer",     "label": "<themed chip label>" }
+      { "key": "transfer",     "label": "<themed chip label>" },
+      { "key": "feature",      "label": "<feature page name>" }   // every shipped vertical has this 5th chip
     ],
-    "mockData": null
+    "hero": {                                                      // 4 at-a-glance cards; dataKeys resolve from mock-data.json
+      "cards": [
+        { "label": "<stat 1>", "dataKey": "heroStats.<key1>", "format": "money" },
+        { "label": "<stat 2>", "dataKey": "heroStats.<key2>", "format": "count" },
+        { "label": "<stat 3>", "dataKey": "heroStats.<key3>", "format": "text" },
+        { "label": "<stat 4>", "dataKey": "heroStats.<key4>", "format": "date" }
+      ]
+    },
+    "llmChipGroups": {                                             // suggestion chips shown in LLM mode
+      "<Group>": [ { "id": "<id>_g1", "label": "<short>", "message": "<NL prompt>" } ]
+    }
   },
   "scopes": {
     "read":         "read",
     "write":        "write",
     "transfer":     "transfer",
-    "featureScope": "<feature>:read"    // scope for the primary action; plain scopes only — never "banking:*"
+    "featureScope": "<feature>:read"    // scope for the feature page; plain scopes only — never "banking:*"
+  },
+  "featurePage": {                       // OPTIONAL — manifest block for the 5th chip's detail view
+    "mcpTool":     "show_<noun>",        // served over the API-key path; needs backend wiring (see Step 6)
+    "pageTitle":   "<Feature Page Title>",
+    "badgeLabel":  "API-KEY PATH",
+    "accentColor": "<primary hex>",
+    "dataKey":     "<dataKey>",          // root key of the backend response — NOT from mock-data.json
+    "fields": [
+      { "label": "<Field>",  "path": "<path>" },
+      { "label": "<Amount>", "path": "<path>", "format": "money", "accent": true }
+    ],
+    "sectionTitle": "<heading>",
+    "emptyPrompt":  "<chip-5 prompt>",
+    "scopeError":   "The agent's access token does not carry the <feature>:read scope. Sign out and back in to consent, then try \"<chip 5 label>\" again."
   },
   "demoUsers": {
     "customer": { "hint": "demoUser",  "passwordHint": "Tigers7&" },
@@ -87,12 +121,25 @@ Copy an existing manifest as a starting point (e.g. `healthcare.json`). Mandator
 }
 ```
 
+> **`format` values** (the `FormatEnum`): `money`, `count`, `date`, `text`, `percent`. There is no
+> `mockData` field on the manifest — dashboard mock data lives in a sibling `mock-data.json`.
+
+### 1b. Write `mock-data.json`
+
+`demo_api_server/config/verticals/<id>/mock-data.json` — free-form object. The hero cards resolve
+their `heroStats.*` dataKeys from here, so include at least a `heroStats` block:
+
+```json
+{ "heroStats": { "<key1>": 0, "<key2>": 0, "<key3>": "<text>", "<key4>": "2026-01-01" } }
+```
+
 > **Scope rule:** use plain scope names (`read`, `write`, `admin`, `transfer`) — never `banking:*`-prefixed names.
 
-Verify the file is valid JSON:
+Verify the manifest validates against the Zod schema and is discoverable:
 ```bash
-node -e "require('./demo_api_server/config/verticals/<id>.json'); console.log('OK')"
+node -e "const {verticalManifest}=require('./demo_api_server/services/verticalManifest'); verticalManifest.init(); const ids=verticalManifest.list().map(v=>v.id); console.log('Loaded:', ids.join(', ')); console.log(ids.includes('<id>') ? '✅' : '❌ missing');"
 ```
+If it prints `Invalid manifest at …`, the message includes the failing Zod field — fix and re-run.
 
 ---
 
@@ -177,11 +224,13 @@ new theme section at the end of the file following the existing pattern:
 
 ### 5. Verify end-to-end routing
 
-Switch to the new vertical via the config UI or API:
+Switch to the new vertical via the vertical switcher in the UI, or the admin API
+(`POST /api/verticals/active`, admin-gated, body `{ "id": "<id>" }`):
 ```bash
-curl -sk -X PUT https://api.ping.demo:3001/api/config/vertical \
+curl -sk -X POST https://api.ping.demo:3001/api/verticals/active \
   -H 'Content-Type: application/json' \
-  -d '{"verticalId":"<id>"}' | jq
+  --cookie "connect.sid=<admin session cookie>" \
+  -d '{"id":"<id>"}'
 ```
 
 Then test the chip phrases in the agent chat, or run the Helix theme test script:
@@ -197,13 +246,23 @@ Confirm:
 
 ---
 
-### Optional: legacy `industryPresets.js`
+### Optional: wire the feature-page backend
 
-**File:** `demo_api_server/services/industryPresets.js` (if it exists)
+Only needed if the manifest declares a `featurePage` and you want the 5th chip to return real data.
+The feature page is served over the **API-key path** through the MCP gateway — NOT by `mock-data.json`
+and NOT by the MCP server tool handlers (the `show_*` handlers are registered for visibility only; the
+gateway intercepts the call). The chip degrades gracefully (empty state / `scopeError`) until this is
+wired, so it is safe to ship the manifest first and do this later. To make `show_<noun>` return data:
 
-This file is a legacy UI preset map used by older UI components. Check if it exists and whether
-your vertical needs an entry. If it does not exist or is not referenced, skip this step — the
-manifest-driven system (`verticalConfigService.js`) supersedes it.
+1. **Backend endpoint** — add `GET /<noun>` to a backend service (model on `demo_mortgage_service/server.js`, which already serves `mortgage`, `healthRecord`, `gearOrder`, etc.); X-API-Key protected; returns `{ "<dataKey>": { …manifest field paths… }, "source": "...", "authMechanism": "X-API-Key (shared secret)" }`.
+2. **Gateway disposition** — add `show_<noun>` to `APIKEY_TOOLS` in `demo_mcp_gateway/src/router.ts` (~line 50).
+3. **Gateway backend route** — add `show_<noun>` → URL in `APIKEY_BACKEND_ROUTES` in `router.ts` (~line 101).
+4. **Gateway display name** — add `show_<noun>` to `TOOL_DISPLAY_NAMES` in `demo_mcp_gateway/src/apiKeyDispatch.ts` (~line 54).
+5. **MCP registry visibility** — add `show_<noun>` to the `TOOLS` map in `demo_mcp_server/src/tools/BankingToolRegistry.ts` (~line 22 / pattern at line 642) with its `featureScope`; no handler needed.
+
+Then `npm run build` in both `demo_mcp_gateway` and `demo_mcp_server`, restart, and provision the
+`featureScope` in PingOne (next `npm run pingone:bootstrap`). This is a cross-service change — read the
+`mcp-gateway` and `mcp-server` skills and check `REGRESSION_PLAN.md` for those files first.
 
 ---
 
@@ -213,11 +272,14 @@ The following are **automatic** — no edits required:
 
 | What | Why automatic |
 |---|---|
-| `/api/config/vertical` route | Scans `config/verticals/` directory at startup |
-| `verticalConfigService.js` | Loads all `.json` files in the verticals directory |
-| `BankingChips.jsx` | Reads chip labels from the manifest via `applyChipLabels()` |
+| `verticalManifest` loader (`services/verticalManifest/`) | Scans each `config/verticals/<id>/` directory at server `init()`, validates `manifest.json` with Zod, caches in memory |
+| `/api/verticals/*` routes | Read from the loader; `list`, `active`, `clone`, overlay edits |
+| `BankingChips.jsx` | Reads chip labels from the manifest at runtime |
 | Agent persona / greeting | Read from manifest `agent` block at runtime |
 | Dashboard terminology | Read from manifest `terminology` block at runtime |
+
+A brand-new on-disk manifest is picked up at the next server start (`init()` re-scans the directory).
+A running server can also `loader.reload('<id>')` via the verticals admin route without a full restart.
 
 Do **not** add a new vertical ID to any hardcoded array or switch statement — there are none.
 
@@ -225,11 +287,13 @@ Do **not** add a new vertical ID to any hardcoded array or switch statement — 
 
 ## Checklist summary
 
-- [ ] `demo_api_server/config/verticals/<id>.json` — manifest with chips, terminology, agent, scopes
+- [ ] `demo_api_server/config/verticals/<id>/manifest.json` — schemaVersion 3: 5 chips, hero cards, llmChipGroups, terminology, agent, scopes (+ optional featurePage)
+- [ ] `demo_api_server/config/verticals/<id>/mock-data.json` — at least a `heroStats` block feeding the hero card dataKeys
 - [ ] `demo_api_server/services/nlIntentParser.js` — add entry to `THEME_VOCAB`, most-specific regex first
 - [ ] `docs/HELIX_AGENT_DIRECTIVES.json` — add entry to `"themes"` object
 - [ ] `docs/HELIX_AGENT_DIRECTIVES_CONSOLE.md` — append plain-text theme section
-- [ ] Verify JSON validity for both docs files
+- [ ] Verify both docs files parse (`node -e "require('./docs/HELIX_AGENT_DIRECTIVES.json')"`)
+- [ ] Verify the manifest loads + is discoverable (the `verticalManifest.init()` one-liner above)
 - [ ] Run `npm run test:api-server` — no regressions
-- [ ] Switch to vertical, confirm chips + routing + greeting
-- [ ] (Optional) `industryPresets.js` if legacy presets exist
+- [ ] Switch to vertical, confirm chips + hero stats + routing + greeting
+- [ ] (Optional) Wire the feature-page backend if `featurePage` was declared
