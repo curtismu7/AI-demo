@@ -8,7 +8,7 @@ const { getBankingToolDefinitions, MAX_TOOL_ITERATIONS } = require('./agentBuild
 const { resolveMcpAccessTokenWithEvents } = require('./agentMcpTokenService');
 const z = require('zod');
 const appEventService = require('./appEventService');
-const { parseHeuristic, buildCatalogMessage, resolveActiveVerticalCtx } = require('./nlIntentParser');
+const { parseHeuristic, buildCatalogMessage } = require('./nlIntentParser');
 const { resolveAgentMode } = require('./agentModeResolver');
 const configStore = require('./configStore');
 const dataStore = require('../data/store');
@@ -88,6 +88,24 @@ async function _callTransactionsApi(body, userToken) {
     }
   }
   return axios(config);
+}
+
+/**
+ * Resolve the active vertical's heuristic context — `{ terminology, chips }` —
+ * from the manifest, or null for banking / unresolved. Best-effort: manifest
+ * resolution must never break the agent request path. Single source so the
+ * `{ terminology, chips }` shape (and its chip-location fallback) can't drift
+ * across the heuristic branch, the Mode-1 catalog, and the Helix-floor catalog.
+ * @returns {{ terminology: object, chips: Array }|null}
+ */
+function resolveActiveVerticalCtx() {
+  try {
+    const m = verticalManifest.resolver.resolve(verticalManifest.resolver.activeId());
+    if (m?.terminology) {
+      return { terminology: m.terminology, chips: m.dashboard?.chips || m.chips || [] };
+    }
+  } catch (_e) { /* best-effort; fall back to banking wording */ }
+  return null;
 }
 
 /**

@@ -431,26 +431,6 @@ function parseTheme(t, vertical) {
   return null;
 }
 
-/**
- * Resolve the active vertical's heuristic context — `{ terminology, chips }` —
- * from the manifest, or null for banking / unresolved. Single source shared by
- * every heuristic entry point (NL endpoint, agent message path) so the
- * `{ terminology, chips }` shape and its chip-location fallback can't drift.
- * Lazy-requires verticalManifest to avoid a require cycle (verticalManifest →
- * scope → … → nlIntentParser). Best-effort: never throws into the request path.
- * @returns {{ terminology: object, chips: Array }|null}
- */
-function resolveActiveVerticalCtx() {
-  try {
-    const { verticalManifest } = require('./verticalManifest');
-    const m = verticalManifest.resolver.resolve(verticalManifest.resolver.activeId());
-    if (m?.terminology) {
-      return { terminology: m.terminology, chips: m.dashboard?.chips || m.chips || [] };
-    }
-  } catch (_e) { /* best-effort; fall back to banking wording */ }
-  return null;
-}
-
 function parseHeuristic(message, vertical = 'banking', verticalCtx = null) {
   const t = norm(message);
   if (!t) {
@@ -500,5 +480,4 @@ module.exports = {
   EDU,
   CAPABILITY_CATALOG,
   buildCatalogMessage,
-  resolveActiveVerticalCtx,
 };
