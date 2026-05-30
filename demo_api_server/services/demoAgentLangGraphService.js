@@ -95,13 +95,15 @@ async function _callTransactionsApi(body, userToken) {
  * Handles Phase 2-3 token exchange if needed.
  * @returns {{ reply: string, success: boolean, toolsCalled: string[], tokensUsed: number, requiresConsent: boolean, agentConfigured: boolean, tokenEvents: any[] } | null}
  */
-async function executeHeuristicBanking(parsed, userId, userToken, req = null, subjectToken = null) {
+async function executeHeuristicBanking(parsed, userId, userToken, req = null, subjectToken = null, verticalCtx = null) {
   const action = parsed?.banking?.action;
   const params = parsed?.banking?.params || {};
   if (!action) return null;
 
   const sessionRole = req?.session?.user?.role;
   const isAdmin = sessionRole === 'admin';
+  // Vertical terminology for reply headings/labels (null for banking → banking wording).
+  const _term = (verticalCtx && verticalCtx.terminology) || null;
 
   try {
     // READ actions — route through the full token-exchange → gateway → MCP server
@@ -148,7 +150,11 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null, su
           const cur = a.currency || 'USD';
           return `• **${type}** (${num}) — **$${bal}** ${cur}`;
         });
-        const heading = action === 'balance' ? 'Your balances' : (isAdmin ? 'Here are all customer accounts' : 'Here are your accounts');
+        const _acctNoun = (_term && _term.accounts) || 'accounts';
+        const _balNoun = (_term && _term.balance) || 'balances';
+        const heading = action === 'balance'
+          ? `Your ${_balNoun}`
+          : (isAdmin ? `Here are all customer ${_acctNoun}` : `Here are your ${_acctNoun}`);
         return { reply: `${heading}:\n\n${lines.join('\n\n')}`, success: true, toolsCalled: [toolName], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents, accounts: accts };
       }
 
@@ -177,7 +183,8 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null, su
       }
       const recent = txns.slice(0, 5);
       const lines = recent.map(t => `• ${t.type} — $${Number(t.amount).toFixed(2)} — ${t.description || t.type}`);
-      return { reply: `Recent transactions:\n\n${lines.join('\n')}`, success: true, toolsCalled: [toolName], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents, transactions: recent };
+      const _txNoun = (_term && _term.transactions) || 'transactions';
+      return { reply: `Recent ${_txNoun}:\n\n${lines.join('\n')}`, success: true, toolsCalled: [toolName], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents, transactions: recent };
     }
 
     if (action === 'transfer') {
@@ -650,9 +657,23 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
       : configStore.getEffective('ff_heuristic_enabled') !== 'false';
 
     if (heuristicEnabled) {
-      const heuristic = parseHeuristic(message, verticalManifest.resolver.activeId());
+      // Resolve the active vertical's manifest once so every heuristic-path
+      // response (routing, reply headings, no-match catalog) speaks the
+      // vertical's language. Absolute rule: heuristics must work for ALL
+      // verticals, never leak banking terms. Banking → terminology is null →
+      // all helpers fall back to the original banking wording (regression-safe).
+      const _activeVerticalId = verticalManifest.resolver.activeId();
+      let _verticalCtx = null;
+      try {
+        const _m = verticalManifest.resolver.resolve(_activeVerticalId);
+        if (_m && _m.terminology) {
+          _verticalCtx = { terminology: _m.terminology, chips: (_m.dashboard && _m.dashboard.chips) || _m.chips || [] };
+        }
+      } catch (_e) { /* manifest resolution is best-effort; fall back to banking wording */ }
+
+      const heuristic = parseHeuristic(message, _activeVerticalId, _verticalCtx);
       if (heuristic && heuristic.kind === 'banking') {
-        const heuristicResult = await executeHeuristicBanking(heuristic, userId, userToken, req, subjectToken);
+        const heuristicResult = await executeHeuristicBanking(heuristic, userId, userToken, req, subjectToken, _verticalCtx);
         if (heuristicResult) {
           // Best-effort agent-path attribution for the delegation audit log
           // (see delegationAuditLogger.buildAuditEvent agentPath). req may be
@@ -680,7 +701,7 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
       if (_agentMode && _agentMode.mode === 'heuristics') {
         if (req) req.agentPath = 'heuristic';
         return {
-          reply: buildCatalogMessage(),
+          reply: buildCatalogMessage(_verticalCtx),
           success: true,
           toolsCalled: [],
           tokensUsed: 0,
@@ -732,8 +753,17 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
       if (!helixApiKey) {
         console.log('[processAgentMessage] Helix not configured (no API key) — returning catalog message (heuristic floor)');
         if (req) req.agentPath = 'heuristic';
+        // Theme the floor catalog to the active vertical too (absolute rule:
+        // every agent path speaks the vertical; banking → null → unchanged).
+        let _floorCtx = null;
+        try {
+          const _m = verticalManifest.resolver.resolve(verticalManifest.resolver.activeId());
+          if (_m && _m.terminology) {
+            _floorCtx = { terminology: _m.terminology, chips: (_m.dashboard && _m.dashboard.chips) || _m.chips || [] };
+          }
+        } catch (_e) { /* best-effort; fall back to banking wording */ }
         return {
-          reply: buildCatalogMessage(),
+          reply: buildCatalogMessage(_floorCtx),
           success: true,
           toolsCalled: [],
           tokensUsed: 0,

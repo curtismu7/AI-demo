@@ -3352,7 +3352,12 @@ export default function BankingAgent({
     // engine ("heuristic" | "helix" | "ollama" | ...) is threaded here so the
     // assistant result carries the same source pill the conversational
     // answers already render (see msg.source label, ~line 8300).
-    const { skipUserLabel = false, isRefire = false, nlSource = null } = opts;
+    // hitlRetryChallengeId: set on a HITL-approval refire so the write tool
+    // echoes the approved challenge id back to the BFF gate (verified → consent
+    // gate discharged → retry PERMITs instead of re-issuing the 428). Named
+    // distinctly from the component-scope `hitlChallengeId` state (direct-UI
+    // consent modal) to avoid shadowing it inside runAction.
+    const { skipUserLabel = false, isRefire = false, nlSource = null, hitlRetryChallengeId = null } = opts;
     const resultExtra = nlSource ? { source: nlSource } : {};
     const label = ACTIONS.find((a) => a.id === actionId)?.label || actionId;
     if (!skipUserLabel) {
@@ -3539,6 +3544,7 @@ export default function BankingAgent({
             form.accountId || form.toId,
             parseFloat(form.amount),
             form.note,
+            hitlRetryChallengeId,
           );
           break;
         case "withdraw":
@@ -3547,6 +3553,7 @@ export default function BankingAgent({
             form.accountId || form.fromId,
             parseFloat(form.amount),
             form.note,
+            hitlRetryChallengeId,
           );
           break;
         case "transfer":
@@ -3556,6 +3563,7 @@ export default function BankingAgent({
             form.toId,
             parseFloat(form.amount),
             form.note,
+            hitlRetryChallengeId,
           );
           break;
         case "sensitive-account-details": {
@@ -7295,8 +7303,14 @@ export default function BankingAgent({
                         "✅ Approved — retrying your request…",
                         retryActionId,
                       );
-                      // Clear the mcpFirstToolAuthorizeDone block so the retry doesn't re-trigger the gate
-                      runAction(retryActionId, retryForm, { isRefire: true });
+                      // Refire with the approved challenge id so the write tool
+                      // echoes `_hitl_challenge_id` to the BFF gate; the gate
+                      // verifies it (3009) and discharges the consent gate, so
+                      // the retry PERMITs instead of re-issuing the 428.
+                      runAction(retryActionId, retryForm, {
+                        isRefire: true,
+                        hitlRetryChallengeId: taskId,
+                      });
                     } catch (err) {
                       addMessage(
                         "error",

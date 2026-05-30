@@ -4263,3 +4263,15 @@ cd ..
 - **Files:** `banking_api_ui/src/components/UserDashboard.js`, `REGRESSION_PLAN.md`.
 - **Not broken (verified):** `git diff` of `UserDashboard.js` grepped for `REAUTH|middleAgentOpen|fetchUserData|401|agentPlacement|useState|useEffect|useCallback|onClick=|navigate(` → **zero matches**: the §1-protected logic (rows 40/44/53/66) is byte-unchanged; the diff is purely display strings + two ARIA attributes. Post-fix full-file true-emoji scan (Python, `\U0001F000-\U0001FAFF`) → **NONE**; remaining `✕`/`↑↓⇆`/`✓`/`→` are arrows/symbols/comments outside the emoji block and outside agreed scope (deferred #5/#6). This file had 12 lines of pre-existing uncommitted in-flight changes before this work — those were left untouched (not staged/committed here).
 - **Tests:** `cd banking_api_ui && npm run build` → **exit 0** (CRA bundle-size warning pre-existing/unrelated; no `UserDashboard.js` eslint/compile error in build log). Changes are non-behavioral (label text + a11y attributes) so build-clean is the binding gate; the §1 MFA/session/dock logic is untouched and thus its existing regression coverage is unaffected.
+
+---
+
+### BF-2026-05-29-01 — heuristic agent path leaked banking terms in non-banking verticals
+
+**Symptom:** With a non-banking vertical active (e.g. sporting-goods/retail), the heuristics-only / heuristic-routing agent path replied in banking language — the no-match capability catalog listed "checking/savings/mortgage…" and accounts/balance/transactions reply headings said "Here are your accounts" / "Your balances" / "Recent transactions". The verticals redesign themed the UI render layer and the LLM paths but the heuristic NL layer was never in scope.
+
+**Root cause:** `buildCatalogMessage()` in `nlIntentParser.js` was hardcoded to the banking `CAPABILITY_CATALOG` with no vertical parameter, and `executeHeuristicBanking` in `demoAgentLangGraphService.js` hardcoded English banking headings. The active vertical resolved correctly and stored data was already vertical-flavored; only the heuristic-layer text was banking-bound.
+
+**Fix:** Manifest-driven heuristics. `buildCatalogMessage(verticalCtx)` and `parseHeuristic(message, vertical, verticalCtx)` accept the active vertical's `{ terminology, chips }`; non-banking verticals derive the catalog + reply headings from manifest terminology/chip labels. `demoAgentLangGraphService` resolves the active manifest once and threads `verticalCtx` into `parseHeuristic`, `executeHeuristicBanking`, the Mode-1 no-match catalog, and the Helix-unconfigured floor. Banking (terminology=null) → original wording, byte-identical. UI `normalizeAccountRow` fallback made vertical-neutral.
+
+**Guard:** `tests/nlIntentParser.catalog.test.js` — vertical-aware cases assert sporting-goods/healthcare catalogs contain vertical terms and leak no `checking|savings|mortgage`, banking unchanged (229 parser tests pass). UI: 21 `BankingAgent.terminology` tests pass; `npm run build` exit 0. Files: `nlIntentParser.js` (§1 protected), `demoAgentLangGraphService.js`, `demo_api_ui/src/components/BankingAgent.js`. Absolute rule: every agent path (heuristics + all LLMs) must work with every vertical.

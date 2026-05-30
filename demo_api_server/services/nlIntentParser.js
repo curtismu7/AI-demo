@@ -60,10 +60,54 @@ const CAPABILITY_CATALOG = [
   'education — "explain token exchange" / "what is CIBA" / "how does step-up work"',
 ];
 
-function buildCatalogMessage() {
+/**
+ * Build the heuristics-only capability catalog.
+ *
+ * Banking (no verticalCtx) returns the original hand-authored list verbatim —
+ * regression-safe default. For any non-banking vertical, the catalog is derived
+ * from the active manifest so heuristics speaks the vertical's own language
+ * (e.g. "My Gear", "Reward Points") instead of banking terms. This satisfies
+ * the absolute rule that every agent path works with every vertical.
+ *
+ * @param {{ terminology?: object, chips?: Array<{key:string,label:string}> }} [verticalCtx]
+ *   Active vertical's terminology + chips. Omit/null for banking.
+ */
+function buildCatalogMessage(verticalCtx) {
+  const term = verticalCtx && verticalCtx.terminology;
+  // Banking / no terminology → unchanged original catalog.
+  if (!term) {
+    return (
+      `I can help with:\n` +
+      CAPABILITY_CATALOG.map((c) => `  • ${c}`).join('\n') +
+      `\n\n(Heuristics-only mode — no LLM. Pick a different agent mode for ` +
+      `full natural-language understanding.)`
+    );
+  }
+
+  // Vertical-native catalog. Prefer chip labels (already domain phrased) for the
+  // example text; fall back to terminology nouns. Education + MCP tools are
+  // cross-vertical infra and stay as-is.
+  const chipLabel = (key, fallback) => {
+    const chips = (verticalCtx && verticalCtx.chips) || [];
+    const hit = chips.find((c) => c && c.key === key);
+    return (hit && hit.label) || fallback;
+  };
+  const accounts = term.accounts || 'accounts';
+  const balance = term.balance || 'balance';
+  const transactions = term.transactions || 'transactions';
+  const highValue = term.highValueAction || chipLabel('transfer', 'transfer');
+
+  const lines = [
+    `${balance} — "${chipLabel('balance', `show my ${balance}`)}"`,
+    `${accounts} — "${chipLabel('accounts', `show my ${accounts}`)}"`,
+    `${transactions} — "${chipLabel('transactions', `recent ${transactions}`)}"`,
+    `${highValue} — "${chipLabel('transfer', highValue)}"`,
+    `MCP tools — "list available tools" / "show mcp tools"`,
+    `education — "explain token exchange" / "what is CIBA" / "how does step-up work"`,
+  ];
   return (
     `I can help with:\n` +
-    CAPABILITY_CATALOG.map((c) => `  • ${c}`).join('\n') +
+    lines.map((c) => `  • ${c}`).join('\n') +
     `\n\n(Heuristics-only mode — no LLM. Pick a different agent mode for ` +
     `full natural-language understanding.)`
   );
@@ -384,7 +428,7 @@ function parseTheme(t, vertical) {
   return null;
 }
 
-function parseHeuristic(message, vertical = 'banking') {
+function parseHeuristic(message, vertical = 'banking', verticalCtx = null) {
   const t = norm(message);
   if (!t) {
     return { kind: 'none', message: 'Say what you want to do or which topic to learn.' };
@@ -424,7 +468,7 @@ function parseHeuristic(message, vertical = 'banking') {
   const edu2 = parseEducation(t);
   if (edu2) return edu2;
 
-  return { kind: 'none', message: buildCatalogMessage() };
+  return { kind: 'none', message: buildCatalogMessage(verticalCtx) };
 }
 
 module.exports = {
