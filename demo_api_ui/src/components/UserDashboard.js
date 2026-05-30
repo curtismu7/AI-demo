@@ -2567,7 +2567,8 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         agentPlacement === "middle"
           ? " user-dashboard--split3"
           : ""
-      }${agentPlacement === "none" ? " user-dashboard--float-fab-left" : ""}`}
+      }${agentPlacement === "none" ? " user-dashboard--float-fab-left" : ""} refined-customer-surface`}
+      data-refined-surface="customer"
     >
       <a href="#main-dashboard-content" className="dash-skip-link">
         Skip to main content
