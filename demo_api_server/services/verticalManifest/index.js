@@ -7,6 +7,7 @@ const { createResolver } = require('./resolver');
 const { createScope } = require('./scope');
 const { createEvents } = require('./events');
 const { createSnapshot } = require('./snapshot');
+const { createPlugins } = require('./plugins');
 const store = require('../lmdb/verticalStore.lmdb');
 
 const HIDDEN_IDS = new Set(['admin-console']);
@@ -15,6 +16,7 @@ function build() {
   const root = process.env.VERTICAL_SEED_ROOT
     || path.join(__dirname, '..', '..', 'config', 'verticals');
   const loader = createLoader(root);
+  const plugins = createPlugins(root);
 
   // Events is created early because the resolver fires through it.
   // getInitialActiveId is a thunk so it reads the current value on every
@@ -57,6 +59,7 @@ function build() {
     init, _reset,
     list, listAll,
     loader,
+    plugins,
     overlay: resolver.overlay,
     resolver,
     scope,
