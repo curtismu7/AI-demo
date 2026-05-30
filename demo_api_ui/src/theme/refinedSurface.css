@@ -20,7 +20,6 @@
   /* Accent comes from the active vertical. --theme-accent is written to :root
      by applyThemeTokens(); fall back to the banking blue if absent. */
   --rd-accent:       var(--theme-accent, #1b3a6b);
-  --rd-accent-soft:  color-mix(in srgb, var(--rd-accent) 9%, var(--rd-surface));
 
   /* Type */
   --rd-font-display: "Fraunces", Georgia, serif;
