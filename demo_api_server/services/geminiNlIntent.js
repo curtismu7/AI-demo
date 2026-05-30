@@ -162,6 +162,23 @@ async function parseNaturalLanguage(message, context = {}, provider = 'auto', la
   const activeVertical = verticalManifest.resolver.activeId();
   const heuristicResult = parseHeuristic(message, activeVertical);
 
+  // Single concise log per /nl call — vertical + message preview + provider.
+  // Surfaces in /tmp/demo-api.log for post-hoc diagnosis of routing decisions.
+  const msgPreview = String(message || '').slice(0, 60).replace(/\s+/g, ' ');
+  const startedAt = Date.now();
+  /** Internal: log + return the resolved decision in one line. */
+  function logAndReturn(out) {
+    const action = out?.result?.banking?.action
+      || (out?.result?.kind === 'education' ? `edu:${out.result.education?.panel || 'unknown'}` : null)
+      || out?.result?.kind || 'unknown';
+    const ms = Date.now() - startedAt;
+    console.log(
+      `[nlIntent] vertical=${activeVertical || 'none'} provider=${provider} source=${out.source} `
+      + `action=${action} ms=${ms} msg="${msgPreview}"`
+    );
+    return out;
+  }
+
   // provider:"heuristic" = heuristic-only mode (Quick Action chips, no LLM configured).
   // Skip LLM entirely — return immediately with heuristic result whatever it is.
   if (provider === 'heuristic') {
@@ -243,7 +260,7 @@ async function parseNaturalLanguage(message, context = {}, provider = 'auto', la
         };
 
         let parsed = tryParse(helixResult);
-        if (parsed) return { source: 'helix', result: parsed };
+        if (parsed) return logAndReturn({ source: 'helix', result: parsed });
 
         // Retry-on-refusal: when Helix returns prose (especially a refusal like
         // "I cannot fulfill that request"), nudge it to emit JSON and re-classify.
@@ -266,7 +283,7 @@ async function parseNaturalLanguage(message, context = {}, provider = 'auto', la
               { role: 'user', content: message },
             ]);
             parsed = tryParse(retry);
-            if (parsed) return { source: 'helix', result: parsed };
+            if (parsed) return logAndReturn({ source: 'helix', result: parsed });
           } catch (e) {
             console.warn('[nlIntent] Helix retry failed:', e.message);
           }
@@ -287,7 +304,7 @@ async function parseNaturalLanguage(message, context = {}, provider = 'auto', la
       return null;
     });
     if (helixAnswer) {
-      return { source: 'helix_fallback', result: helixAnswer };
+      return logAndReturn({ source: 'helix_fallback', result: helixAnswer });
     }
     // LLM-only mode but no LLM produced an answer (e.g. Helix not configured,
     // network failure). Fall back to the heuristic so chips and known phrases
@@ -307,7 +324,7 @@ async function parseNaturalLanguage(message, context = {}, provider = 'auto', la
   if (ollama) {
     const { result, rejected, reason } = sanitizeNlResult(ollama, message);
     if (rejected) console.warn('[nlIntent] Ollama output rejected → heuristic:', reason);
-    return { source: rejected ? 'heuristic' : 'ollama', result };
+    return logAndReturn({ source: rejected ? 'heuristic' : 'ollama', result });
   }
 
   // 3. Try Helix for general knowledge questions when banking intent fails (fallback only)
@@ -317,7 +334,7 @@ async function parseNaturalLanguage(message, context = {}, provider = 'auto', la
       return null;
     });
     if (helixAnswer) {
-      return { source: 'helix_fallback', result: helixAnswer };
+      return logAndReturn({ source: 'helix_fallback', result: helixAnswer });
     }
   }
 
