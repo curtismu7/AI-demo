@@ -289,8 +289,18 @@ function AppWithAuth() {
         onDashboardAgentRoute &&
         !(agentPlacement === "middle" && onUserDashboardRoute)));
 
+  /** Middle-mode UserDashboard registers a `middleHostEl` via setSurfaceHostEl
+   *  and expects the single <BankingAgent> to portal into it. The
+   *  `showFloatingAgent` calc explicitly suppresses the FAB for Middle on
+   *  UserDashboard (so there is exactly one agent surface), but without this
+   *  extra clause `shouldMountSingleAgent` would also be false — so nothing
+   *  would render to portal into the host and the agent column would appear
+   *  empty. Same fix that clinicalSplit gets at the inline-mode props below. */
+  const onMiddlePlacementInDashboard =
+    Boolean(user) && agentPlacement === "middle" && onUserDashboardRoute;
   /** Single <BankingAgent> portals into the bottom dock host element when present; falls back to document.body otherwise. */
-  const shouldMountSingleAgent = showFloatingAgent || hasEmbeddedDockLayout;
+  const shouldMountSingleAgent =
+    showFloatingAgent || hasEmbeddedDockLayout || onMiddlePlacementInDashboard;
 
   // When the single agent is portaled into the bottom dock host it must wear
   // the dock's inline chrome (no floating frame/drag), exactly as the old
@@ -304,6 +314,11 @@ function AppWithAuth() {
     singleAgentSurfaceProps = { mode: "inline", splitColumnChrome: true };
   } else if (hasEmbeddedDockLayout) {
     singleAgentSurfaceProps = { mode: "inline", embeddedDockBottom: true };
+  } else if (onMiddlePlacementInDashboard) {
+    // Middle column owns the agent surface — render inline so the floating
+    // dock chrome doesn't appear inside the column. Same pattern as the
+    // clinical-split branch above.
+    singleAgentSurfaceProps = { mode: "inline", splitColumnChrome: true };
   }
 
   /** Slower default dismiss on public landing so OAuth/agent messages are readable (signed-in routes stay 4s). */
