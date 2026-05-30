@@ -271,6 +271,10 @@ async function evaluateMcpFirstTool({
       },
     };
   } else if (hitlRequired && !hitlApproved) {
+    // Tool-name HITL gate, no receipt → require approval. When a verified
+    // receipt is present (hitlApproved), this branch is skipped and the call
+    // falls through to the shared PERMIT tail below — same candidate-suppression
+    // pattern as the amount block, so the discharge logic lives in one place.
     out = {
       decision: 'INDETERMINATE',
       stepUpRequired: false,
@@ -282,21 +286,6 @@ async function evaluateMcpFirstTool({
         decision: 'INDETERMINATE',
         obligations: [{ type: 'HITL', detail: 'Simulated Authorize obligation — human approval required.' }],
         reason: `Simulated policy HITL: tool "${toolName}" is in SIMULATED_MCP_HITL_TOOLS.`,
-      },
-    };
-  } else if (hitlRequired && hitlApproved) {
-    // Tool-name HITL gate discharged by a verified receipt → PERMIT.
-    out = {
-      decision: 'PERMIT',
-      stepUpRequired: false,
-      hitlRequired: false,
-      path: 'simulated',
-      decisionId,
-      raw: {
-        ...rawBase,
-        decision: 'PERMIT',
-        obligations: [],
-        reason: `Simulated policy HITL for tool "${toolName}" satisfied by approved HITL receipt.`,
       },
     };
   } else if (transactionType && amount != null) {
@@ -336,7 +325,15 @@ async function evaluateMcpFirstTool({
       // per-path flag label differs, matching each caller's expectation.
       const acrStrong = acrLooksStrong(acr);
       const mcpCandidates = [];
-      if (amount >= confirmAmount && !acrStrong) {
+      // A verified HITL receipt discharges ONLY the HITL_CONSENT gate: suppress
+      // the consent candidate up front so the SHARED classifier yields PERMIT
+      // through the existing path. The STEP_UP candidate is still pushed and the
+      // classifier's highest-gate-wins rule keeps it dominant — so a receipt can
+      // NEVER satisfy MFA. This is structural (no hand-written "unreachable"
+      // branch to keep true) and keeps sim/live parity on the discharge rule.
+      const consentDischargedByReceipt =
+        amount >= confirmAmount && !acrStrong && hitlApproved && amount < stepUpAmount;
+      if (amount >= confirmAmount && !acrStrong && !hitlApproved) {
         mcpCandidates.push({ type: 'HITL_CONSENT', detail: 'Confirmation required.' });
       }
       if (amount >= stepUpAmount && !acrStrong) {
@@ -353,7 +350,7 @@ async function evaluateMcpFirstTool({
           decisionId,
           raw: { ...rawBase, decision: 'INDETERMINATE', obligations: mcpCandidates, enforced: 'STEP_UP', reason: `Amount $${amount} >= step-up threshold $${stepUpAmount}.` },
         };
-      } else if (mcpFlags.consentRequired && !hitlApproved) {
+      } else if (mcpFlags.consentRequired) {
         out = {
           decision: 'INDETERMINATE',
           stepUpRequired: false,
@@ -362,19 +359,6 @@ async function evaluateMcpFirstTool({
           decisionId,
           raw: { ...rawBase, decision: 'INDETERMINATE', obligations: mcpCandidates, enforced: 'HITL_CONSENT', reason: `Amount $${amount} >= confirm threshold $${confirmAmount}.` },
         };
-      } else if (mcpFlags.consentRequired && hitlApproved) {
-        // Confirm-threshold HITL_CONSENT gate discharged by a verified receipt
-        // → PERMIT. Step-up is handled by the branch above and is unreachable
-        // here (mcpFlags.stepUpRequired wins first), so a receipt can never
-        // satisfy MFA.
-        out = {
-          decision: 'PERMIT',
-          stepUpRequired: false,
-          hitlRequired: false,
-          path: 'simulated',
-          decisionId,
-          raw: { ...rawBase, decision: 'PERMIT', obligations: [], enforced: 'HITL_CONSENT_SATISFIED', reason: `Amount $${amount} >= confirm threshold $${confirmAmount} satisfied by approved HITL receipt.` },
-        };
       } else {
         out = {
           decision: 'PERMIT',
@@ -382,7 +366,16 @@ async function evaluateMcpFirstTool({
           hitlRequired: false,
           path: 'simulated',
           decisionId,
-          raw: { ...rawBase, decision: 'PERMIT', obligations: [] },
+          raw: {
+            ...rawBase,
+            decision: 'PERMIT',
+            obligations: [],
+            // Audit marker: distinguish a receipt-discharged PERMIT from an
+            // under-threshold PERMIT so the decision trail shows why it passed.
+            ...(consentDischargedByReceipt
+              ? { enforced: 'HITL_CONSENT_SATISFIED', reason: `Amount $${amount} >= confirm threshold $${confirmAmount} satisfied by approved HITL receipt.` }
+              : {}),
+          },
         };
       }
     }

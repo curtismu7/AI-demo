@@ -140,7 +140,7 @@ async function agentRestrictionsGate(req, res, next) {
 
     if (authzResult.decision === 'PERMIT') return next();
 
-    const { taskId } = createPendingDecision(
+    const { taskId } = await createPendingDecision(
       userId,
       {
         tool: toolName,

@@ -20,6 +20,16 @@ function requireAdmin(req, res, next) {
   next();
 }
 
+// Guard for parameterized :id routes — validates the URL id against ID_REGEX
+// before it reaches any path.join / fs call. Express decodes %2F to '/' inside
+// req.params.id, so this is the path-traversal boundary, not just a 404 helper.
+function requireValidId(req, res, next) {
+  if (!ID_REGEX.test(req.params.id || '')) {
+    return res.status(400).json({ error: 'invalid id format' });
+  }
+  next();
+}
+
 // ---- Read endpoints ----
 
 router.get('/me', requireSession, (req, res) => {

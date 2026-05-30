@@ -12,10 +12,15 @@ jest.mock('../../services/simulatedAuthorizeService', () => ({
   evaluateMcpFirstTool: jest.fn(),
   isSimulatedModeEnabled: jest.fn(),
 }));
+jest.mock('../../services/hitlServiceClient', () => ({
+  getChallengeStatus: jest.fn(),
+  verifyHitlReceipt: jest.fn(),
+}));
 
 const configStore = require('../../services/configStore');
 const pingOneAuthorizeService = require('../../services/pingOneAuthorizeService');
 const simulatedAuthorizeService = require('../../services/simulatedAuthorizeService');
+const hitlServiceClient = require('../../services/hitlServiceClient');
 const {
   evaluateMcpFirstToolGate,
   getMcpFirstToolGateStatus,
@@ -343,6 +348,57 @@ describe('mcpToolAuthorizationService', () => {
       expect(simulatedAuthorizeService.evaluateMcpFirstTool).toHaveBeenCalledWith(
         expect.objectContaining({ amount: null, transactionType: null }),
       );
+    });
+  });
+
+  // ── HITL receipt verification (findings #1 + #2): hitlApproved is derived
+  // ONLY from a 3009-verified, caller-bound receipt and threaded into the
+  // engines. A missing/invalid/forged/unreachable receipt fails closed
+  // (hitlApproved=false → engine re-challenges). Never accept a raw client flag.
+  describe('evaluateMcpFirstToolGate — HITL receipt verification', () => {
+    const SIM = () => simulatedAuthorizeService.evaluateMcpFirstTool;
+    const baseReq = {
+      req: { session: { user: { role: 'user' } } },
+      tool: 'create_transfer',
+      agentToken: jwtWithPayload({ sub: 'u1', act: { sub: 'agent-1' }, aud: 'https://mcp' }),
+      userSub: 'u1',
+    };
+
+    beforeEach(() => {
+      simulatedAuthorizeService.isSimulatedModeEnabled.mockReturnValue(true);
+      SIM().mockResolvedValue({
+        decision: 'PERMIT', stepUpRequired: false, hitlRequired: false,
+        path: 'simulated', decisionId: 's1', raw: {},
+      });
+    });
+
+    it('does NOT verify a receipt when no challenge id is provided (hitlApproved=false)', async () => {
+      await evaluateMcpFirstToolGate({ ...baseReq });
+      expect(hitlServiceClient.getChallengeStatus).not.toHaveBeenCalled();
+      expect(SIM()).toHaveBeenCalledWith(expect.objectContaining({ hitlApproved: false }));
+    });
+
+    it('passes hitlApproved=true when the receipt verifies (approved + caller-bound)', async () => {
+      hitlServiceClient.getChallengeStatus.mockResolvedValue({ status: 'approved', userId: 'u1', agentId: 'agent-1', tool: 'create_transfer' });
+      hitlServiceClient.verifyHitlReceipt.mockReturnValue({ ok: true });
+      await evaluateMcpFirstToolGate({ ...baseReq, hitlChallengeId: 'c1' });
+      expect(hitlServiceClient.getChallengeStatus).toHaveBeenCalledWith('c1');
+      expect(hitlServiceClient.verifyHitlReceipt).toHaveBeenCalledWith(
+        expect.any(Object), 'u1', 'agent-1', 'create_transfer');
+      expect(SIM()).toHaveBeenCalledWith(expect.objectContaining({ hitlApproved: true }));
+    });
+
+    it('fails closed (hitlApproved=false) when verifyHitlReceipt rejects', async () => {
+      hitlServiceClient.getChallengeStatus.mockResolvedValue({ status: 'approved', userId: 'attacker' });
+      hitlServiceClient.verifyHitlReceipt.mockReturnValue({ ok: false, message: 'different user' });
+      await evaluateMcpFirstToolGate({ ...baseReq, hitlChallengeId: 'c1' });
+      expect(SIM()).toHaveBeenCalledWith(expect.objectContaining({ hitlApproved: false }));
+    });
+
+    it('fails closed (hitlApproved=false) when the HITL service is unreachable', async () => {
+      hitlServiceClient.getChallengeStatus.mockRejectedValue(new Error('ECONNREFUSED'));
+      await evaluateMcpFirstToolGate({ ...baseReq, hitlChallengeId: 'c1' });
+      expect(SIM()).toHaveBeenCalledWith(expect.objectContaining({ hitlApproved: false }));
     });
   });
 

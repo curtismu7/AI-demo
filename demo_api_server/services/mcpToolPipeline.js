@@ -309,6 +309,13 @@ async function runMcpToolPipeline(ctx) {
         deps.emit({
             phase: 'authorize_gate_begin'
         });
+        // "One HITL solution": on a retry the agent echoes the challenge id as a
+        // reserved tool-arg `_hitl_challenge_id` (mirrors the gateway). The gate
+        // verifies it against the canonical HITL service (3009) before deciding.
+        // Strip it from params so it never reaches the downstream tool.
+        const hitlChallengeId = params?.[HITL_CHALLENGE_ARG] || null;
+        if (hitlChallengeId) { delete params[HITL_CHALLENGE_ARG]; }
+
         const mcpAuthz = await deps.evaluateMcpFirstToolGate({
             req,
             tool,
@@ -316,30 +323,49 @@ async function runMcpToolPipeline(ctx) {
             userSub,
             userAcr: req.session ?.user ?.acr,
             toolParams: params,
+            hitlChallengeId,
         });
         if (mcpAuthz.ran && mcpAuthz.block) {
             deps.emit({
                 phase: 'authorize_denied',
                 status: mcpAuthz.block.status
             });
-            // HITL: create pending decision so the agent UI can poll and approve/deny
-            let hitlTaskId = null;
+            // HITL: create a challenge in the canonical HITL service (3009) — the
+            // single store both BFF and gateway use. Return its challengeId so the
+            // agent can echo it back as `_hitl_challenge_id` on retry after the
+            // human approves at the dashboard. Fail-soft: if 3009 is unreachable
+            // the 428 still returns (without a challengeId) so the caller isn't
+            // silently permitted.
+            let hitlChallenge = null;
             if (mcpAuthz.block.body.error === 'mcp_hitl_required') {
                 deps.emit({ phase: 'authorize_denied_hitl', challenge_type: 'hitl' });
-                const hitl = deps.createPendingDecision(
-                    userSub,
-                    {
+                try {
+                    const agentId = deps.decodeAgentId ? deps.decodeAgentId(mcpAccessToken) : undefined;
+                    hitlChallenge = await deps.createHitlChallenge({
                         tool,
-                        decisionId: mcpAuthz.block.body.decisionId,
-                        decisionContext: mcpAuthz.block.body.decisionContext,
-                        reason: mcpAuthz.block.body.error_description,
-                    },
-                );
-                hitlTaskId = hitl.taskId;
+                        userId: userSub,
+                        agentId,
+                        userEmail: req.session?.user?.email,
+                        context: {
+                            decisionId: mcpAuthz.block.body.decisionId,
+                            decisionContext: mcpAuthz.block.body.decisionContext,
+                            reason: mcpAuthz.block.body.error_description,
+                        },
+                    }, req.correlationId);
+                } catch (hitlErr) {
+                    console.error('[MCP HITL] Failed to create challenge in HITL service:', hitlErr.message);
+                }
             }
             return { kind: 'block', httpStatus: mcpAuthz.block.status, tokenEvents, body: {
                 ...mcpAuthz.block.body,
-                ...(hitlTaskId ? { taskId: hitlTaskId } : {}),
+                ...(hitlChallenge ? {
+                    challengeId: hitlChallenge.challengeId,
+                    expiresAt: hitlChallenge.expiresAt,
+                    // Back-compat: the agent UI polled `taskId`; keep it pointing at the
+                    // canonical challenge id so existing pollers resolve against 3009.
+                    taskId: hitlChallenge.challengeId,
+                    instructions: `Approve at the dashboard, then retry the tool with ${HITL_CHALLENGE_ARG} in arguments.`,
+                } : {}),
                 tokenEvents,
                 mcpAuthorizeEvaluation: {
                     decisionContext: mcpAuthz.block.body.decisionContext,

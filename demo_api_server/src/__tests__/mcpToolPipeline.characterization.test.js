@@ -27,6 +27,10 @@ function makeDeps(over = {}) {
     stdioAdapter: { callToolViaStdio: jest.fn(async () => ({ content: [{ text: 'p1-ok' }] })) },
     recordMcpToolCall: jest.fn(),
     createPendingDecision: jest.fn(() => ({ taskId: 't' })),
+    // Canonical HITL service (3009): the pipeline creates the challenge here on a
+    // 428 and maps challengeId → taskId in the response body.
+    createHitlChallenge: jest.fn(async () => ({ challengeId: 't', expiresAt: '2026-01-01T00:00:00Z' })),
+    decodeAgentId: jest.fn(() => 'agent-1'),
     appEventLog: jest.fn(),
     publishMcpResultToSse: jest.fn(),
     publishTokenEventsToSse: jest.fn(),
@@ -180,14 +184,21 @@ describe('runMcpToolPipeline — characterization (ADR-0004, zero behavior chang
     expect(outcome.body.mcpAuthorizeEvaluation).toEqual({ decisionContext: { x: 1 }, decisionId: 'd1' });
   });
 
-  test('gate block 428 mcp_hitl_required → block + pending decision created, taskId in body', async () => {
+  test('gate block 428 mcp_hitl_required → block + 3009 challenge created, taskId in body', async () => {
     const deps = makeDeps();
-    deps.createPendingDecision = jest.fn(() => ({ taskId: 'task-9' }));
+    deps.createHitlChallenge = jest.fn(async () => ({ challengeId: 'task-9', expiresAt: '2026-01-01T00:00:00Z' }));
     deps.evaluateMcpFirstToolGate = jest.fn(async () => ({ ran: true, block: { status: 428, body: { error: 'mcp_hitl_required', decisionId: 'd2', decisionContext: { c: 2 }, error_description: 'needs human' } } }));
     const outcome = await runMcpToolPipeline(makeCtx({ deps }));
     expect(outcome.httpStatus).toBe(428);
-    expect(deps.createPendingDecision).toHaveBeenCalledWith('u1', expect.objectContaining({ tool: 'get_my_accounts', decisionId: 'd2' }));
+    // Now creates the challenge in the canonical HITL service (3009), not the
+    // in-process pending-decision store. challengeId is surfaced as taskId for
+    // the existing UI poller contract.
+    expect(deps.createHitlChallenge).toHaveBeenCalledWith(
+      expect.objectContaining({ tool: 'get_my_accounts', userId: 'u1' }),
+      expect.anything(),
+    );
     expect(outcome.body.taskId).toBe('task-9');
+    expect(outcome.body.challengeId).toBe('task-9');
   });
 
   test('gate simulatedError → error 500 mcp_authorize_error', async () => {

@@ -1312,6 +1312,8 @@ function publishMcpResultToSse(flowTraceId, { tool, result, durationMs, isDelega
 
 const { runMcpToolPipeline } = require('./services/mcpToolPipeline');
 const { createPendingDecision: _createPendingDecision } = require('./routes/mcpDecisionPolling');
+const _hitlServiceClient = require('./services/hitlServiceClient');
+const { decodeJwtClaims: _decodeJwtClaims } = require('./services/agentMcpTokenService');
 
 /**
  * Render a pipeline Outcome to the Express response. The ONLY res.* site for
@@ -1456,6 +1458,15 @@ app.post('/api/mcp/tool', express.json(), requireSession, async (req, res, next)
         buildTokenEvent,
         mcpNoBearerResponse,
         createPendingDecision: _createPendingDecision,
+        // Canonical HITL service (3009) — single store for BFF + gateway.
+        createHitlChallenge: (payload, corr) => _hitlServiceClient.createChallenge(payload, corr),
+        // Derive the agent actor id (RFC 8693 act.sub) for caller-bound challenges.
+        decodeAgentId: (tok) => {
+          const act = _decodeJwtClaims(tok)?.claims?.act;
+          return act && typeof act === 'object'
+            ? String(act.client_id || act.sub || '') || undefined
+            : undefined;
+        },
         recordMcpToolCall,
         publishMcpResultToSse: (id, a) => publishMcpResultToSse(id, a),
         publishTokenEventsToSse: (id, evs) => publishTokenEventsToSse(id, evs),

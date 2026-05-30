@@ -12,6 +12,7 @@ const configStore = require('./configStore');
 const pingOneAuthorizeService = require('./pingOneAuthorizeService');
 const simulatedAuthorizeService = require('./simulatedAuthorizeService');
 const { decodeJwtClaims } = require('./agentMcpTokenService');
+const hitlServiceClient = require('./hitlServiceClient');
 
 /**
  * Extract nested actor id from MCP JWT (RFC 8693 multi-hop) when PingOne issues act.act.
@@ -62,6 +63,12 @@ const WRITE_TOOL_TYPE_MAP = {
  * @param {string|null|undefined} opts.userSub - PingOne user id from resolver
  * @param {string} [opts.userAcr] - from session user
  * @param {object} [opts.toolParams] - raw tool params (used for amount on write tools)
+ * @param {string} [opts.hitlChallengeId] - On a HITL retry, the challenge id the
+ *   agent echoes back. The gate verifies it against the canonical HITL service
+ *   (3009) — approved + not-expired + bound to THIS user/agent/tool — and only
+ *   then treats the HITL_CONSENT gate as discharged. A missing/invalid/forged id
+ *   fails closed (re-challenge), never PERMIT. This is the ONLY place hitlApproved
+ *   is derived; it is never accepted as a raw client flag.
  * @returns {Promise<
  *   | { ran: false }
  *   | { ran: true, permit: true, evaluation: object }
@@ -70,7 +77,7 @@ const WRITE_TOOL_TYPE_MAP = {
  *   | { ran: true, pingoneError: Error }
  * >}
  */
-async function evaluateMcpFirstToolGate({ req, tool, agentToken, userSub, userAcr, toolParams }) {
+async function evaluateMcpFirstToolGate({ req, tool, agentToken, userSub, userAcr, toolParams, hitlChallengeId = null }) {
   if (!agentToken || typeof agentToken !== 'string') {
     return { ran: false, reason: 'no_agent_token' };
   }
@@ -103,6 +110,38 @@ async function evaluateMcpFirstToolGate({ req, tool, agentToken, userSub, userAc
     ? String(claims.act.client_id || claims.act.sub || '')
     : '';
   const nestedActClientId = nestedActIdFromClaim(claims.act);
+
+  // ── HITL receipt verification (the ONLY place hitlApproved is derived) ──────
+  // On a retry the agent echoes back the challenge id. Verify it against the
+  // canonical HITL service (3009): approved + not-expired + bound to THIS
+  // user (subjectId) and agent (actClientId) and tool. Only a verified receipt
+  // discharges the HITL_CONSENT gate in the engines below. Fail CLOSED — any
+  // error, mismatch, or non-approved status leaves hitlApproved=false, so the
+  // engine re-challenges (428) rather than PERMITting. Never trust a raw flag.
+  let hitlApproved = false;
+  if (hitlChallengeId) {
+    try {
+      const status = await hitlServiceClient.getChallengeStatus(hitlChallengeId);
+      const verification = hitlServiceClient.verifyHitlReceipt(
+        status,
+        subjectId,
+        actClientId || undefined,
+        tool,
+      );
+      hitlApproved = verification.ok === true;
+      if (!hitlApproved) {
+        console.warn(
+          `[MCP Authorize] HITL receipt rejected for tool=${tool} reason=${verification.message} — re-challenging`,
+        );
+      }
+    } catch (err) {
+      console.warn(
+        `[MCP Authorize] HITL receipt verification failed (fail-closed, re-challenge): ${err.message}`,
+      );
+      hitlApproved = false;
+    }
+  }
+
   // EXPECTED audience the BFF passes to the policy. The policy compares this
   // against the bearer token's `aud` to catch step-skipping (an attacker
   // sending an intermediate-step token directly to MCP). The expected aud
@@ -137,6 +176,7 @@ async function evaluateMcpFirstToolGate({ req, tool, agentToken, userSub, userAc
         acr: userAcr,
         amount: toolAmount,
         transactionType,
+        hitlApproved,
       });
 
       if (r.stepUpRequired) {
@@ -224,6 +264,7 @@ async function evaluateMcpFirstToolGate({ req, tool, agentToken, userSub, userAc
       acr: userAcr,
       amount: toolAmount,
       transactionType,
+      hitlApproved,
     });
 
     if (r.stepUpRequired) {
