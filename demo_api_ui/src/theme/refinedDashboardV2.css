@@ -45,3 +45,236 @@
   --rd2-shadow-1: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
   --rd2-shadow-2: 0 4px 16px rgba(0,0,0,.08), 0 1px 3px rgba(0,0,0,.04);
 }
+
+/* ── Base ─────────────────────────────────────────── */
+[data-rd-v2] {
+  background: var(--rd2-bg);
+  color: var(--rd2-ink-1);
+  font-family: var(--rd2-font-body);
+}
+
+/* ── Hero ─────────────────────────────────────────── */
+[data-rd-v2] .ud-hero {
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--rd2-line-1);
+  margin-bottom: 4px;
+  background: transparent;
+}
+[data-rd-v2] .ud-hero__eyebrow {
+  font-family: var(--rd2-font-mono);
+  font-size: .62rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--rd2-ink-3);
+  margin-bottom: 10px;
+}
+[data-rd-v2] .ud-hero__balance {
+  font-family: var(--rd2-font-figure);
+  font-weight: 300;
+  font-size: clamp(2.8rem, 7vw, 4rem);
+  letter-spacing: -.04em;
+  line-height: 1;
+  color: var(--rd2-ink-1);
+  font-variant-numeric: tabular-nums;
+}
+[data-rd-v2] .ud-hero__balance-label {
+  font-family: var(--rd2-font-mono);
+  font-size: .62rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--rd2-ink-3);
+}
+[data-rd-v2] .ud-hero__insight {
+  font-size: .82rem;
+  color: var(--rd2-ink-2);
+  margin-top: 8px;
+}
+
+/* ── Stats (VerticalHero) ─────────────────────────── */
+[data-rd-v2] .vertical-hero {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  background: var(--rd2-surface);
+  border: 1px solid var(--rd2-line-1);
+  border-radius: var(--rd2-r-md);
+  box-shadow: var(--rd2-shadow-1);
+  overflow: hidden;
+  gap: 0;
+}
+[data-rd-v2] .vertical-hero-card {
+  padding: 16px 18px;
+  border-right: 1px solid var(--rd2-line-1);
+}
+[data-rd-v2] .vertical-hero-card:last-child {
+  border-right: none;
+}
+[data-rd-v2] .vertical-hero-label {
+  display: block;
+  font-size: .68rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--rd2-ink-3);
+  font-weight: 500;
+}
+[data-rd-v2] .vertical-hero-value {
+  display: block;
+  font-family: var(--rd2-font-figure);
+  font-size: 1.4rem;
+  font-weight: 400;
+  letter-spacing: -.015em;
+  font-variant-numeric: tabular-nums;
+  margin-top: 5px;
+  color: var(--rd2-ink-1);
+}
+
+/* ── Card shell ───────────────────────────────────── */
+[data-rd-v2] .section {
+  background: var(--rd2-surface);
+  border: 1px solid var(--rd2-line-1);
+  border-radius: var(--rd2-r-md);
+  box-shadow: var(--rd2-shadow-1);
+  overflow: hidden;
+}
+[data-rd-v2] .section-header,
+[data-rd-v2] .section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--rd2-line-1);
+  font-size: .88rem;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  color: var(--rd2-ink-1);
+}
+[data-rd-v2] .ud-accounts-heading {
+  padding: 14px 18px 0;
+  font-size: .88rem;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  color: var(--rd2-ink-1);
+  margin: 0;
+}
+
+/* ── Accounts grid ────────────────────────────────── */
+[data-rd-v2] .accounts-grid {
+  display: flex;
+  flex-direction: column;
+}
+[data-rd-v2] .account-card {
+  border-bottom: 1px solid var(--rd2-line-1);
+}
+[data-rd-v2] .account-card:last-child {
+  border-bottom: none;
+}
+[data-rd-v2] .account-card__body {
+  padding: 14px 18px;
+}
+[data-rd-v2] .account-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+[data-rd-v2] .account-number {
+  font-family: var(--rd2-font-mono);
+  font-size: .75rem;
+  color: var(--rd2-ink-3);
+  letter-spacing: .05em;
+}
+[data-rd-v2] .account-balance-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 6px;
+}
+[data-rd-v2] .account-type-badge {
+  font-family: var(--rd2-font-mono);
+  font-size: .62rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--rd2-ink-3);
+  background: var(--rd2-surface-2);
+  border: 1px solid var(--rd2-line-1);
+  border-radius: var(--rd2-r-sm);
+  padding: 2px 6px;
+}
+
+/* ── Transaction feed ─────────────────────────────── */
+[data-rd-v2] .tx-feed {
+  padding: 0 0 4px;
+}
+[data-rd-v2] .tx-feed__group {
+  padding: 0;
+}
+[data-rd-v2] .tx-feed__date-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px 6px;
+}
+[data-rd-v2] .tx-feed__date-label {
+  font-family: var(--rd2-font-mono);
+  font-size: .62rem;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  color: var(--rd2-ink-3);
+  white-space: nowrap;
+}
+[data-rd-v2] .tx-feed__date-line {
+  flex: 1;
+  height: 1px;
+  background: var(--rd2-line-1);
+}
+[data-rd-v2] .tx-row {
+  display: flex;
+  align-items: center;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--rd2-line-1);
+  gap: 12px;
+}
+[data-rd-v2] .tx-row:last-child {
+  border-bottom: none;
+}
+[data-rd-v2] .tx-row__body {
+  flex: 1;
+  min-width: 0;
+}
+[data-rd-v2] .tx-row__desc {
+  font-size: .88rem;
+  color: var(--rd2-ink-1);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+[data-rd-v2] .tx-row__meta {
+  font-size: .75rem;
+  color: var(--rd2-ink-3);
+  margin-top: 2px;
+}
+[data-rd-v2] .tx-row__account,
+[data-rd-v2] .tx-row__time,
+[data-rd-v2] .tx-row__sep {
+  font-size: .75rem;
+  color: var(--rd2-ink-3);
+}
+[data-rd-v2] .tx-row__right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+[data-rd-v2] .tx-row__amount {
+  font-family: var(--rd2-font-figure);
+  font-size: .95rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  letter-spacing: -.01em;
+}
+[data-rd-v2] .tx-row__amount--pos {
+  color: var(--rd2-positive);
+}
+[data-rd-v2] .tx-row__amount--neg {
+  color: var(--rd2-ink-1);
+}
