@@ -95,6 +95,30 @@ getAuthz()                      → { <toolName>: { stepUp?, hitl?, threshold?, 
 healthcare data and returns a healthcare result. There is no "fall back to banking" path
 because there is no banking underneath.
 
+### Invariant — single source, no banking fallback (hard requirement)
+
+**Everything the user sees or sends in the runtime path resolves from the active
+vertical's plugin — never from banking, never from a default vertical, never from a
+mapping table.** This applies to all of:
+
+- **Agent display** — persona, greeting, chip labels, hero stats, result panels, tool
+  names shown in the UI.
+- **Requests** — heuristic routing, LLM system prompt, tool schemas sent to the model,
+  tool dispatch.
+- **Responses** — tool results, result render descriptors, reply phrasing/terminology.
+- **Data** — every object read/written comes from the active vertical's `getDataStore()`.
+- **Authorization** — gates come from the active vertical's `getAuthz()`.
+
+There is **no** silent fallback to banking content anywhere in the runtime path. If the
+active vertical's plugin cannot resolve a value, that is an error surfaced explicitly
+(logged, and a clear UI/agent error) — **not** a quiet substitution of banking defaults.
+The "no-translation assertion" test (Section 4) enforces this by proving the shared layer
+contains no banking action names; a companion test asserts no code path substitutes a
+default/banking manifest when the active vertical is set.
+
+The **only** permitted fallback is the migration-period one below, and it resolves to the
+vertical's **own** manifest-only behavior — never to banking content.
+
 ---
 
 ## Section 2 — Data Ownership & Migration
@@ -142,8 +166,12 @@ fields, not a relabeled account.
    `REGRESSION_PLAN.md` §1 files.
 
 During migration the shared layer supports **both** old-style (manifest-only) and new-style
-(full plugin) verticals: a vertical without an `index.js` falls back to today's behavior, so
-the app never breaks mid-migration.
+(full plugin) verticals: a vertical without an `index.js` runs in its **own** manifest-only
+mode (today's per-vertical behavior for *that* vertical), so the app never breaks
+mid-migration. This is the only permitted fallback, and it never substitutes banking content
+for a non-banking vertical — it just means that vertical hasn't gained its full plugin yet.
+A vertical is "done" only when it no longer relies on this mode and every display/request/
+response value for it comes from its `index.js`.
 
 ---
 
@@ -227,6 +255,10 @@ migration is low-risk). `format` values reuse the existing `FormatEnum`
   → correct tool), mirroring `hitlRoute.regression`/`.integration`.
 - **No-translation assertion** — a test proving the shared layer contains no banking action
   names (guards against regression back into the substrate model).
+- **No-fallback assertion** — with a non-banking vertical active, a test proving the agent
+  display, request (heuristic + prompt + tool schemas), response, and data all resolve from
+  that vertical's plugin and never from banking/default content; an unresolved value surfaces
+  as an explicit error, not a silent substitution.
 - Existing banking suites stay green through banking-last migration; `App.structure` after
   any `App.js` touch.
 
@@ -248,5 +280,9 @@ migration is low-risk). `format` values reuse the existing `FormatEnum`
    zero edits to shared files.
 2. The shared layer contains no banking-specific action names (enforced by test).
 3. A vertical's wrong response is impossible-by-construction — no translation path exists.
-4. All existing banking flows stay green; UI builds clean; novel actions (e.g.
+4. **Every runtime value — agent display, requests, responses, data, authz — for the active
+   vertical resolves from its plugin. No path substitutes banking or default-vertical
+   content; missing values surface as explicit errors, not silent fallbacks** (enforced by
+   the no-fallback test).
+5. All existing banking flows stay green; UI builds clean; novel actions (e.g.
    `book_appointment`) render via descriptor.
