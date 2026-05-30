@@ -1,0 +1,34 @@
+/* refinedSurface.css — refined "institutional" look, scoped to the signed-in
+   customer dashboard via [data-refined-surface="customer"]. Accent is NOT
+   redefined here: it cascades from the per-vertical --theme-accent so banking
+   stays blue, healthcare teal, retail yellow. */
+
+[data-refined-surface="customer"] {
+  /* Neutral institutional palette (vertical-independent) */
+  --rd-paper:        #f6f4ef;
+  --rd-surface:      #fffefb;
+  --rd-surface-sunk: #f1eee7;
+  --rd-ink:          #1a1a17;
+  --rd-ink-soft:     #57534c;
+  --rd-ink-faint:    #8a857c;
+  --rd-line:         #e3ddd2;
+  --rd-line-strong:  #d4cdbf;
+  --rd-positive:     #1f6b4a;
+  --rd-negative:     #9a3526;
+  --rd-gold:         #9a7b3f;
+
+  /* Accent comes from the active vertical. --theme-accent is written to :root
+     by applyThemeTokens(); fall back to the banking blue if absent. */
+  --rd-accent:       var(--theme-accent, #1b3a6b);
+  --rd-accent-soft:  color-mix(in srgb, var(--rd-accent) 9%, var(--rd-surface));
+
+  /* Type */
+  --rd-font-display: "Fraunces", Georgia, serif;
+  --rd-font-figure:  "Newsreader", Georgia, serif;
+  --rd-font-body:    "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --rd-font-mono:    "IBM Plex Mono", ui-monospace, monospace;
+
+  --rd-radius:    4px;
+  --rd-radius-lg: 8px;
+  --rd-shadow-card: 0 1px 0 rgba(26,26,23,.03), 0 1px 2px rgba(26,26,23,.04);
+}
