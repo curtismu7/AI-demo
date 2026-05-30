@@ -5,6 +5,8 @@
  */
 'use strict';
 
+const verticalDispatch = require('./verticalDispatch');
+
 const VERTICAL_FEATURE_RE = /\b(show|view|see|get|my)\s*(large\s*purchase|big\s*purchase|recent\s*purchase|health\s*records?|medical\s*records?|gear\s*order|equipment\s*order|sports?\s*order|expense\s*report|expenses?\s*report)\b|^(large|big)\s*purchase$|^health\s*record$|^gear\s*order$|^expense\s*report$|\bshow\s+vertical\s+feature\b/;
 
 const EDU = {
@@ -472,8 +474,22 @@ function parseHeuristic(message, vertical = 'banking', verticalCtx = null) {
     return { kind: 'banking', banking: { action: 'vertical_feature_demo' } };
   }
 
-  // Theme-aware vocabulary — runs before banking/education so themed phrases
-  // route correctly regardless of which LLM is active.
+  // Plugin-first: a vertical with a plugin matches its OWN heuristics/actions.
+  // No banking fallback — a non-match returns kind:'none', never a banking action.
+  if (verticalDispatch.hasPlugin(vertical)) {
+    const heuristics = verticalDispatch.heuristicsFor(vertical, () => []);
+    for (const { re, action } of heuristics) {
+      if (re.test(t)) {
+        const amountMatch = t.match(/\$?\s*(\d+(?:\.\d+)?)/);
+        const params = amountMatch ? { amount: parseFloat(amountMatch[1]) } : {};
+        return { kind: 'vertical', vertical, action, params };
+      }
+    }
+    return { kind: 'none', message: buildCatalogMessage(verticalCtx) };
+  }
+
+  // Legacy theme-aware vocabulary (no plugin yet) — runs before banking/education
+  // so themed phrases route correctly regardless of which LLM is active.
   if (vertical !== 'banking') {
     const themed = parseTheme(t, vertical);
     if (themed) return themed;
