@@ -97,8 +97,10 @@ export default function TopNav({ user, onLogout }) {
           </span>
         )}
 
-        {/* Vertical switcher — available to every logged-in user (any role can switch) */}
-        {user && <VerticalSwitcher variant="nav" />}
+        {/* Vertical switcher — visible to everyone (guests too) so the
+            demo flow can be tailored before sign-in. The switcher hides
+            itself when fewer than 2 verticals exist. */}
+        <VerticalSwitcher variant="nav" />
 
         {/* 3-tab nav — admin gets all three; customer gets nothing here (chip is enough) */}
         {user?.role === 'admin' && (
