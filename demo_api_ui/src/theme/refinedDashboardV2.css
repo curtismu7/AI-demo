@@ -321,3 +321,105 @@
   color: var(--rd2-ink-2, #4c4c48);
   margin-left: 8px;
 }
+
+/* ── Floating FAB ─────────────────────────────────── */
+.banking-agent-fab {
+  background: var(--theme-accent, #1b3a6b) !important;
+  color: #ffffff !important;
+  font-family: "Inter", sans-serif !important;
+  font-size: .88rem !important;
+  font-weight: 600 !important;
+  border: none !important;
+  box-shadow:
+    0 8px 24px color-mix(in srgb, var(--theme-accent, #1b3a6b) 40%, transparent),
+    0 1px 3px rgba(0,0,0,.12) !important;
+}
+.banking-agent-fab:hover {
+  opacity: .88 !important;
+  transform: translateY(-2px) !important;
+}
+.banking-agent-fab::before {
+  border-color: var(--theme-accent, #1b3a6b) !important;
+}
+
+/* ── Float panel ──────────────────────────────────── */
+.banking-agent-panel {
+  background: var(--rd2-surface, #ffffff) !important;
+  border: 1px solid var(--rd2-line-2, #d5d5d0) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 20px 60px rgba(0,0,0,.12), 0 4px 16px rgba(0,0,0,.06) !important;
+}
+.banking-agent-panel::before {
+  content: "";
+  position: relative;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--theme-accent, #1b3a6b);
+  border-radius: 16px 16px 0 0;
+  pointer-events: none;
+}
+
+/* ── Panel header ─────────────────────────────────── */
+.banking-agent-panel .ba-header {
+  background: var(--rd2-surface, #ffffff) !important;
+  border-bottom: 1px solid var(--rd2-line-1, #e4e4e0) !important;
+}
+.banking-agent-panel .ba-title {
+  font-family: "Fraunces", serif !important;
+  font-weight: 600 !important;
+  font-size: .96rem !important;
+  letter-spacing: -.01em !important;
+  color: var(--rd2-ink-1, #111110) !important;
+}
+
+/* ── Composer / input row ─────────────────────────── */
+.banking-agent-panel .ba-input-row {
+  border-top: 1px solid var(--rd2-line-1, #e4e4e0) !important;
+  background: var(--rd2-surface, #ffffff) !important;
+  padding: 10px 12px !important;
+}
+.banking-agent-panel .ba-input {
+  border: 1px solid var(--rd2-line-2, #d5d5d0) !important;
+  border-radius: 999px !important;
+  background: var(--rd2-surface-2, #f3f3f1) !important;
+  padding: 7px 14px !important;
+  font-family: "Inter", ui-sans-serif, sans-serif !important;
+  font-size: .88rem !important;
+  color: var(--rd2-ink-1, #111110) !important;
+}
+.banking-agent-panel .ba-input:focus {
+  border-color: var(--theme-accent, #1b3a6b) !important;
+  background: var(--rd2-surface, #ffffff) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-accent, #1b3a6b) 20%, #ffffff) !important;
+}
+.banking-agent-panel .ba-send-btn {
+  background: var(--theme-accent, #1b3a6b) !important;
+  color: #ffffff !important;
+  border-radius: 999px !important;
+  border: none !important;
+}
+.banking-agent-panel .ba-send-btn:hover {
+  opacity: .88 !important;
+}
+
+/* ── Suggestion chips ─────────────────────────────── */
+.banking-agent-panel .ba-suggestion {
+  border-color: var(--theme-accent, #1b3a6b) !important;
+  color: var(--theme-accent, #1b3a6b) !important;
+  font-family: "Inter", ui-sans-serif, sans-serif !important;
+  font-size: .8rem !important;
+  border-radius: 999px !important;
+}
+.banking-agent-panel .ba-action-item {
+  background: var(--rd2-surface-2, #f3f3f1) !important;
+  border-color: var(--rd2-line-1, #e4e4e0) !important;
+  font-family: "Inter", ui-sans-serif, sans-serif !important;
+  font-size: .8rem !important;
+  border-radius: 8px !important;
+  color: var(--rd2-ink-1, #111110) !important;
+}
+.banking-agent-panel .ba-action-item:hover {
+  border-color: var(--theme-accent, #1b3a6b) !important;
+  color: var(--theme-accent, #1b3a6b) !important;
+}
