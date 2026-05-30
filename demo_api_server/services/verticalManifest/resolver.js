@@ -57,6 +57,11 @@ function createResolver(loader, overlay, store, { onEvent } = { onEvent: () => {
       _bump(id);
       onEvent('vertical-edited', { id });
     },
+    replaceBatch(id, entries) {
+      overlay.replaceBatch(id, entries);
+      _bump(id);
+      onEvent('vertical-edited', { id });
+    },
     clearField(id, path) {
       overlay.clearField(id, path);
       _bump(id);

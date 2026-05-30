@@ -75,6 +75,20 @@ function createOverlay(store, loader) {
     store.setOverlay(id, current);
   }
 
+  // Replace semantics: the overlay becomes EXACTLY `entries` (built fresh), so a
+  // field present before but absent from `entries` is dropped. The editor sends
+  // the full diff(seed, edited) here, so editing a field back to its seed value
+  // (no longer in the diff) clears that override. Empty entries clears the row.
+  function replaceBatch(id, entries) {
+    const next = {};
+    for (const { path, value } of entries) {
+      lodashSet(next, path, value);
+    }
+    _validateMerged(id, next);
+    if (Object.keys(next).length === 0) store.clearOverlay(id);
+    else store.setOverlay(id, next);
+  }
+
   function clearField(id, path) {
     const current = get(id);
     if (!deletePath(current, path)) return;
@@ -85,7 +99,7 @@ function createOverlay(store, loader) {
 
   function list(id) { return leafPaths(get(id)); }
 
-  return { get, setField, setBatch, clearField, clearAll, list };
+  return { get, setField, setBatch, replaceBatch, clearField, clearAll, list };
 }
 
 module.exports = { createOverlay };

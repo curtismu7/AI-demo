@@ -35,6 +35,7 @@ export function VerticalEditorPage() {
   const { pageManifest, refetch } = useVertical();
   const [editorValue, setEditorValue] = useState('');
   const [seedValue, setSeedValue] = useState('');
+  const [overlayPaths, setOverlayPaths] = useState([]);
   const [list, setList] = useState([]);
   const [showClone, setShowClone] = useState(false);
   const [snapshotInfo, setSnapshotInfo] = useState(null);
@@ -50,22 +51,39 @@ export function VerticalEditorPage() {
       .catch(() => setList([]));
   }, []);
 
+  // The editor pane shows the MERGED manifest, but Save diffs against the raw
+  // SEED so editing a field back to its seed value drops out of the diff (and,
+  // with replace-semantics on the batch endpoint, clears that override). Fetch
+  // the seed + current overlay paths whenever the active id changes.
+  const loadSeed = useCallback(() => {
+    if (!id) return;
+    fetch(`/api/verticals/${id}/seed`, { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.seedManifest) setSeedValue(JSON.stringify(data.seedManifest, null, 2));
+        setOverlayPaths(Array.isArray(data?.overlayPaths) ? data.overlayPaths : []);
+      })
+      .catch(() => setOverlayPaths([]));
+  }, [id]);
+
   useEffect(() => {
     if (!pageManifest) return;
-    const json = JSON.stringify(pageManifest, null, 2);
-    setEditorValue(json);
-    setSeedValue(json);
+    setEditorValue(JSON.stringify(pageManifest, null, 2));
     setError('');
-  }, [pageManifest]);
+    loadSeed();
+  }, [pageManifest, loadSeed]);
 
   const save = useCallback(async () => {
     setError('');
     let edited;
     try { edited = JSON.parse(editorValue); }
-    catch (e) { setError('Invalid JSON: ' + e.message); return; }
+    catch (e) { setError(`Invalid JSON: ${e.message}`); return; }
     const seed = JSON.parse(seedValue);
+    // The batch endpoint uses replace-semantics: the overlay becomes exactly
+    // diff(seed, edited). An empty diff therefore clears all overrides — so we
+    // POST even when entries is empty (e.g. the admin edited everything back to
+    // seed), rather than early-returning.
     const entries = diff(seed, edited);
-    if (entries.length === 0) return;
     const res = await fetch(`/api/verticals/${id}/overlay/batch`, {
       method: 'POST',
       credentials: 'include',
@@ -78,14 +96,21 @@ export function VerticalEditorPage() {
     }
   }, [editorValue, seedValue, id]);
 
-  const resetThisVertical = useCallback(async () => {
+  // DELETE /:id/overlay clears one field when given a path, or all overrides
+  // when not. The server emits vertical-edited → the provider refetches
+  // pageManifest → the [pageManifest] effect re-runs loadSeed(), so the seed +
+  // overlay-paths view refreshes on its own (same as save) — no explicit reload.
+  const deleteOverlay = useCallback(async (fieldPath) => {
     await fetch(`/api/verticals/${id}/overlay`, {
       method: 'DELETE',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
+      body: JSON.stringify(fieldPath ? { path: fieldPath } : {}),
     });
   }, [id]);
+
+  const resetThisVertical = useCallback(() => deleteOverlay(), [deleteOverlay]);
+  const resetField = useCallback((fieldPath) => deleteOverlay(fieldPath), [deleteOverlay]);
 
   const resetAllVerticals = useCallback(async () => {
     if (!window.confirm('Reset ALL verticals to their seed defaults? This wipes every override.')) return;
@@ -172,7 +197,7 @@ export function VerticalEditorPage() {
 
       <div className="vertical-editor__body">
         <aside className="vertical-editor__sidebar">
-          <OverlayBadge paths={[]} onResetField={() => {}} onResetAll={resetThisVertical} />
+          <OverlayBadge paths={overlayPaths} onResetField={resetField} onResetAll={resetThisVertical} />
         </aside>
         <main className="vertical-editor__main">
           <Monaco

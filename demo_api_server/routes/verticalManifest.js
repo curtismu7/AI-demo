@@ -20,7 +20,7 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-// Guard for parameterized :id routes — validates the URL id against ID_REGEX
+// Guard for parameterized :id routes — validates req.params.id against ID_REGEX
 // before it reaches any path.join / fs call. Express decodes %2F to '/' inside
 // req.params.id, so this is the path-traversal boundary, not just a 404 helper.
 function requireValidId(req, res, next) {
@@ -84,6 +84,7 @@ router.delete('/snapshot', requireAdmin, (req, res) => {
 router.post('/:sourceId/clone', requireAdmin, (req, res) => {
   const { sourceId } = req.params;
   const { newId, displayName } = req.body || {};
+  if (!ID_REGEX.test(sourceId)) return res.status(400).json({ error: 'invalid source id format' });
   if (!newId || !displayName) return res.status(400).json({ error: 'newId and displayName required' });
   if (!ID_REGEX.test(newId)) return res.status(400).json({ error: 'invalid id format' });
   if (verticalManifest.loader.get(newId)) return res.status(409).json({ error: 'id already exists' });
@@ -106,7 +107,19 @@ router.post('/:sourceId/clone', requireAdmin, (req, res) => {
   res.status(201).json({ id: newId, displayName });
 });
 
-router.delete('/:id', requireAdmin, (req, res) => {
+// Raw seed manifest + current overlay paths — powers the admin editor's
+// seed-diffing (so editing a field back to seed clears the override) and the
+// override panel. loader.get(id).manifest is the un-merged seed.
+router.get('/:id/seed', requireAdmin, requireValidId, (req, res) => {
+  const entry = verticalManifest.loader.get(req.params.id);
+  if (!entry) return res.status(404).json({ error: 'unknown id' });
+  res.json({
+    seedManifest: entry.manifest,
+    overlayPaths: verticalManifest.resolver.overlay.list(req.params.id),
+  });
+});
+
+router.delete('/:id', requireAdmin, requireValidId, (req, res) => {
   const { id } = req.params;
   if (PROTECTED_IDS.has(id)) return res.status(403).json({ error: 'protected id' });
   if (verticalManifest.resolver.activeId() === id) return res.status(409).json({ error: 'cannot delete active vertical' });
@@ -122,20 +135,24 @@ router.delete('/:id', requireAdmin, (req, res) => {
   res.status(204).end();
 });
 
-router.post('/:id/overlay/batch', requireAdmin, (req, res) => {
+// The editor sends the FULL desired overlay (= diff(seed, edited)) here, so this
+// uses replace semantics: the overlay becomes exactly `entries`, and any field
+// no longer present is cleared. That's what makes "edit a field back to its seed
+// value and Save" remove the override.
+router.post('/:id/overlay/batch', requireAdmin, requireValidId, (req, res) => {
   const { id } = req.params;
   const { entries } = req.body || {};
   if (!Array.isArray(entries)) return res.status(400).json({ error: 'entries array required' });
   if (!verticalManifest.loader.get(id)) return res.status(404).json({ error: 'unknown id' });
   try {
-    verticalManifest.resolver.overlay.setBatch(id, entries);
+    verticalManifest.resolver.overlay.replaceBatch(id, entries);
     res.status(204).end();
   } catch (e) {
     res.status(400).json({ error: e.message });
   }
 });
 
-router.post('/:id/overlay', requireAdmin, (req, res) => {
+router.post('/:id/overlay', requireAdmin, requireValidId, (req, res) => {
   const { id } = req.params;
   const { path: fieldPath, value } = req.body || {};
   if (!fieldPath) return res.status(400).json({ error: 'path required' });
@@ -148,7 +165,7 @@ router.post('/:id/overlay', requireAdmin, (req, res) => {
   }
 });
 
-router.delete('/:id/overlay', requireAdmin, (req, res) => {
+router.delete('/:id/overlay', requireAdmin, requireValidId, (req, res) => {
   const { id } = req.params;
   const { path: fieldPath } = req.body || {};
   if (!verticalManifest.loader.get(id)) return res.status(404).json({ error: 'unknown id' });

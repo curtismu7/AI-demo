@@ -140,7 +140,7 @@ describe('POST /:id/overlay', () => {
   });
 });
 
-describe('POST /:id/overlay/batch', () => {
+describe('POST /:id/overlay/batch (replace semantics)', () => {
   test('admin: writes batch, returns 204', async () => {
     const res = await request(makeApp({ user: { role: 'admin', id: 'u1' } }))
       .post('/api/verticals/banking/overlay/batch').send({
@@ -153,6 +153,29 @@ describe('POST /:id/overlay/batch', () => {
     const ov = verticalManifest.resolver.overlay.get('banking');
     expect(ov.identity.tagline).toBe('X');
     expect(ov.identity.headerTitle).toBe('Y');
+  });
+
+  test('replace: a field absent from the new entries is cleared', async () => {
+    // Pre-existing override on two fields…
+    verticalManifest.resolver.overlay.setField('banking', 'identity.tagline', 'OLD');
+    verticalManifest.resolver.overlay.setField('banking', 'identity.headerTitle', 'KEEP');
+    // …then a batch that omits tagline — replace semantics should drop it.
+    const res = await request(makeApp({ user: { role: 'admin', id: 'u1' } }))
+      .post('/api/verticals/banking/overlay/batch').send({
+        entries: [{ path: 'identity.headerTitle', value: 'KEEP' }],
+      });
+    expect(res.status).toBe(204);
+    const ov = verticalManifest.resolver.overlay.get('banking');
+    expect(ov.identity.tagline).toBeUndefined();
+    expect(ov.identity.headerTitle).toBe('KEEP');
+  });
+
+  test('replace: empty entries clears all overrides', async () => {
+    verticalManifest.resolver.overlay.setField('banking', 'identity.tagline', 'X');
+    const res = await request(makeApp({ user: { role: 'admin', id: 'u1' } }))
+      .post('/api/verticals/banking/overlay/batch').send({ entries: [] });
+    expect(res.status).toBe(204);
+    expect(verticalManifest.resolver.overlay.get('banking')).toEqual({});
   });
 
   test('non-array entries → 400', async () => {
@@ -280,5 +303,48 @@ describe('snapshot endpoints', () => {
   test('non-admin → 403 on save', async () => {
     const res = await request(makeApp({ user: { role: 'customer' } })).post('/api/verticals/snapshot');
     expect(res.status).toBe(403);
+  });
+});
+
+describe('GET /:id/seed', () => {
+  test('admin: returns raw seed manifest + overlay paths', async () => {
+    verticalManifest.resolver.overlay.clearAll('banking');
+    verticalManifest.resolver.overlay.setField('banking', 'identity.tagline', 'Overridden');
+    const res = await request(makeApp({ user: { role: 'admin' } }))
+      .get('/api/verticals/banking/seed');
+    expect(res.status).toBe(200);
+    // seedManifest is the RAW seed, NOT the merged view — tagline is the on-disk value.
+    expect(res.body.seedManifest.id).toBe('banking');
+    expect(res.body.seedManifest.identity.tagline).not.toBe('Overridden');
+    expect(res.body.overlayPaths).toContain('identity.tagline');
+  });
+
+  test('non-admin → 403', async () => {
+    const res = await request(makeApp({ user: { role: 'customer' } }))
+      .get('/api/verticals/banking/seed');
+    expect(res.status).toBe(403);
+  });
+
+  test('unknown id → 404', async () => {
+    const res = await request(makeApp({ user: { role: 'admin' } }))
+      .get('/api/verticals/nope/seed');
+    expect(res.status).toBe(404);
+  });
+});
+
+describe('parameterized :id validation (path-traversal guard)', () => {
+  // requireValidId rejects any id outside ^[a-z][a-z0-9-]*$ with 400 before any
+  // path.join / fs call. Covers chars outside the charset (dots) and the
+  // %2F-decoded-to-'/' traversal vector (Express decodes %2F inside params).
+  test.each([
+    ['get',    '/api/verticals/bad..id/seed'],
+    ['delete', '/api/verticals/bad..id'],
+    ['post',   '/api/verticals/bad..id/overlay'],
+    ['post',   '/api/verticals/bad..id/overlay/batch'],
+    ['delete', '/api/verticals/bad..id/overlay'],
+    ['delete', '/api/verticals/banking%2F..%2F..%2Ftmp'],
+  ])('%s %s → 400 invalid id', async (method, url) => {
+    const res = await request(makeApp({ user: { role: 'admin' } }))[method](url).send({});
+    expect(res.status).toBe(400);
   });
 });
