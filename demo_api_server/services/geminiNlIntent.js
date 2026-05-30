@@ -31,9 +31,16 @@ function buildSystem(vertical) {
 function buildSystemWithCtx(vertical, context) {
   const SYSTEM = buildSystem(vertical);
   if (!context.role) return SYSTEM;
+  // Use vertical-neutral phrasing. The previous wording said "Admin users can
+  // query ALL accounts" / "banking actions apply to their own accounts" — both
+  // surfaced banking terminology AFTER the theme override, which directly
+  // contradicted overrides like healthcare/retail/sporting-goods that
+  // explicitly instruct "never surface banking terminology". The LLM weighs
+  // later instructions more heavily, so the role note was undoing the
+  // theme. Neutral wording lets the active theme stay authoritative.
   const roleNote = context.role === 'admin'
-    ? 'Admin users can query ALL accounts and transactions system-wide, not just their own.'
-    : 'This is a regular customer — banking actions apply to their own accounts only.';
+    ? 'This user has admin privileges and can query data across all users.'
+    : 'This is a regular signed-in user — queries apply to their own data only.';
   return `${SYSTEM}\n\nSigned-in user: role=${context.role}${context.firstName ? `, name=${context.firstName}` : ''}. ${roleNote}`;
 }
 
