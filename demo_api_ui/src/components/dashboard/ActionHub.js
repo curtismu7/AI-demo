@@ -7,7 +7,8 @@ import './ActionHub.css';
 
 const ActionHub = ({ onNavigateToAccounts, onOpenAgent, onOpenEducation }) => {
   const { isAuthenticated } = useAuth();
-  const { activeId: currentVertical } = useVertical();
+  const { activeId: currentVertical, pageManifest } = useVertical();
+  const verticalName = pageManifest?.identity?.displayName || 'Banking';
   const { agentConfig } = useAgentConfig();
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -18,7 +19,7 @@ const ActionHub = ({ onNavigateToAccounts, onOpenAgent, onOpenEducation }) => {
 
   // Get vertical-specific primary actions
   const getPrimaryActions = () => {
-    switch (currentVertical?.id) {
+    switch (currentVertical) {
       case 'retail':
         return [
           {
@@ -119,13 +120,13 @@ const ActionHub = ({ onNavigateToAccounts, onOpenAgent, onOpenEducation }) => {
         id: 'education',
         label: 'Learn More',
         icon: '📚',
-        description: `Learn about ${currentVertical?.name || 'banking'} features`,
+        description: `Learn about ${verticalName.toLowerCase()} features`,
         onClick: () => onOpenEducation?.()
       }
     ];
 
     // Add vertical-specific actions
-    if (currentVertical?.id === 'retail') {
+    if (currentVertical === 'retail') {
       actions.push({
         id: 'reports',
         label: 'Reports',
@@ -133,7 +134,7 @@ const ActionHub = ({ onNavigateToAccounts, onOpenAgent, onOpenEducation }) => {
         description: 'Generate business reports',
         onClick: () => onNavigateToAccounts?.()
       });
-    } else if (currentVertical?.id === 'workforce') {
+    } else if (currentVertical === 'workforce') {
       actions.push({
         id: 'compliance',
         label: 'Compliance',
@@ -163,7 +164,7 @@ const ActionHub = ({ onNavigateToAccounts, onOpenAgent, onOpenEducation }) => {
         <div className="action-hub__content">
           <h2 className="action-hub__title">Get Started</h2>
           <p className="action-hub__subtitle">
-            Sign in to access your {currentVertical?.name || 'banking'} dashboard
+            Sign in to access your {verticalName.toLowerCase()} dashboard
           </p>
           <div className="action-hub__actions">
             <button
@@ -194,9 +195,9 @@ const ActionHub = ({ onNavigateToAccounts, onOpenAgent, onOpenEducation }) => {
         <div className="action-hub__header">
           <h2 className="action-hub__title">Quick Actions</h2>
           <p className="action-hub__subtitle">
-            {currentVertical?.id === 'retail' && 'Manage your store operations efficiently'}
-            {currentVertical?.id === 'workforce' && 'Handle your workforce management tasks'}
-            {currentVertical?.id === 'banking' && 'Manage your finances with ease'}
+            {currentVertical === 'retail' && 'Manage your store operations efficiently'}
+            {currentVertical === 'workforce' && 'Handle your workforce management tasks'}
+            {currentVertical === 'banking' && 'Manage your finances with ease'}
             {!currentVertical && 'Access your most important features quickly'}
           </p>
         </div>
@@ -256,9 +257,9 @@ const ActionHub = ({ onNavigateToAccounts, onOpenAgent, onOpenEducation }) => {
           <div className="action-hub__help__content">
             <h4>Need Help?</h4>
             <p>
-              {currentVertical?.id === 'retail' && 'Check our education panels for retail management tips and best practices.'}
-              {currentVertical?.id === 'workforce' && 'Learn more about workforce management and HR best practices in our education center.'}
-              {currentVertical?.id === 'banking' && 'Explore our education panels to learn about banking security and features.'}
+              {currentVertical === 'retail' && 'Check our education panels for retail management tips and best practices.'}
+              {currentVertical === 'workforce' && 'Learn more about workforce management and HR best practices in our education center.'}
+              {currentVertical === 'banking' && 'Explore our education panels to learn about banking security and features.'}
               {!currentVertical && 'Explore our education panels to learn about all available features.'}
             </p>
             <button

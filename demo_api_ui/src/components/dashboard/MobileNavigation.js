@@ -57,7 +57,7 @@ const MobileNavigation = ({
     ];
 
     // Add vertical-specific items if needed
-    if (currentVertical?.id === "retail") {
+    if (currentVertical === "retail") {
       baseItems.splice(2, 0, {
         id: "sales",
         label: "Sales",
@@ -74,7 +74,7 @@ const MobileNavigation = ({
         ),
         alwaysVisible: false,
       });
-    } else if (currentVertical?.id === "workforce") {
+    } else if (currentVertical === "workforce") {
       baseItems.splice(2, 0, {
         id: "employees",
         label: "Staff",

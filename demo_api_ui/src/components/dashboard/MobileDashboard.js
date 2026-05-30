@@ -19,7 +19,8 @@ const MobileDashboard = ({
   onOpenEducation 
 }) => {
   const { isAuthenticated } = useAuth();
-  const { activeId: currentVertical } = useVertical();
+  const { activeId: currentVertical, pageManifest } = useVertical();
+  const verticalName = pageManifest?.identity?.displayName || 'Banking';
   const [activeTab, setActiveTab] = useState('home');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -169,7 +170,7 @@ const MobileDashboard = ({
             </button>
             
             <h1 className="mobile-dashboard__title">
-              {currentVertical?.name || 'Banking'}
+              {verticalName}
             </h1>
           </div>
 

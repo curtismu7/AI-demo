@@ -6,7 +6,8 @@ import { useAgentConfig } from '../hooks/useAgentConfig';
 
 const DashboardHero = () => {
   const { user, isAuthenticated } = useAuth();
-  const { activeId: currentVertical } = useVertical();
+  const { activeId: currentVertical, pageManifest } = useVertical();
+  const verticalName = pageManifest?.identity?.displayName || 'Banking';
   const { agentConfig } = useAgentConfig();
   
   const [greeting, setGreeting] = useState('');
@@ -58,7 +59,7 @@ const DashboardHero = () => {
     const firstName = user.given_name || user.name || 'there';
     
     // Vertical-specific messages
-    switch (currentVertical?.id) {
+    switch (currentVertical) {
       case 'retail':
         return `${firstName}, manage your retail operations with confidence`;
       case 'workforce':
@@ -71,7 +72,7 @@ const DashboardHero = () => {
 
   // Get vertical-specific value proposition
   const getValueProposition = () => {
-    switch (currentVertical?.id) {
+    switch (currentVertical) {
       case 'retail':
         return 'Complete retail management with secure transactions, inventory tracking, and customer insights';
       case 'workforce':
@@ -84,7 +85,7 @@ const DashboardHero = () => {
 
   // Get vertical-specific features
   const getFeatures = () => {
-    switch (currentVertical?.id) {
+    switch (currentVertical) {
       case 'retail':
         return [
           { icon: '💳', label: 'Secure Payments' },
@@ -229,7 +230,7 @@ const DashboardHero = () => {
                   window.dispatchEvent(new CustomEvent('openEducation'));
                 }}
               >
-                📚 Learn About {currentVertical?.name || 'Banking'}
+                Learn About {verticalName}
               </button>
             </div>
           </div>
@@ -265,11 +266,8 @@ const DashboardHero = () => {
       {/* Vertical Branding */}
       {currentVertical && (
         <div className="dashboard-hero__vertical-badge">
-          <span className="dashboard-hero__vertical-icon">
-            {currentVertical.icon}
-          </span>
           <span className="dashboard-hero__vertical-name">
-            {currentVertical.name}
+            {verticalName}
           </span>
         </div>
       )}

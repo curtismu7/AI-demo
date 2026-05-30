@@ -72,7 +72,7 @@ const AccountSummary = ({ accounts, isDemoMode, onNavigateToLogin, expandedAccou
 
   // Get vertical-specific features
   const getVerticalFeatures = () => {
-    switch (currentVertical?.id) {
+    switch (currentVertical) {
       case 'retail':
         return {
           title: 'Store Performance',
@@ -99,13 +99,13 @@ const AccountSummary = ({ accounts, isDemoMode, onNavigateToLogin, expandedAccou
 
   // Render summary cards
   const renderSummaryCards = () => {
-    const cards = currentVertical?.id === 'retail' 
+    const cards = currentVertical === 'retail'
       ? [
           { label: 'Daily Sales', value: fmt(summary.totalAssets), change: '+12.3%', positive: true },
           { label: 'Total Orders', value: summary.accountCount.toString(), change: '+5.2%', positive: true },
           { label: 'Avg Order Value', value: fmt(summary.totalAssets / summary.accountCount), change: '-2.1%', positive: false }
         ]
-      : currentVertical?.id === 'workforce'
+      : currentVertical === 'workforce'
       ? [
           { label: 'Active Employees', value: summary.accountCount.toString(), change: '+2.1%', positive: true },
           { label: 'Total Payroll', value: fmt(summary.totalAssets), change: '+8.7%', positive: true },
@@ -341,9 +341,9 @@ const AccountSummary = ({ accounts, isDemoMode, onNavigateToLogin, expandedAccou
         <div className="account-summary__title-section">
           <h2 className="account-summary__title">{verticalFeatures.title}</h2>
           <p className="account-summary__subtitle">
-            {currentVertical?.id === 'retail' && 'Track your store performance and financial metrics'}
-            {currentVertical?.id === 'workforce' && 'Monitor your workforce and compensation overview'}
-            {currentVertical?.id === 'banking' && 'Manage your accounts and track your financial health'}
+            {currentVertical === 'retail' && 'Track your store performance and financial metrics'}
+            {currentVertical === 'workforce' && 'Monitor your workforce and compensation overview'}
+            {currentVertical === 'banking' && 'Manage your accounts and track your financial health'}
           </p>
         </div>
         
