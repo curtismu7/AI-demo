@@ -27,6 +27,40 @@ tt {
   min-width: 320px;
 }
 
+/* Toasts use a dark background app-wide (deliberate exception to the light UI palette).
+   Type identity is preserved via a colored left accent + icon color, not the body fill.
+   Every toast keeps a visible close (X); the X is tinted for the dark surface. */
+.Toastify__toast {
+  background: #1e293b !important;
+  color: #f1f5f9 !important;
+  border-left: 4px solid #64748b;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.35);
+}
+.Toastify__toast-body {
+  color: #f1f5f9 !important;
+}
+.Toastify__toast--success {
+  border-left-color: #22c55e;
+}
+.Toastify__toast--error {
+  border-left-color: #ef4444;
+}
+.Toastify__toast--warning {
+  border-left-color: #f59e0b;
+}
+.Toastify__toast--info {
+  border-left-color: #38bdf8;
+}
+/* Close (X): always visible and legible on the dark surface. */
+.Toastify__close-button {
+  color: #f1f5f9 !important;
+  opacity: 0.7;
+}
+.Toastify__close-button:hover,
+.Toastify__close-button:focus {
+  opacity: 1;
+}
+
 /* App-wide primary actions: red fill, white label (floating FABs use their own classes). */
 :root {
   /* TopNav height — used by fixed-position elements */
