@@ -91,6 +91,24 @@ async function _callTransactionsApi(body, userToken) {
 }
 
 /**
+ * Resolve the active vertical's heuristic context — `{ terminology, chips }` —
+ * from the manifest, or null for banking / unresolved. Best-effort: manifest
+ * resolution must never break the agent request path. Single source so the
+ * `{ terminology, chips }` shape (and its chip-location fallback) can't drift
+ * across the heuristic branch, the Mode-1 catalog, and the Helix-floor catalog.
+ * @returns {{ terminology: object, chips: Array }|null}
+ */
+function resolveActiveVerticalCtx() {
+  try {
+    const m = verticalManifest.resolver.resolve(verticalManifest.resolver.activeId());
+    if (m?.terminology) {
+      return { terminology: m.terminology, chips: m.dashboard?.chips || m.chips || [] };
+    }
+  } catch (_e) { /* best-effort; fall back to banking wording */ }
+  return null;
+}
+
+/**
  * Execute a banking action identified by the heuristic parser, returning a chat-style reply.
  * Handles Phase 2-3 token exchange if needed.
  * @returns {{ reply: string, success: boolean, toolsCalled: string[], tokensUsed: number, requiresConsent: boolean, agentConfigured: boolean, tokenEvents: any[] } | null}
@@ -657,19 +675,13 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
       : configStore.getEffective('ff_heuristic_enabled') !== 'false';
 
     if (heuristicEnabled) {
-      // Resolve the active vertical's manifest once so every heuristic-path
+      // Resolve the active vertical's context once so every heuristic-path
       // response (routing, reply headings, no-match catalog) speaks the
       // vertical's language. Absolute rule: heuristics must work for ALL
-      // verticals, never leak banking terms. Banking → terminology is null →
-      // all helpers fall back to the original banking wording (regression-safe).
+      // verticals, never leak banking terms. Banking → null → all helpers
+      // fall back to the original banking wording (regression-safe).
       const _activeVerticalId = verticalManifest.resolver.activeId();
-      let _verticalCtx = null;
-      try {
-        const _m = verticalManifest.resolver.resolve(_activeVerticalId);
-        if (_m && _m.terminology) {
-          _verticalCtx = { terminology: _m.terminology, chips: (_m.dashboard && _m.dashboard.chips) || _m.chips || [] };
-        }
-      } catch (_e) { /* manifest resolution is best-effort; fall back to banking wording */ }
+      const _verticalCtx = resolveActiveVerticalCtx();
 
       const heuristic = parseHeuristic(message, _activeVerticalId, _verticalCtx);
       if (heuristic && heuristic.kind === 'banking') {
@@ -755,15 +767,8 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
         if (req) req.agentPath = 'heuristic';
         // Theme the floor catalog to the active vertical too (absolute rule:
         // every agent path speaks the vertical; banking → null → unchanged).
-        let _floorCtx = null;
-        try {
-          const _m = verticalManifest.resolver.resolve(verticalManifest.resolver.activeId());
-          if (_m && _m.terminology) {
-            _floorCtx = { terminology: _m.terminology, chips: (_m.dashboard && _m.dashboard.chips) || _m.chips || [] };
-          }
-        } catch (_e) { /* best-effort; fall back to banking wording */ }
         return {
-          reply: buildCatalogMessage(_floorCtx),
+          reply: buildCatalogMessage(resolveActiveVerticalCtx()),
           success: true,
           toolsCalled: [],
           tokensUsed: 0,

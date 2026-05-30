@@ -73,31 +73,34 @@ const CAPABILITY_CATALOG = [
  *   Active vertical's terminology + chips. Omit/null for banking.
  */
 function buildCatalogMessage(verticalCtx) {
-  const term = verticalCtx && verticalCtx.terminology;
-  // Banking / no terminology → unchanged original catalog.
-  if (!term) {
-    return (
-      `I can help with:\n` +
-      CAPABILITY_CATALOG.map((c) => `  • ${c}`).join('\n') +
-      `\n\n(Heuristics-only mode — no LLM. Pick a different agent mode for ` +
-      `full natural-language understanding.)`
-    );
-  }
+  const items = buildCatalogItems(verticalCtx);
+  return (
+    `I can help with:\n` +
+    items.map((c) => `  • ${c}`).join('\n') +
+    `\n\n(Heuristics-only mode — no LLM. Pick a different agent mode for ` +
+    `full natural-language understanding.)`
+  );
+}
 
-  // Vertical-native catalog. Prefer chip labels (already domain phrased) for the
-  // example text; fall back to terminology nouns. Education + MCP tools are
-  // cross-vertical infra and stay as-is.
-  const chipLabel = (key, fallback) => {
-    const chips = (verticalCtx && verticalCtx.chips) || [];
-    const hit = chips.find((c) => c && c.key === key);
-    return (hit && hit.label) || fallback;
-  };
+/**
+ * The catalog item list. Banking (no terminology) returns the original
+ * hand-authored CAPABILITY_CATALOG verbatim. For non-banking verticals the
+ * items are derived from manifest terminology + chip labels.
+ */
+function buildCatalogItems(verticalCtx) {
+  const term = verticalCtx?.terminology;
+  if (!term) return CAPABILITY_CATALOG;
+
+  // Prefer chip labels (already domain phrased) for the example text; fall back
+  // to terminology nouns. Education + MCP tools are cross-vertical infra.
+  const chipByKey = new Map((verticalCtx?.chips || []).map((c) => [c?.key, c?.label]));
+  const chipLabel = (key, fallback) => chipByKey.get(key) || fallback;
   const accounts = term.accounts || 'accounts';
   const balance = term.balance || 'balance';
   const transactions = term.transactions || 'transactions';
   const highValue = term.highValueAction || chipLabel('transfer', 'transfer');
 
-  const lines = [
+  return [
     `${balance} — "${chipLabel('balance', `show my ${balance}`)}"`,
     `${accounts} — "${chipLabel('accounts', `show my ${accounts}`)}"`,
     `${transactions} — "${chipLabel('transactions', `recent ${transactions}`)}"`,
@@ -105,12 +108,6 @@ function buildCatalogMessage(verticalCtx) {
     `MCP tools — "list available tools" / "show mcp tools"`,
     `education — "explain token exchange" / "what is CIBA" / "how does step-up work"`,
   ];
-  return (
-    `I can help with:\n` +
-    lines.map((c) => `  • ${c}`).join('\n') +
-    `\n\n(Heuristics-only mode — no LLM. Pick a different agent mode for ` +
-    `full natural-language understanding.)`
-  );
 }
 
 function norm(s) {
