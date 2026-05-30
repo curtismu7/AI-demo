@@ -38,7 +38,7 @@
   height: 2px;
   background: linear-gradient(
     90deg,
-    var(--theme-accent, #1b3a6b),
+    var(--theme-accent, #1d4ed8),
     var(--rd-gold, #9a7b3f) 70%,
     transparent
   );
@@ -53,7 +53,7 @@
     var(--rd-surface-sunk, #f1eee7)
   );
   border-bottom: 1px solid var(--rd-line, #e3ddd2);
-  border-left: 4px solid var(--theme-accent, #1b3a6b);
+  border-left: 4px solid var(--theme-accent, #1d4ed8);
 }
 
 /* Title — serif display, ink, no uppercase shoutiness. */
@@ -66,8 +66,8 @@
 }
 
 .banking-agent-float-root .banking-agent-fab {
-  color: var(--theme-accent, #2563eb) !important;
-  border-color: var(--theme-accent, #2563eb) !important;
+  color: var(--theme-accent, #1d4ed8) !important;
+  border-color: var(--theme-accent, #1d4ed8) !important;
   font-family: var(--rd-font-display, "Fraunces", Georgia, serif);
   box-shadow:
     0 6px 22px -6px rgba(26, 26, 23, 0.28),
@@ -94,6 +94,6 @@
 }
 
 .banking-agent-panel:not(.ba-mode-inline) {
-  --ba-float-btn: var(--theme-accent, #4169e1);
-  --ba-float-btn-h: var(--theme-accent, #3158d3);
+  --ba-float-btn: var(--theme-accent, #1d4ed8);
+  --ba-float-btn-h: var(--theme-accent, #1d4ed8);
 }
