@@ -6,6 +6,7 @@ import { navigateToCustomerOAuthLogin } from "../utils/authUi";
 import AgentUiModeToggle from "./AgentUiModeToggle";
 import ThresholdControls from "./ThresholdControls";
 import UserMenu from "./UserMenu";
+import VerticalSwitcher from "./VerticalSwitcher";
 import "./TopNav.css";
 
 export default function TopNav({ user, onLogout }) {
@@ -82,6 +83,9 @@ export default function TopNav({ user, onLogout }) {
                 : 'Customer'}
           </span>
         )}
+
+        {/* Vertical switcher — available to every logged-in user (any role can switch) */}
+        {user && <VerticalSwitcher variant="nav" />}
 
         {/* 3-tab nav — admin gets all three; customer gets nothing here (chip is enough) */}
         {user?.role === 'admin' && (

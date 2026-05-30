@@ -78,10 +78,19 @@ afterAll(() => {
 });
 
 describe('POST /active', () => {
-  test('non-admin → 403', async () => {
+  // Switching the active vertical is open to any authenticated user (requireSession),
+  // not admin-only — it's a demo affordance. Unauthenticated requests are still 401.
+  test('unauthenticated → 401', async () => {
+    const res = await request(makeApp())
+      .post('/api/verticals/active').send({ id: 'healthcare' });
+    expect(res.status).toBe(401);
+  });
+
+  test('non-admin authenticated → 204', async () => {
     const res = await request(makeApp({ user: { role: 'customer' } }))
       .post('/api/verticals/active').send({ id: 'healthcare' });
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(204);
+    expect(verticalManifest.resolver.activeId()).toBe('healthcare');
   });
 
   test('admin → 204', async () => {

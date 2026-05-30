@@ -35,10 +35,13 @@ router.get('/stream', requireSession, (req, res) => {
   // Don't end — the client keeps it open until they disconnect.
 });
 
-// ---- Admin write endpoints ----
+// ---- Write endpoints ----
 // Specific paths first, parameterized paths last (express routes top-to-bottom).
 
-router.post('/active', requireAdmin, (req, res) => {
+// Switching the active vertical is open to any authenticated user (not admin-only):
+// it's a demo affordance and the change is global + broadcast over SSE. The id is
+// still validated against the loaded set. The remaining write endpoints stay admin-only.
+router.post('/active', requireSession, (req, res) => {
   const { id } = req.body || {};
   if (!id) return res.status(400).json({ error: 'id required' });
   if (!verticalManifest.loader.get(id)) return res.status(404).json({ error: 'unknown id' });
