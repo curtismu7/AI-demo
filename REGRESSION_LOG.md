@@ -5,6 +5,16 @@ Update this file whenever a bug is fixed: add the bug, cause, fix, and test refe
 
 ---
 
+## 2026-05-30 — Helix conversational fallback (`helix_fallback`) unreachable when Helix is the selected provider
+
+**Symptoms**: When Helix was the configured NL provider and its JSON intent-router returned `kind:none` or non-JSON (including after the refusal-retry nudge), the user received the silent heuristic result instead of Helix's conversational answer. The documented `source:'helix_fallback'` outcome (and the `answerWithHelix` conversational path) could never fire for the common case where Helix was selected — both the LLM-only `answerWithHelix` block and the heuristic-mode Ollama→answerWithHelix block were dead code behind an early return.
+
+**Root cause**: In `geminiNlIntent.js` `parseNaturalLanguage`, the Helix JSON-router block ended with `return { source: 'heuristic', result: heuristicResult, llm_attempted: true }` at the `kind:none`/non-JSON point. The inline comment said "fall through to conversational Helix answer", but the `return` terminated the function inside the `if (selectedProvider === 'helix')` block, making everything downstream (lines for LLM-only `answerWithHelix` and heuristic-mode Ollama→`answerWithHelix`) unreachable whenever Helix was selected.
+
+**Fix**: Replaced the early `return` with a fall-through — set a `let llmAttempted` flag instead of returning, letting control reach the existing downstream fallback logic. The three heuristic-floor returns now carry `llm_attempted: llmAttempted` so the UI's "Helix couldn't map this" message (`BankingAgent.js`) still distinguishes attempted-vs-never-tried. The conversational `answerWithHelix` call uses a different (conversational) system prompt than the JSON router, so it is not a duplicate call.
+
+**Tests**: `demo_api_server/src/__tests__/geminiNlIntent.llmOnly.test.js` — the three previously-failing cases ("falls through to answerWithHelix when JSON router returns kind:none", "…when JSON router parse fails", and the heuristic-mode "kind:none from helix router falls through to answerWithHelix after Ollama") now pass. `npx jest geminiNlIntent` → 13 pass.
+
 ## 2026-05-25 — Authorize wire-contract divergence and implicit fail-open on engine error (F7/F6/F4)
 
 **Symptoms**: (F7) The `/api/authorize/test-evaluate` endpoint returned `consentRequired` when using the simulated engine but `hitlRequired` when using PingOne — different field names for the same concept. A UI component reading either field would work in one mode and silently fail in the other. (F6) When PingOne Authorize was unreachable (network error, 5xx), the catch block in `transactionAuthorizationService` returned a raw `{ ran: true, pingoneError: err }` object, which propagated behavior that depended on the calling route's ad-hoc error handling — no declared failover policy. (F4) Unrecognised obligation types from PingOne Authorize (e.g. a new policy attribute) were silently discarded by `_classifyRawObligations`, producing a PERMIT decision when the policy intended a gate.
