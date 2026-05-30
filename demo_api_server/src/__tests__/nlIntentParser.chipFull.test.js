@@ -367,90 +367,60 @@ describe('nlIntentParser — heuristic none fallback', () => {
   });
 });
 
-// ── Healthcare theme chips ─────────────────────────────────────────────────────
-// THEME_VOCAB['healthcare'] maps domain phrases to banking actions.
-
-describe('nlIntentParser — healthcare theme chips', () => {
+// ── Healthcare is now a FIRST-CLASS PLUGIN (not THEME_VOCAB translation) ────────
+// Healthcare ships config/verticals/healthcare/index.js, so parseHeuristic routes
+// its phrases through the plugin's OWN heuristics → { kind:'vertical', action:<healthcare action> },
+// NOT the legacy THEME_VOCAB banking translation. These tests assert the
+// post-migration behavior: healthcare phrases resolve to healthcare actions, with
+// no banking fallback. (Helper: assert kind:'vertical' + the healthcare action name.)
+describe('nlIntentParser — healthcare plugin routing (first-class, not translated)', () => {
   const V = 'healthcare';
+  function vertical(msg) {
+    const r = parseHeuristic(msg, V);
+    expect(r.kind).toBe('vertical');
+    expect(r.vertical).toBe('healthcare');
+    return r;
+  }
 
-  it('"my records" → accounts (patient records = account view)', () => {
-    expect(bank('my records', V).banking.action).toBe('accounts');
+  it('"my records" → view_records (its own action, not banking accounts)', () => {
+    expect(vertical('my records').action).toBe('view_records');
   });
 
-  it('"show my records" → accounts', () => {
-    expect(bank('show my records', V).banking.action).toBe('accounts');
+  it('"patient records" → view_records', () => {
+    expect(vertical('patient records').action).toBe('view_records');
   });
 
-  it('"patient records" → accounts', () => {
-    expect(bank('patient records', V).banking.action).toBe('accounts');
+  it('"check coverage" → view_coverage (not banking balance)', () => {
+    expect(vertical('check coverage').action).toBe('view_coverage');
   });
 
-  it('"my coverage" → balance (insurance coverage = balance check)', () => {
-    expect(bank('my coverage', V).banking.action).toBe('balance');
+  it('"my coverage" → view_coverage', () => {
+    expect(vertical('my coverage').action).toBe('view_coverage');
   });
 
-  it('"check coverage" → balance', () => {
-    expect(bank('check coverage', V).banking.action).toBe('balance');
+  it('"my appointments" → list_appointments (not banking transactions)', () => {
+    expect(vertical('my appointments').action).toBe('list_appointments');
   });
 
-  it('"insurance coverage details" → balance', () => {
-    expect(bank('insurance coverage details', V).banking.action).toBe('balance');
+  it('"book an appointment" → book_appointment (NOVEL action, no banking analog)', () => {
+    expect(vertical('book an appointment').action).toBe('book_appointment');
   });
 
-  it('"my appointments" → transactions (visit history = transaction list)', () => {
-    expect(bank('my appointments', V).banking.action).toBe('transactions');
+  it('"schedule an appointment" → book_appointment', () => {
+    expect(vertical('schedule an appointment').action).toBe('book_appointment');
   });
 
-  it('"upcoming appointments" → transactions', () => {
-    expect(bank('upcoming appointments', V).banking.action).toBe('transactions');
+  it('"release my records" → release_records (not banking transfer)', () => {
+    expect(vertical('release my records').action).toBe('release_records');
   });
 
-  it('"visit history" → transactions', () => {
-    expect(bank('visit history', V).banking.action).toBe('transactions');
+  it('"share my records" → release_records', () => {
+    expect(vertical('share my records').action).toBe('release_records');
   });
 
-  it('"recent visits" → transactions', () => {
-    expect(bank('recent visits', V).banking.action).toBe('transactions');
-  });
-
-  it('"release my records" → transfer (record release = fund transfer)', () => {
-    expect(bank('release my records', V).banking.action).toBe('transfer');
-  });
-
-  it('"share my records" → transfer', () => {
-    expect(bank('share my records', V).banking.action).toBe('transfer');
-  });
-
-  it('"send records" → transfer', () => {
-    expect(bank('send records', V).banking.action).toBe('transfer');
-  });
-
-  it('"total costs" → spending_summary (medical cost breakdown = spending summary)', () => {
-    expect(bank('total costs', V).banking.action).toBe('spending_summary');
-  });
-
-  it('"what have I paid" → spending_summary', () => {
-    expect(bank('what have I paid', V).banking.action).toBe('spending_summary');
-  });
-
-  it('"my costs" → spending_summary', () => {
-    expect(bank('my costs', V).banking.action).toBe('spending_summary');
-  });
-
-  // Education still works in healthcare theme
-  it('education phrases still route to edu panel in healthcare theme', () => {
-    const r = parseHeuristic('what is token exchange', V);
-    expect(r.kind).toBe('education');
-    expect(r.education.panel).toBe('token-exchange');
-  });
-
-  // Core banking fallbacks still work when no theme rule matches
-  it('"Log Out" still routes to logout in healthcare theme', () => {
-    expect(bank('Log Out', V).banking.action).toBe('logout');
-  });
-
-  it('"list mcp tools" still routes to mcp_tools in healthcare theme', () => {
-    expect(bank('list mcp tools', V).banking.action).toBe('mcp_tools');
+  it('a non-matching phrase returns kind:none — NEVER a banking fallback', () => {
+    const r = parseHeuristic('the weather is nice', V);
+    expect(r.kind).toBe('none');
   });
 });
 
