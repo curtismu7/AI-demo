@@ -1040,6 +1040,45 @@ independently testable.
 - State the REGRESSION_PLAN §1 do-not-break list before editing; add §4 bug-log entries.
 - Full regression: all banking suites green, `App.structure`, UI build clean.
 
+**REGRESSION_PLAN §1 reconciliation (audited 2026-05-30 — precise list for this phase):**
+
+*Protected §1 entries that will go STALE when the deletion targets are removed — must be
+restated in per-vertical terms, NOT just deleted:*
+- **"Extra accounts (investment etc.) lost on cold-start"** — names `accounts.js` +
+  `demoScenarioStore` snapshot/restore ("restore before provision"). The vertical-mismatch
+  reprovisioning block this protects is deleted in Plan 6. Restate as the per-vertical store
+  snapshot/restore contract (or note reprovisioning is gone because data no longer relabels).
+- **"DataStore backup/recovery"** — names `store.js` (`_atomicWrite`, `_tryRestoreFromBackup`,
+  recovery chain runtimeData→backups→bootstrapData). After the data inversion, `store.js` keeps
+  only users/sessions; per-vertical seed/data stores need their own equivalent backup/recovery
+  guarantee. Restate so the contract covers shared store AND each vertical store independently.
+
+*Protected §1 files the migration edits — "do not break" rules that still apply DURING migration:*
+- `accounts.js` — also protected by **"Transfer HITL enforcement"** (Phase 170: keep the
+  `if (v.normalized.type === 'transfer')` check before amount threshold + 428 enforcement).
+  `transactionConsentChallenge.js` is NOT deleted, so that entry stays valid — but banking's
+  `getAuthz()` must reproduce the action-type-aware, threshold-aware gate.
+- `store.js`, `nlIntentParser.js`, `geminiNlIntent.js`, `demoAgentLangGraphService.js`,
+  `router.ts` — edited/trimmed; preserve all unrelated behavior in each.
+
+*Behaviors the new plugin model MUST preserve (from §4 bug-log patterns, promote to §1):*
+- **Active-vertical drives ALL UI, zero banking fallback** (from 2026-05-28 "header/sidenav/
+  feature page follow active theme" + "vertical-aware UI strings"). The old `ThemeContext`/
+  `useTheme()` indirection is replaced by active-vertical → `getManifest()`, but the guarantee
+  is identical and is already this design's hard invariant. Add as a §1 entry in plugin terms.
+- **Scope topology SSOT** — scopes stay generic (`read`/`write`/`transfer`); runtime scope maps
+  must keep *deriving* from the active plugin's `getTools()`, never be re-authored in shared
+  code (`mcpWebSocketClient.js` `MCP_TOOL_SCOPES`, gateway `toolScopes.ts`). Compatible with the
+  design; restate the SSOT source as the plugin rather than `scope-topology.json`.
+
+*New §1 entries to ADD before deleting (protect the new load-bearing infra):*
+1. "Per-vertical data store persistence" — backup/recovery for each vertical store.
+2. "Active-vertical manifest drives all UI (no banking fallback)" — the invariant, in plugin terms.
+3. "Per-vertical tool + authz dispatch; shared layer stays banking-blind" — `verticalDispatch`
+   active-vertical→plugin lookup replaces `routeTool`/`APIKEY_TOOLS` without regressing routing.
+4. "Vertical switching lifecycle" — if runtime switching is kept, define the per-vertical
+   store snapshot/restore contract that replaces `reseedAllCustomersForVertical`.
+
 ### Cross-cutting (Plan 6 close-out)
 - The **no-fallback assertion** test is extended per vertical as each ships.
 - Once all 5 are plugins, the dual-mode fallback is removed and a test asserts
