@@ -155,6 +155,13 @@
     "transfer": "transfer",
     "featureScope": "records:read"
   },
+  "render": {
+    "view_coverage": { "type": "fieldList", "title": "Coverage", "fields": [ { "label": "Plan", "path": "plan" }, { "label": "Status", "path": "status" }, { "label": "Out of pocket", "path": "outOfPocket", "format": "money" } ] },
+    "book_appointment": { "type": "card", "title": "Appointment Confirmed", "fields": [ { "label": "Provider", "path": "provider" }, { "label": "Clinic", "path": "clinic" }, { "label": "When", "path": "when", "format": "date" }, { "label": "Reason", "path": "reason" } ] },
+    "list_appointments": { "type": "table", "columns": [ { "label": "Provider", "path": "provider" }, { "label": "When", "path": "when", "format": "date" }, { "label": "Status", "path": "status" } ] },
+    "view_records": { "type": "table", "columns": [ { "label": "Type", "path": "recordType" }, { "label": "Provider", "path": "provider" }, { "label": "Status", "path": "status" } ] },
+    "release_records": { "type": "card", "title": "Records Released", "fields": [ { "label": "Record", "path": "recordType" }, { "label": "Status", "path": "status" } ] }
+  },
   "featurePage": {
     "mcpTool": "show_health_record",
     "pageTitle": "Health Record",

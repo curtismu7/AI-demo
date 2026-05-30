@@ -47,6 +47,7 @@ import {
 } from "../utils/appToast";
 import { isPublicMarketingAgentPath } from "../utils/embeddedAgentFabVisibility";
 import AccountDetailsPanel from "./AccountDetailsPanel";
+import VerticalResult from "./VerticalResult";
 import AgentConsentModal from "./AgentConsentModal";
 import AgentDemoGuide from "./AgentDemoGuide";
 import BankingChips, { PINGONE_ADMIN_CHIP_IDS } from "./BankingChips";
@@ -831,6 +832,58 @@ function normalizeAgentToolResult(result) {
   return result;
 }
 
+const _BANKING_ACCT_TYPES = /^(checking|savings|loan|chequing)$/i;
+
+/**
+ * Vertical account-type consistency guard — runs immediately after get_my_accounts returns.
+ * If the active vertical expects non-banking account types (e.g. "Pro Member") but the MCP
+ * result still carries banking labels (CHECKING/SAVINGS — stale data from a reseed race),
+ * this rewrites the accountType on each account in-place so every downstream consumer
+ * (formatResult, AccountsTable, liveAccounts) sees the correct vertical type without needing
+ * its own fallback. Mutates a deep-clone of the response — never the original.
+ *
+ * @param {object} mcpResponse - raw response from callMcpTool("get_my_accounts")
+ * @param {object|null} terminology - active vertical's terminology object (null = banking)
+ * @returns {object} - mcpResponse with accountTypes corrected if needed, or original if not
+ */
+function enforceVerticalAccountTypes(mcpResponse, terminology) {
+  const verticalTypes = terminology?.accountTypes;
+  if (!verticalTypes?.length || !mcpResponse) return mcpResponse;
+
+  const normalized = normalizeAgentToolResult(mcpResponse);
+  const accounts = normalized?.accounts;
+  if (!Array.isArray(accounts) || !accounts.length) return mcpResponse;
+
+  const hasStaleBankingType = accounts.some(
+    (a) => _BANKING_ACCT_TYPES.test(a.accountType || a.account_type || a.type || "")
+  );
+  if (!hasStaleBankingType) return mcpResponse;
+
+  // Stale banking types detected — rewrite in a cloned response tree
+  const patched = accounts.map((a, idx) => {
+    const raw = a.accountType || a.account_type || a.type || "";
+    if (_BANKING_ACCT_TYPES.test(raw)) {
+      const correctType = verticalTypes[idx] || verticalTypes[0];
+      return { ...a, accountType: correctType, account_type: correctType, type: correctType };
+    }
+    return a;
+  });
+
+  // Rebuild the MCP content blob with the patched accounts
+  try {
+    const inner = { ...normalized, accounts: patched };
+    if (mcpResponse?.content?.[0]?.text) {
+      return {
+        ...mcpResponse,
+        content: [{ ...mcpResponse.content[0], text: JSON.stringify(inner) }],
+      };
+    }
+    return inner;
+  } catch {
+    return mcpResponse;
+  }
+}
+
 /**
  * Build the payload expected by POST /api/transactions/consent-challenge
  * from the agent actionId + form values (same keys used in runAction).
@@ -957,13 +1010,20 @@ export function formatResult(result, terminology) {
   }
   // Accounts list
   if (r.accounts) {
+    const BANKING_TYPES = /^(checking|savings|loan|chequing)$/i;
+    const verticalTypes = terminology?.accountTypes || [];
     return r.accounts
       .filter(Boolean)
-      .map((a) => {
-        // Use the actual account type from the server — vertical-seeded accounts already
-        // carry the correct domain type (e.g. "Rewards Points", "Pro Member", "Primary Care").
-        // For banking vertical (no terminology), fall back to the stored display name.
-        const rawType = a.accountType || a.account_type || a.type || "";
+      .map((a, idx) => {
+        // Use the actual account type from the server — vertical-seeded accounts carry the
+        // correct domain type (e.g. "Pro Member", "Primary Care"). Fool-proof fallback: if
+        // we're in a non-banking vertical but the server returned a banking type (stale data
+        // from a race on reseed), substitute the vertical's accountTypes label so the user
+        // never sees "CHECKING" or "SAVINGS" in a sports/healthcare/retail context.
+        let rawType = a.accountType || a.account_type || a.type || "";
+        if (terminology && verticalTypes.length && BANKING_TYPES.test(rawType)) {
+          rawType = verticalTypes[idx] || verticalTypes[0] || termAccount;
+        }
         const displayType = rawType || termAccount;
         const num = a.accountNumber || a.account_number || "";
         const name = (!terminology && a.name && a.name !== a.id)
@@ -1043,9 +1103,22 @@ export function buildClarificationQuestions(terminology) {
 
 // ─── Results Panel (side panel showing rich formatted data next to the agent) ──
 
+const _BANKING_TYPES_RE = /^(checking|savings|loan|chequing)$/i;
+
 export function AccountsTable({ accounts, terminology }) {
   if (!accounts?.length)
     return <p className="bar-rp-empty">No accounts found.</p>;
+
+  const verticalTypes = terminology?.accountTypes || [];
+
+  const resolveAccountType = (a, idx) => {
+    const raw = a.accountType || a.account_type || a.type || "";
+    // Fool-proof: substitute banking type labels when in a non-banking vertical
+    if (terminology && verticalTypes.length && _BANKING_TYPES_RE.test(raw)) {
+      return verticalTypes[idx] || verticalTypes[0] || terminology.account || "Account";
+    }
+    return raw || terminology?.account || "Account";
+  };
 
   const getFriendlyAccountName = (account) => {
     if (!account) return terminology?.account || "Account";
@@ -1070,7 +1143,7 @@ export function AccountsTable({ accounts, terminology }) {
       <tbody>
         {accounts.filter(Boolean).map((a, i) => (
           <tr key={a.account_number || a.id || i}>
-            <td>{a.account_type || a.type || (terminology?.account || "Account")}</td>
+            <td>{resolveAccountType(a, i)}</td>
             <td>
               <span className="bar-rp-account-name">
                 {getFriendlyAccountName(a)}
@@ -1495,6 +1568,9 @@ export function ResultsPanel({ panel, onClose, style }) {
         )}
         {panel.type === "text" && (
           <div className="bar-rp-text">{panel.data}</div>
+        )}
+        {panel.type === "vertical" && (
+          <VerticalResult descriptor={panel.descriptor} data={panel.data} />
         )}
       </div>
       {/* Resize handles */}
@@ -3396,6 +3472,7 @@ export default function BankingAgent({
         case "accounts":
           toast.update(toastId, { render: " Calling get_my_accounts…" });
           response = await getMyAccounts();
+          response = { ...response, result: enforceVerticalAccountTypes(response.result, terminology) };
           break;
         case "mortgage_demo": {
           // Phase 267 Path A — api_key disposition, end-to-end:
@@ -6007,6 +6084,21 @@ export default function BankingAgent({
       }
       return;
     }
+    if (result.kind === "vertical" && result.action) {
+      // The /nl endpoint only routed intent; execute via the agent endpoint to get data+render.
+      try {
+        const response = await sendAgentMessage(nlUserText || result.action, null, {});
+        if (response && response.success !== false) {
+          addMessage("assistant", response.reply || "Done.", null, { source: _source });
+          if (response.verticalResult) {
+            const vr = response.verticalResult;
+            const descriptor = pageManifest?.render?.[vr.render] || null;
+            setResultPanel({ type: "vertical", title: descriptor?.title || "Result", descriptor, data: vr.data, terminology });
+          }
+          return;
+        }
+      } catch (e) { /* fall through to default below */ }
+    }
     // Prefer the server's message (heuristic / LLM produces a useful one).
     // The hard-coded fallback is only for the rare case where result.message
     // is missing — e.g. server crashed before populating it.
@@ -6290,6 +6382,11 @@ export default function BankingAgent({
             reportNlFailure({ code: response.error || "unknown" });
           } else {
             addMessage("assistant", response.reply || "Done.");
+            if (response.verticalResult) {
+              const vr = response.verticalResult;
+              const descriptor = pageManifest?.render?.[vr.render] || null;
+              setResultPanel({ type: "vertical", title: descriptor?.title || "Result", descriptor, data: vr.data, terminology });
+            }
             if (response.tokenEvents?.length) {
               appendTokenEvents(response.tokenEvents);
               if (tokenChain) {
@@ -8812,9 +8909,9 @@ export default function BankingAgent({
                         }}
                         placeholder={
                           marketingGuestChatEnabled && !isLoggedIn
-                            ? `Ask about OAuth or type a banking request…`
+                            ? `Ask about OAuth or type a request…`
                             : splitChrome && !nlMeta?.groqConfigured
-                              ? "Ask about your accounts…"
+                              ? `Ask about your ${terminology?.accounts || "accounts"}…`
                               : nlMeta?.groqConfigured
                                 ? `Message ${brandShortName} AI… (Groq AI)`
                                 : `Message ${brandShortName} AI…`
