@@ -53,8 +53,15 @@
        — TokenChainDisplay renders tcd-* claim/badge boxes. Rail gets card +
        typography treatment only, not the stepped vertical connector. */
 
-/* base surface */
-[data-refined-surface="customer"] {
+/* base surface
+   Specificity note: the competing rule is `.user-dashboard { background-color:
+   var(--brand-light-gray); font-family: var(--font-primary); }` (0,1,0) which
+   loads LATER in the bundle (from UserDashboard.css) and therefore won an equal
+   (0,1,0) fight — leaving the old gray bg + system font on screen. The root
+   element carries BOTH attributes (`class="user-dashboard ... " data-refined-
+   surface="customer"`), so compounding them gives (0,2,0) and reliably beats
+   `.user-dashboard` regardless of load order. No !important needed. */
+[data-refined-surface="customer"].user-dashboard {
   background: var(--rd-paper);
   color: var(--rd-ink);
   font-family: var(--rd-font-body);
@@ -259,18 +266,80 @@
   color: var(--rd-negative);
 }
 
-/* ── Token-chain rail (mockup .rail-card — card + type treatment only;
-      stepped .chain connector skipped, see note above) ── */
+/* ── Token-chain rail — the ON-SCREEN refined surface ─────────────────────────
+   This is the focus of the refined treatment: in the live default customer
+   dashboard the only rendered content columns are this token rail
+   (.ud-token-rail → .ud-token-rail__inner.section → <ExchangeModeToggle /> +
+   <TokenChainDisplay/.tcd-root>) and the agent column. The mockup's stepped
+   .chain/.chain-step/.chain-dot connector has NO live equivalent —
+   TokenChainDisplay renders a .tcd-root card with a .tcd-header (title + sub)
+   and a stack of event cards, not a vertical dotted connector. So we apply the
+   mockup's .rail-card aesthetic (paper/surface bg, hairline --rd-line borders,
+   --rd-radius-lg, serif --rd-font-display title, mono --rd-font-mono metadata,
+   per-vertical var(--rd-accent) for the live/session dots) WITHOUT reshaping the
+   chain markup. Specificity is called out per rule. */
+
+/* Rail container — competitor `.ud-token-rail` (0,1,0) sets background:#fff +
+   gray border-right. Ours is (0,2,0) → wins. */
+[data-refined-surface="customer"] .ud-token-rail {
+  background: var(--rd-paper);
+  border-right: 1px solid var(--rd-line);
+}
+/* Inner wrapper stays transparent (its competitor `.ud-token-rail__inner`
+   (0,1,0) already zeroes bg/border/shadow); the visible card is .tcd-root. The
+   compound .ud-token-rail__inner.section (0,2,0) here just keeps padding airy. */
 [data-refined-surface="customer"] .ud-token-rail__inner.section {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+/* TokenChainDisplay card (.tcd-root) — competitor `.tcd-root` (0,1,0) gives a
+   blue-tinted gradient + blue border + heavy shadow. Ours (0,2,0) replaces it
+   with the refined paper card. */
+[data-refined-surface="customer"] .tcd-root {
   background: var(--rd-surface);
   border: 1px solid var(--rd-line);
   border-radius: var(--rd-radius-lg);
   box-shadow: var(--rd-shadow-card);
 }
-[data-refined-surface="customer"] .ud-token-rail__inner.section > h2,
-[data-refined-surface="customer"] .ud-token-rail__inner.section h3 {
+/* Card header — competitor `.tcd-header` (0,1,0): white bg + #e2e8f0 hairline. */
+[data-refined-surface="customer"] .tcd-header {
+  background: linear-gradient(180deg, var(--rd-surface), var(--rd-surface-sunk));
+  border-bottom: 1px solid var(--rd-line);
+}
+/* Card title — competitor `.tcd-header-title` (0,1,0): bold sans, navy. We make
+   it the mockup's serif .card-title in vertical accent. (0,2,0) wins. */
+[data-refined-surface="customer"] .tcd-header-title {
   font-family: var(--rd-font-display);
   font-weight: 600;
   letter-spacing: -0.01em;
-  color: var(--rd-ink);
+  color: var(--rd-accent);
+}
+/* Subtitle / flow caption — competitor `.tcd-header-sub` (0,1,0): sans, slate.
+   We make it the mockup's mono .chain-meta. (0,2,0) wins. */
+[data-refined-surface="customer"] .tcd-header-sub {
+  font-family: var(--rd-font-mono);
+  font-size: 0.7rem;
+  line-height: 1.5;
+  color: var(--rd-ink-faint);
+}
+/* ── Agent column surface only (chat internals left to Tasks 4/5) ─────────────
+   Competitor `.ud-agent-column` (0,1,0) paints the column with the old gray
+   --brand-light-gray bg and --brand-medium-gray dividers, which clashes with the
+   paper surface. Ours (0,2,0) just retints the column surface + side dividers to
+   the refined paper/hairline so the agent sits on the paper cleanly. We do NOT
+   touch the BankingAgent chat internals here. */
+[data-refined-surface="customer"] .ud-agent-column {
+  background: var(--rd-paper);
+  border-left: 1px solid var(--rd-line);
+  border-right: 1px solid var(--rd-line);
+}
+
+/* Session status dot — mockup .chain-dot accent. The LIVE dot is left green
+   (#24a148) on purpose: it is a status signal, not decoration. Only the session
+   dot (competitor `.tcd-session-dot` (0,1,0), already brand-navy) is retinted to
+   the per-vertical refined accent; ours (0,2,0) wins. */
+[data-refined-surface="customer"] .tcd-session-dot {
+  background: var(--rd-accent);
 }
