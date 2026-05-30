@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 import './theme/refinedSurface.css';
+import './theme/refinedAgent.css';
 import './theme/globalTheme.css';
 import App from './App';
 import { patchFetch } from './services/apiTrafficStore';
