@@ -295,9 +295,17 @@ function AppWithAuth() {
    *  UserDashboard (so there is exactly one agent surface), but without this
    *  extra clause `shouldMountSingleAgent` would also be false — so nothing
    *  would render to portal into the host and the agent column would appear
-   *  empty. Same fix that clinicalSplit gets at the inline-mode props below. */
+   *  empty. Same fix that clinicalSplit gets at the inline-mode props below.
+   *
+   *  Important: NO Boolean(user) check here. Guests on /dashboard still get
+   *  the inline agent (BankingAgent has marketingGuestChatEnabled +
+   *  BX_AGENT_PENDING_NL_KEY: when a guest asks something that needs auth,
+   *  BankingAgent stashes the pending request, calls
+   *  navigateToCustomerOAuthLogin(), and resumes after the OAuth callback).
+   *  Restricting to signed-in users would silently strip the inline agent
+   *  for guests and leave them with no way to start the demo. */
   const onMiddlePlacementInDashboard =
-    Boolean(user) && agentPlacement === "middle" && onUserDashboardRoute;
+    agentPlacement === "middle" && onUserDashboardRoute;
   /** Single <BankingAgent> portals into the bottom dock host element when present; falls back to document.body otherwise. */
   const shouldMountSingleAgent =
     showFloatingAgent || hasEmbeddedDockLayout || onMiddlePlacementInDashboard;
