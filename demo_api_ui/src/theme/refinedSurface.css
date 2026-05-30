@@ -32,3 +32,245 @@
   --rd-radius-lg: 8px;
   --rd-shadow-card: 0 1px 0 rgba(26,26,23,.03), 0 1px 2px rgba(26,26,23,.04);
 }
+
+/* ── Task 3: dashboard content ──────────────────────────────────────────────
+   Ports the approved mockup (design/agent-embedded-2026-redesign.html) onto the
+   REAL live DOM classes in UserDashboard.js renderBankingMain() + VerticalHero.jsx.
+   Every selector is scoped to [data-refined-surface="customer"]. Accent is per
+   vertical via var(--rd-accent) — never hardcoded. Mockup → live class map:
+     .hero/.balance-band/.figure/.spark → .ud-hero / .ud-hero__balance / .ud-hero__spark
+     .stats/.stat                       → .vertical-hero / .vertical-hero-card
+     .card/.card-head/.card-title       → .section / .section > h2
+     .acct                              → .account-card (grid of cards, see note)
+     .tx (table)                        → .tx-feed / .tx-row (flex feed, see note)
+     .rail-card                         → .ud-token-rail / .ud-token-rail__inner
+   Skipped flourishes (would require DOM changes — out of scope):
+     - mockup accounts are a single-line .acct list; live markup is a card grid
+       (.account-card with header/balance/actions). Treated as refined cards.
+     - mockup transactions are a <table>; live markup is a .tx-feed of flex rows.
+       Treated as a refined hairline feed.
+     - mockup token-chain stepped rail (.chain/.chain-step) has no live equivalent
+       — TokenChainDisplay renders tcd-* claim/badge boxes. Rail gets card +
+       typography treatment only, not the stepped vertical connector. */
+
+/* base surface */
+[data-refined-surface="customer"] {
+  background: var(--rd-paper);
+  color: var(--rd-ink);
+  font-family: var(--rd-font-body);
+}
+
+/* ── Hero balance band (mockup .hero / .balance-band / .figure / .spark) ── */
+[data-refined-surface="customer"] .ud-hero {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 4px 2px 22px;
+  border-bottom: 1px solid var(--rd-line);
+}
+[data-refined-surface="customer"] .ud-hero__eyebrow {
+  font-family: var(--rd-font-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--rd-ink-faint);
+}
+[data-refined-surface="customer"] .ud-hero__insight {
+  color: var(--rd-ink-soft);
+  font-size: 0.94rem;
+  max-width: 56ch;
+}
+[data-refined-surface="customer"] .ud-hero__balance-label {
+  font-family: var(--rd-font-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--rd-ink-faint);
+}
+[data-refined-surface="customer"] .ud-hero__balance {
+  font-family: var(--rd-font-figure);
+  font-weight: 500;
+  font-size: clamp(2.6rem, 6.5vw, 3.6rem);
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--rd-ink);
+  font-variant-numeric: tabular-nums;
+}
+[data-refined-surface="customer"] .ud-hero__debt {
+  font-family: var(--rd-font-figure);
+  font-variant-numeric: tabular-nums;
+  color: var(--rd-ink-soft);
+}
+[data-refined-surface="customer"] .ud-hero__debt-label {
+  font-family: var(--rd-font-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--rd-ink-faint);
+}
+/* sparkline bars — mockup .spark span gradient + gold last bar */
+[data-refined-surface="customer"] .ud-hero__spark span {
+  background: var(--rd-accent);
+  opacity: 0.85;
+  border-radius: 2px 2px 0 0;
+}
+[data-refined-surface="customer"] .ud-hero__spark span:last-child {
+  background: var(--rd-gold);
+  opacity: 1;
+}
+
+/* ── 4-up stat row (mockup .stats / .stat → VerticalHero .vertical-hero*) ── */
+[data-refined-surface="customer"] .vertical-hero {
+  border: 1px solid var(--rd-line);
+  border-radius: var(--rd-radius-lg);
+  background: var(--rd-surface);
+  overflow: hidden;
+  box-shadow: var(--rd-shadow-card);
+  gap: 0;
+}
+[data-refined-surface="customer"] .vertical-hero-card {
+  padding: 18px 20px;
+  border-right: 1px solid var(--rd-line);
+  background: transparent;
+  box-shadow: none;
+}
+[data-refined-surface="customer"] .vertical-hero-card:last-child {
+  border-right: none;
+}
+[data-refined-surface="customer"] .vertical-hero-label {
+  font-family: var(--rd-font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--rd-ink-faint);
+}
+[data-refined-surface="customer"] .vertical-hero-value {
+  font-family: var(--rd-font-figure);
+  font-size: 1.5rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--rd-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Cards / sections (mockup .card / .card-head / .card-title) ── */
+[data-refined-surface="customer"] .section {
+  background: var(--rd-surface);
+  border: 1px solid var(--rd-line);
+  border-radius: var(--rd-radius-lg);
+  box-shadow: var(--rd-shadow-card);
+}
+[data-refined-surface="customer"] .section > h2 {
+  font-family: var(--rd-font-display);
+  font-weight: 600;
+  font-size: 1.02rem;
+  letter-spacing: -0.01em;
+  color: var(--rd-ink);
+}
+[data-refined-surface="customer"] .ud-accounts-heading {
+  font-family: var(--rd-font-display);
+  font-weight: 600;
+  font-size: 1.02rem;
+  letter-spacing: -0.01em;
+  color: var(--rd-ink);
+}
+
+/* ── Accounts (mockup .acct → live .account-card grid) ── */
+[data-refined-surface="customer"] .account-card {
+  background: var(--rd-surface);
+  border: 1px solid var(--rd-line);
+  border-radius: var(--rd-radius-lg);
+  box-shadow: var(--rd-shadow-card);
+}
+[data-refined-surface="customer"] .account-header h3 {
+  font-family: var(--rd-font-body);
+  font-weight: 600;
+  font-size: 0.94rem;
+  color: var(--rd-ink);
+}
+[data-refined-surface="customer"] .account-number {
+  font-family: var(--rd-font-mono);
+  font-size: 0.72rem;
+  color: var(--rd-ink-faint);
+}
+[data-refined-surface="customer"] .account-type-badge {
+  font-family: var(--rd-font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--rd-ink-soft);
+  background: var(--rd-surface-sunk);
+  border: 1px solid var(--rd-line);
+  border-radius: 999px;
+  padding: 3px 8px;
+}
+[data-refined-surface="customer"] .account-balance-row .balance {
+  font-family: var(--rd-font-figure);
+  font-weight: 500;
+  font-size: 1.25rem;
+  color: var(--rd-ink);
+  font-variant-numeric: tabular-nums;
+}
+[data-refined-surface="customer"] .account-balance-row .balance--negative {
+  color: var(--rd-negative);
+}
+[data-refined-surface="customer"] .account-balance-row .balance-label {
+  font-family: var(--rd-font-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--rd-ink-faint);
+}
+
+/* ── Transactions (mockup .tx table → live .tx-feed / .tx-row) ── */
+[data-refined-surface="customer"] .tx-feed__date-label {
+  font-family: var(--rd-font-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--rd-ink-faint);
+}
+[data-refined-surface="customer"] .tx-feed__date-line {
+  background: var(--rd-line);
+}
+[data-refined-surface="customer"] .tx-row {
+  border-bottom: 1px solid var(--rd-line);
+}
+[data-refined-surface="customer"] .tx-row:hover {
+  background: var(--rd-surface-sunk);
+}
+[data-refined-surface="customer"] .tx-row__desc {
+  font-weight: 500;
+  color: var(--rd-ink);
+}
+[data-refined-surface="customer"] .tx-row__meta {
+  font-family: var(--rd-font-mono);
+  font-size: 0.72rem;
+  color: var(--rd-ink-faint);
+}
+[data-refined-surface="customer"] .tx-row__amount {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+[data-refined-surface="customer"] .tx-row__amount--pos {
+  color: var(--rd-positive);
+}
+[data-refined-surface="customer"] .tx-row__amount--neg {
+  color: var(--rd-negative);
+}
+
+/* ── Token-chain rail (mockup .rail-card — card + type treatment only;
+      stepped .chain connector skipped, see note above) ── */
+[data-refined-surface="customer"] .ud-token-rail__inner.section {
+  background: var(--rd-surface);
+  border: 1px solid var(--rd-line);
+  border-radius: var(--rd-radius-lg);
+  box-shadow: var(--rd-shadow-card);
+}
+[data-refined-surface="customer"] .ud-token-rail__inner.section > h2,
+[data-refined-surface="customer"] .ud-token-rail__inner.section h3 {
+  font-family: var(--rd-font-display);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--rd-ink);
+}
