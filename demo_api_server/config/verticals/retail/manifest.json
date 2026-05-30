@@ -21,10 +21,11 @@
       "--brand-app-shell-hero-start": "#1D1D1B",
       "--brand-app-shell-hero-end": "#2d2d2b",
       "--theme-accent": "#FFE000",
-      "--brand-dashboard-header-text": "#FFE000",
+      "--brand-navy": "#1D1D1B",
+      "--brand-dashboard-header-text": "#FFFFFF",
       "--brand-topnav-bg-start": "#1D1D1B",
       "--brand-topnav-bg-end": "#2d2d2b",
-      "--brand-topnav-text": "#FFE000"
+      "--brand-topnav-text": "#FFFFFF"
     }
   },
   "terminology": {
