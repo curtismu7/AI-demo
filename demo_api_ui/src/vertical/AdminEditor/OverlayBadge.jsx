@@ -35,7 +35,7 @@ export function OverlayBadge({ paths, onResetField, onResetAll }) {
         onClick={onResetAll}
         className="overlay-badge__reset-all"
         type="button"
-      >Reset all overrides</button>
+      >Clear all overrides on this vertical</button>
     </div>
   );
 }

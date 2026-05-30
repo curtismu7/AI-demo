@@ -86,8 +86,9 @@ function createResolver(loader, overlay, store, { onEvent } = { onEvent: () => {
     const ver = versions.get(id) || 0;
     const cached = cache.get(id);
     if (cached && cached.version === ver) {
-      // Return a structured clone so caller mutations don't poison the cache.
-      return JSON.parse(JSON.stringify(cached.merged));
+      // Clone so caller mutations don't poison the cache. structuredClone is
+      // faster than JSON round-trip and the manifest is plain JSON data.
+      return structuredClone(cached.merged);
     }
 
     const overlayValue = overlay.get(id);
@@ -102,7 +103,7 @@ function createResolver(loader, overlay, store, { onEvent } = { onEvent: () => {
     const parsed = ManifestSchema.parse(merged); // applies defaults (e.g. scopes)
 
     cache.set(id, { version: ver, merged: parsed });
-    return JSON.parse(JSON.stringify(parsed));
+    return structuredClone(parsed);
   }
 
   function reload(id) {

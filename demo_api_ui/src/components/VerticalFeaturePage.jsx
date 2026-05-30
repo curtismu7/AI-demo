@@ -26,12 +26,16 @@ export default function VerticalFeaturePage() {
   const fp  = manifest?.featurePage || null;
   const raw = location.state?.featurePayload || null;
 
-  const accentColor     = fp?.accentColor     || '#ca8a04';
-  const accentBg        = fp?.accentBg        || 'rgba(202,138,4,0.06)';
-  const accentLight     = fp?.accentLight     || '#fef3c7';
-  const accentCode      = fp?.accentCode      || '#fef9c3';
-  const accentText      = fp?.accentText      || '#713f12';
-  const accentAccentTxt = fp?.accentAccentText || '#92400e';
+  // accentColor is the only accent field in the v3 schema. The remaining shades
+  // are fixed defaults today; Cycle 2 will derive them from accentColor. (The
+  // old fp?.accentBg/Light/Code/Text/AccentText reads were dropped — no manifest
+  // set them, so they always fell through to these literals.)
+  const accentColor     = fp?.accentColor || '#ca8a04';
+  const accentBg        = 'rgba(202,138,4,0.06)';
+  const accentLight     = '#fef3c7';
+  const accentCode      = '#fef9c3';
+  const accentText      = '#713f12';
+  const accentAccentTxt = '#92400e';
 
   const styles = {
     '--vfp-accent':      accentColor,
