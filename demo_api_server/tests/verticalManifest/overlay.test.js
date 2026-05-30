@@ -102,4 +102,33 @@ describe('overlay', () => {
       { path: 'identity.displayName', value: '' },  // invalid
     ])).toThrow();
   });
+
+  test('WR-08: clearField that empties the overlay removes the LMDB row entirely', () => {
+    overlay.setField('demo', 'identity.tagline', 'X');
+    expect(store.listOverlayIds()).toContain('demo');
+    overlay.clearField('demo', 'identity.tagline');
+    // After clearing the only field, the LMDB row should be gone — not stored as {}.
+    expect(store.listOverlayIds()).not.toContain('demo');
+    expect(overlay.get('demo')).toEqual({});
+  });
+
+  test('WR-08: clearField that leaves other fields keeps the row', () => {
+    overlay.setField('demo', 'identity.tagline', 'X');
+    overlay.setField('demo', 'identity.headerTitle', 'Y');
+    overlay.clearField('demo', 'identity.tagline');
+    expect(store.listOverlayIds()).toContain('demo');
+    expect(overlay.get('demo')).toEqual({ identity: { headerTitle: 'Y' } });
+  });
+
+  test('CR-04: replaceRaw writes a whole overlay blob with validation', () => {
+    overlay.replaceRaw('demo', { identity: { tagline: 'X' } });
+    expect(overlay.get('demo')).toEqual({ identity: { tagline: 'X' } });
+
+    // Invalid blob (empty displayName) is rejected.
+    expect(() => overlay.replaceRaw('demo', { identity: { displayName: '' } })).toThrow();
+
+    // Empty blob clears the row.
+    overlay.replaceRaw('demo', {});
+    expect(store.listOverlayIds()).not.toContain('demo');
+  });
 });

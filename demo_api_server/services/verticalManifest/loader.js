@@ -48,6 +48,6 @@ function createLoader(rootDir = DEFAULT_ROOT) {
   return { loadAll, get, list, reload, removeFromCache };
 }
 
-// Module-level singleton used by the rest of the system.
-const defaultLoader = createLoader();
-module.exports = { createLoader, loader: defaultLoader };
+// index.js builds the loader via createLoader(root) so VERTICAL_SEED_ROOT is
+// honored; there is no module-level singleton.
+module.exports = { createLoader };

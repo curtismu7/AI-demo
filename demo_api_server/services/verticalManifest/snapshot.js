@@ -25,19 +25,26 @@ function createSnapshot(store, overlay, hooks) {
     ]);
     for (const id of allIds) overlay.clearAll(id);
 
-    // Apply the snapshot's overlays via the raw store (skip overlay.setField's
-    // per-field merged-manifest validation — they were valid when saved, and the
-    // schema hasn't changed).
+    // CR-04: write each snapshot overlay through the validated overlay path
+    // (replaceRaw runs _validateMerged + bumps the resolver cache version via
+    // the wrapped overlay). If a snapshot pre-dates a seed or schema change
+    // and produces an invalid merged manifest, skip that id rather than
+    // throwing mid-restore. Partial restore beats a 500.
+    const skipped = [];
     for (const [id, ov] of Object.entries(snap.overlays || {})) {
-      store.setOverlay(id, ov);
-      onRestoredId(id);
+      try {
+        overlay.replaceRaw(id, ov);
+        onRestoredId(id);
+      } catch (err) {
+        skipped.push({ id, error: err?.message });
+      }
     }
 
     if (snap.activeId) {
       setActiveId(snap.activeId);
       onRestoredActive(snap.activeId);
     }
-    return { restored: true, savedAt: snap.savedAt };
+    return { restored: true, savedAt: snap.savedAt, skipped };
   }
 
   function peek(userId) {

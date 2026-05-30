@@ -1,11 +1,16 @@
 function createEvents({ getInitialActiveId } = {}) {
   const clients = new Set();
 
+  // Write to one client; a thrown write means the socket is gone (the 'close'
+  // event may not have fired yet), so drop it from the Set immediately rather
+  // than emitting to it on every future event. Returns false if removed.
   function _send(res, type, payload) {
     try {
       res.write(`event: ${type}\ndata: ${JSON.stringify(payload)}\n\n`);
+      return true;
     } catch (_) {
-      // Res may be closed; the close handler removes it.
+      clients.delete(res);
+      return false;
     }
   }
 
@@ -28,9 +33,15 @@ function createEvents({ getInitialActiveId } = {}) {
     const initial = getInitialActiveId ? getInitialActiveId() : null;
     if (initial) _send(res, 'vertical-switched', { activeId: initial });
 
-    // Heartbeat every 25s to keep proxies open.
+    // Heartbeat every 25s to keep proxies open. A failed write drops the client
+    // and stops the interval, so a socket whose 'close' never fires can't linger.
     const hb = setInterval(() => {
-      try { res.write(': hb\n\n'); } catch (_) { /* res closed */ }
+      try {
+        res.write(': hb\n\n');
+      } catch (_) {
+        clients.delete(res);
+        clearInterval(hb);
+      }
     }, 25_000);
     if (typeof hb.unref === 'function') hb.unref();
 

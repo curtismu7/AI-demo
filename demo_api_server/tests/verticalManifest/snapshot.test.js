@@ -37,7 +37,11 @@ const SEED = {
   theme: { cssVars: { '--x': '#000' } },
   agent: { persona: 'A' },
 };
-const fakeLoader = { get: (id) => ({ manifest: { ...SEED, id } }) };
+// Returns a seed for any id EXCEPT 'nonexistent-vertical' (used by the CR-04
+// test to simulate a snapshot whose seed disappeared between save and restore).
+const fakeLoader = {
+  get: (id) => id === 'nonexistent-vertical' ? null : ({ manifest: { ...SEED, id } }),
+};
 
 describe('snapshot', () => {
   let snap, overlay, events;
@@ -129,5 +133,26 @@ describe('snapshot', () => {
 
     snap.restore('user1');
     expect(overlay.get('demo')).toEqual({ identity: { tagline: 'A' } });
+  });
+
+  test('CR-04: restore validates each overlay; bad ones land in `skipped`, good ones still restore', () => {
+    // Set up: snapshot containing one valid overlay (demo) and one that the
+    // seed CANNOT represent (a fake id the fakeLoader doesn't know about).
+    overlay.setField('demo', 'identity.tagline', 'X');
+    snap.save('user1');
+    // Manually poison the stored snapshot to include a bad-id entry.
+    const stored = store.getSnapshot('user1');
+    stored.overlays['nonexistent-vertical'] = { identity: { tagline: 'Y' } };
+    store.setSnapshot('user1', stored);
+
+    overlay.clearAll('demo');
+    const result = snap.restore('user1');
+
+    expect(result.restored).toBe(true);
+    expect(result.skipped).toEqual([
+      { id: 'nonexistent-vertical', error: expect.stringContaining('No seed') },
+    ]);
+    // Valid overlay still restored.
+    expect(overlay.get('demo')).toEqual({ identity: { tagline: 'X' } });
   });
 });

@@ -59,6 +59,19 @@ describe('events', () => {
     expect(res.body.join('')).toContain('event: vertical-list-changed');
   });
 
+  test('a client whose write throws is dropped on emit (no zombie)', () => {
+    const events = createEvents({ getInitialActiveId: () => null });
+    const res = fakeRes();
+    events.onClient({}, res);
+    expect(events._clientCount()).toBe(1);
+    // Simulate a dead socket: write now throws (the 'close' event never fired).
+    res.write = () => { throw new Error('EPIPE'); };
+    expect(() => events.emit('vertical-edited', { id: 'x' })).not.toThrow();
+    expect(events._clientCount()).toBe(0);
+    // A second emit must not re-attempt the removed client.
+    expect(() => events.emit('vertical-edited', { id: 'y' })).not.toThrow();
+  });
+
   test('two clients both receive emit', () => {
     const events = createEvents({ getInitialActiveId: () => null });
     const r1 = fakeRes();

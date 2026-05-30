@@ -92,14 +92,29 @@ function createOverlay(store, loader) {
   function clearField(id, path) {
     const current = get(id);
     if (!deletePath(current, path)) return;
-    store.setOverlay(id, current);
+    // WR-08: when the overlay becomes empty after deletion, remove the LMDB
+    // row entirely instead of storing {} (which listOverlayIds would skip
+    // anyway and which would leak rows over time).
+    if (Object.keys(current).length === 0) store.clearOverlay(id);
+    else store.setOverlay(id, current);
   }
 
   function clearAll(id) { store.clearOverlay(id); }
 
   function list(id) { return leafPaths(get(id)); }
 
-  return { get, setField, setBatch, replaceBatch, clearField, clearAll, list };
+  // CR-04 support: write an arbitrary overlay blob (e.g. from a snapshot)
+  // with full validation. Throws if the merged result would be invalid.
+  // Used by snapshot.restore — the snapshot may pre-date a schema change
+  // and the resulting merge may now be invalid; the caller can catch and skip.
+  function replaceRaw(id, overlayBlob) {
+    const next = overlayBlob && typeof overlayBlob === 'object' ? overlayBlob : {};
+    _validateMerged(id, next);
+    if (Object.keys(next).length === 0) store.clearOverlay(id);
+    else store.setOverlay(id, next);
+  }
+
+  return { get, setField, setBatch, replaceBatch, clearField, clearAll, list, replaceRaw };
 }
 
 module.exports = { createOverlay };
