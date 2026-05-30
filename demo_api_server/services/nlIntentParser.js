@@ -409,6 +409,12 @@ const THEME_VOCAB = {
     { re: /\b(return|refund)\s*(history|list)?\b|\bmy\s*returns?\b/, action: 'transactions' },
     { re: /\bhow\s*much.*spent\b|\btotal\s*purchases?\b|\bspending\s*breakdown\b/, action: 'spending_summary' },
   ],
+  workforce: [
+    { re: /\bsubmit\s*(a\s*)?(request|expense|time\s*off|reimbursement|claim)\b|\brequest\s*time\s*off\b|\bfile\s*(an?\s*)?expense\b/, action: 'transfer' },
+    { re: /\b(my\s*|check\s*|view\s*)?(pto|benefits?|allowance|expense\s*budget)\s*balance\b|\bhow\s*much\s*pto\b/, action: 'balance' },
+    { re: /\b(my\s*|list\s*|show\s*|view\s*)?(benefits?|pto|allowance|enrollments?)\b/, action: 'accounts' },
+    { re: /\b(request|submission)\s*history\b|\bmy\s*(requests?|submissions?|expense\s*reports?|claims?)\b|\brecent\s*requests?\b/, action: 'transactions' },
+  ],
 };
 
 function parseTheme(t, vertical) {
