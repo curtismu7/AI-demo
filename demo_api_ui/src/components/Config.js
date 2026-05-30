@@ -472,46 +472,33 @@ function AgentLayoutPreferences() {
   return (
     <CollapsibleCard
       title="AI Agent layout"
-      subtitle="Middle column, bottom dock, or float — optional + FAB"
+      subtitle="Embedded or float — optional + FAB"
       defaultOpen={true}
       className="config-page__agent-layout"
     >
       <p
         style={{ fontSize: "0.85rem", color: "#374151", marginBottom: "1rem" }}
       >
-        <strong>Middle</strong> uses the split dashboard (token | assistant |
-        banking). <strong>Bottom</strong> uses the full-width dock on home and
-        config (Classic layout). <strong>Float</strong> is the corner FAB only.{" "}
-        <strong>+ FAB</strong> adds the floating panel on top of Middle or
-        Bottom (never Middle and Bottom together). When signed in, your choice
-        syncs to your demo profile.
-      </p>
-      <p
-        style={{
-          fontSize: "0.8rem",
-          color: "#374151",
-          marginTop: "1rem",
-          lineHeight: 1.5,
-        }}
-      >
-        <strong>Bottom</strong> sends you to <strong>Home</strong> after apply
-        so the dock mounts. <strong>Middle</strong> reloads with split view.
+        <strong>Embedded</strong> uses the split dashboard (token | assistant |
+        banking). <strong>Float</strong> is the corner FAB only.{" "}
+        <strong>+ FAB</strong> adds the floating panel on top of Embedded. When
+        signed in, your choice syncs to your demo profile.
       </p>
       {placement === "bottom" && (
         <div
           style={{
             marginTop: "12px",
             padding: "10px 14px",
-            background: "#eff6ff",
-            border: "1px solid #bfdbfe",
+            background: "#fef3c7",
+            border: "1px solid #fcd34d",
             borderRadius: "6px",
             fontSize: "0.8rem",
-            color: "var(--brand-navy)",
+            color: "#92400e",
           }}
         >
-          Bottom dock: open <strong>Home</strong> or{" "}
-          <strong>My Dashboard</strong> to use the agent. The marketing home
-          page still uses the floating agent when you are not signed in.
+          Your saved layout is the legacy bottom dock. Pick{" "}
+          <strong>Embedded</strong> or <strong>Float only</strong> from the
+          sidebar to switch.
         </div>
       )}
     </CollapsibleCard>

@@ -90,7 +90,7 @@ export default function AgentUiModeToggle({
         ariaLabel ||
         (isLandingNav
           ? "AI banking agent: float"
-          : "AI banking agent: middle column or float; optional FAB")
+          : "AI banking agent: embedded or float; optional FAB")
       }
     >
       <span className="agent-ui-mode-toggle__label" id={`${idPrefix}-legend`}>
@@ -114,9 +114,9 @@ export default function AgentUiModeToggle({
               className={`agent-ui-mode-toggle__btn${placement === "middle" ? " agent-ui-mode-toggle__btn--active" : ""}`}
               onClick={() => void handlePlacement("middle")}
               aria-pressed={placement === "middle"}
-              title="Assistant in the middle column (Split dashboard: token | agent | banking)"
+              title="Embedded assistant (Split dashboard: token | agent | banking)"
             >
-              Middle
+              Embedded
             </button>
           )}
 

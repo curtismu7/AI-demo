@@ -599,10 +599,14 @@ export default function AdminSideNav({ user }) {
     },
   ];
 
-  // Agent UI placement options for the expandable dropdown
+  // Agent UI placement options for the expandable dropdown.
+  // Phase 4e: Bottom dock removed from the picker (legacy code paths in
+  // App.js / EmbeddedAgentDock still understand placement === 'bottom' for
+  // back-compat with persisted state, but the option is no longer offered).
+  // 'middle' is rendered as "Embedded" — the dashboard split layout is
+  // where the agent lives inline.
   const agentPlacementOptions = [
-    { key: "middle", label: "Middle column", icon: "|" },
-    { key: "bottom", label: "Bottom dock", icon: "_" },
+    { key: "middle", label: "Embedded", icon: "|" },
     { key: "none", label: "Float only", icon: "chat" },
   ];
 
