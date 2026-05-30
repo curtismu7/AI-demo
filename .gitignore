@@ -78,6 +78,8 @@ demo_api_server/data/sessions.db
 demo_api_server/data/sessions.db-shm
 demo_api_server/data/sessions.db-wal
 demo_api_server/data/sessions-lmdb/
+demo_api_server/data/verticals/
+demo_api_server/data/vertical-store/
 
 # Portable encrypted credential vault (Phase 269) — encrypted at rest but
 # NEVER commit. Vault password is required to decrypt and lives only in

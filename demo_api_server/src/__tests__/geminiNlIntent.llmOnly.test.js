@@ -16,6 +16,7 @@
 jest.mock('../../services/nlIntentParser', () => ({
   parseHeuristic: jest.fn(),
   EDU: {},
+  resolveActiveVerticalCtx: jest.fn(() => null),
 }));
 
 jest.mock('../../services/nlIntentSanitize', () => ({

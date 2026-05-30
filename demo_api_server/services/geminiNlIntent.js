@@ -7,24 +7,7 @@
 'use strict';
 
 const path = require('node:path');
-const { parseHeuristic, EDU } = require('./nlIntentParser');
-
-/**
- * Resolve the active vertical's heuristic context — `{ terminology, chips }` —
- * from the manifest, or null for banking / unresolved. Threaded into
- * parseHeuristic so the no-match capability catalog speaks the active vertical's
- * language (absolute rule: every agent path works with every vertical). This is
- * the NL-endpoint twin of demoAgentLangGraphService.resolveActiveVerticalCtx.
- */
-function _resolveActiveVerticalCtx() {
-  try {
-    const m = verticalManifest.resolver.resolve(verticalManifest.resolver.activeId());
-    if (m?.terminology) {
-      return { terminology: m.terminology, chips: m.dashboard?.chips || m.chips || [] };
-    }
-  } catch (_e) { /* best-effort; fall back to banking wording */ }
-  return null;
-}
+const { parseHeuristic, EDU, resolveActiveVerticalCtx } = require('./nlIntentParser');
 const { sanitizeNlResult } = require('./nlIntentSanitize');
 const { callHelixAgent } = require('./helixLlmService');
 const configStore = require('./configStore');
@@ -177,7 +160,7 @@ async function parseNaturalLanguage(message, context = {}, provider = 'auto', la
   // answer instead of a canned "I didn't catch that" UI fallback.
   const heuristicEnabled = configStore.getEffective('ff_heuristic_enabled') !== 'false';
   const activeVertical = verticalManifest.resolver.activeId();
-  const _verticalCtx = _resolveActiveVerticalCtx();
+  const _verticalCtx = resolveActiveVerticalCtx();
   const heuristicResult = parseHeuristic(message, activeVertical, _verticalCtx);
 
   // Single concise log per /nl call — vertical + message preview + provider.
