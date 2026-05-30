@@ -278,3 +278,46 @@
 [data-rd-v2] .tx-row__amount--neg {
   color: var(--rd2-ink-1);
 }
+
+/* ── Embedded dock chrome ─────────────────────────── */
+.rd2-dock.global-embedded-agent-dock-wrap {
+  background: var(--rd2-surface, #ffffff);
+  border-top: 1px solid var(--rd2-line-2, #d5d5d0);
+  box-shadow: 0 -4px 20px rgba(0,0,0,.06);
+  position: relative;
+}
+/* 2 px vertical accent seam at top */
+.rd2-dock.global-embedded-agent-dock-wrap::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--theme-accent, #1b3a6b);
+  opacity: .85;
+}
+/* Toolbar */
+.rd2-dock .embedded-agent-dock__toolbar {
+  background: var(--rd2-surface, #ffffff);
+  border-bottom: 1px solid var(--rd2-line-1, #e4e4e0);
+}
+/* Title */
+.rd2-dock .embedded-agent-dock__title {
+  font-family: "Fraunces", serif;
+  font-size: .96rem;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  color: var(--rd2-ink-1, #111110);
+}
+/* Framework badge pill */
+.rd2-dock .embedded-agent-dock__framework-badge {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: .6rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--rd2-line-1, #e4e4e0);
+  background: var(--rd2-surface-2, #f3f3f1);
+  color: var(--rd2-ink-2, #4c4c48);
+  margin-left: 8px;
+}

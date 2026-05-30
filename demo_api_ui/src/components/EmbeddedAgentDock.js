@@ -145,7 +145,7 @@ export default function EmbeddedAgentDock({ user, agentPlacement }) {
 
   const dockNode = (
     <div
-      className={`global-embedded-agent-dock-wrap refined-dock${collapsed ? ' global-embedded-agent-dock-wrap--collapsed' : ''}`}
+      className={`global-embedded-agent-dock-wrap refined-dock rd2-dock${collapsed ? ' global-embedded-agent-dock-wrap--collapsed' : ''}`}
       role="region"
       aria-label={isConfigPage ? 'Application setup assistant' : verticalAgentTitle}
       data-agent-ui="embedded"
