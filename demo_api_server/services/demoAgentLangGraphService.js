@@ -19,6 +19,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { logDelegationEvent } = require('../middleware/delegationAuditLogger');
 const { verticalManifest } = require('./verticalManifest');
+const verticalDispatch = require('./verticalDispatch');
 const { recordToolCall: recordMcpToolCall } = require('./mcpToolAuditStore');
 
 /**
@@ -450,6 +451,28 @@ function buildToolSchemasForAgentForVertical(manifest) {
   });
 }
 
+// Plugin-first tool schema resolution. Legacy builder is used only when the
+// active vertical has no plugin yet.
+function resolveToolSchemas(activeId, activeManifest) {
+  const legacy = () => buildToolSchemasForAgentForVertical(activeManifest);
+  return verticalDispatch.hasPlugin(activeId)
+    ? verticalDispatch.toolSchemasFor(activeId, legacy)
+    : legacy();
+}
+
+// Plugin-first executeTool. Returns a function with the reason-loop signature
+// (name, args) => Promise<string>. Plugin results are JSON-stringified so the
+// reason loop sees a string, matching executeBffTool's contract.
+function resolveExecuteTool(activeId, { userId, userToken, req, tokenEvents, sessionId }) {
+  return async (name, args) => {
+    const out = await verticalDispatch.executeToolFor(
+      activeId, name, args, { userId, userToken, req, tokenEvents, sessionId },
+      (n, a) => executeBffTool({ name: n, args: a, userId, userToken, req, tokenEvents, sessionId }),
+    );
+    return typeof out === 'string' ? out : JSON.stringify(out);
+  };
+}
+
 /**
  * Execute a tool the SAME way agentBuilder's tool node did:
  * `tool.invoke(args, { configurable: { agentContext: { agentToken, userId, tokenEvents } } })`.
@@ -773,9 +796,12 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
       } catch (e) { /* audit must never break the request path */ }
     }
 
-    const activeManifest = verticalManifest.resolver.resolve(verticalManifest.resolver.activeId());
-    const toolSchemas = buildToolSchemasForAgentForVertical(activeManifest);
-    const systemPrompt = activeManifest?.agent?.systemPromptFlavor;
+    const activeId = verticalManifest.resolver.activeId();
+    const activeManifest = verticalManifest.resolver.resolve(activeId);
+    const toolSchemas = resolveToolSchemas(activeId, activeManifest);
+    const systemPrompt = verticalDispatch.hasPlugin(activeId)
+      ? verticalDispatch.systemPromptFor(activeId, {}, () => activeManifest?.agent?.systemPromptFlavor)
+      : activeManifest?.agent?.systemPromptFlavor;
     // HITL/consent note: real transfer-consent enforcement is the deterministic
     // heuristic, which runs and returns BEFORE this LLM/reason path
     // (ARCHITECTURE-TRUTHS T-3) and is unchanged. On THIS LLM/tool path a
@@ -793,8 +819,7 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
       ollamaBaseUrl: langchainConfig && langchainConfig.ollama_base_url,
       anthropicApiKey: process.env.ANTHROPIC_API_KEY,
       maxIterations: MAX_TOOL_ITERATIONS,
-      executeTool: async (name, args) =>
-        executeBffTool({ name, args, userId, userToken, req, tokenEvents, sessionId }),
+      executeTool: resolveExecuteTool(activeId, { userId, userToken, req, tokenEvents, sessionId }),
     });
 
     console.log('[processAgentMessage] Reason loop completed');
@@ -888,4 +913,5 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
 module.exports = {
   processAgentMessage,
   buildToolSchemasForAgentForVertical,
+  __test: { resolveToolSchemas, resolveExecuteTool },
 };
