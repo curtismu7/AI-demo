@@ -1,0 +1,13 @@
+{
+  "patientRecords": [
+    { "id": "rec-1", "recordType": "Primary Care", "provider": "Dr. Sarah Mitchell, MD", "facility": "Springfield Family Health", "lastVisit": "2026-04-18", "status": "Active" },
+    { "id": "rec-2", "recordType": "Cardiology", "provider": "Dr. Alan Greene, MD", "facility": "Springfield Heart Center", "lastVisit": "2026-03-02", "status": "Active" }
+  ],
+  "appointments": [
+    { "id": "appt-1", "provider": "Dr. Sarah Mitchell, MD", "clinic": "Springfield Family Health", "when": "2026-06-03", "reason": "Annual physical", "status": "Confirmed" }
+  ],
+  "coverage": { "plan": "BlueShield PPO Gold", "status": "Active", "deductibleMet": 640.0, "deductibleTotal": 1500.0, "outOfPocket": 142.5 },
+  "claims": [
+    { "id": "clm-1", "procedure": "Annual Wellness Visit", "date": "2026-04-18", "billed": 380.0, "covered": 360.0, "copay": 20.0, "status": "Processed" }
+  ]
+}
