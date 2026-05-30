@@ -12,7 +12,7 @@ vertical. The demo discovers verticals by scanning `demo_api_server/config/verti
 independently testable.
 
 > **For an automated, end-to-end walk-through, run the `/new-vertical` command** — it asks the brand
-> questions one at a time and generates all four touchpoints below, then verifies them. This skill
+> questions one at a time and generates every touchpoint below, then verifies them. This skill
 > documents what that command produces and is the source of truth if the two ever disagree.
 
 ---
@@ -255,10 +255,10 @@ gateway intercepts the call). The chip degrades gracefully (empty state / `scope
 wired, so it is safe to ship the manifest first and do this later. To make `show_<noun>` return data:
 
 1. **Backend endpoint** — add `GET /<noun>` to a backend service (model on `demo_mortgage_service/server.js`, which already serves `mortgage`, `healthRecord`, `gearOrder`, etc.); X-API-Key protected; returns `{ "<dataKey>": { …manifest field paths… }, "source": "...", "authMechanism": "X-API-Key (shared secret)" }`.
-2. **Gateway disposition** — add `show_<noun>` to `APIKEY_TOOLS` in `demo_mcp_gateway/src/router.ts` (~line 50).
-3. **Gateway backend route** — add `show_<noun>` → URL in `APIKEY_BACKEND_ROUTES` in `router.ts` (~line 101).
-4. **Gateway display name** — add `show_<noun>` to `TOOL_DISPLAY_NAMES` in `demo_mcp_gateway/src/apiKeyDispatch.ts` (~line 54).
-5. **MCP registry visibility** — add `show_<noun>` to the `TOOLS` map in `demo_mcp_server/src/tools/BankingToolRegistry.ts` (~line 22 / pattern at line 642) with its `featureScope`; no handler needed.
+2. **Gateway disposition** — add `show_<noun>` to the `APIKEY_TOOLS` set in `demo_mcp_gateway/src/router.ts`.
+3. **Gateway backend route** — add `show_<noun>` → URL in the `APIKEY_BACKEND_ROUTES` map in the same `router.ts`.
+4. **Gateway display name** — add `show_<noun>` to `TOOL_DISPLAY_NAMES` in `demo_mcp_gateway/src/apiKeyDispatch.ts`.
+5. **MCP registry visibility** — add a `show_<noun>` entry to the `TOOLS` map in `demo_mcp_server/src/tools/BankingToolRegistry.ts` (copy the shape of an existing `show_mortgage` / `show_gear_order` entry) with its `featureScope`; no handler needed.
 
 Then `npm run build` in both `demo_mcp_gateway` and `demo_mcp_server`, restart, and provision the
 `featureScope` in PingOne (next `npm run pingone:bootstrap`). This is a cross-service change — read the

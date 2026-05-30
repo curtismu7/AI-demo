@@ -100,7 +100,7 @@ No further questions after Q11 — Steps 4–6 derive the heuristic vocab, Helix
 
 ## Step 2 — Show a preview
 
-Before writing any file, print the full manifest JSON, the `mock-data.json` you'll write, **and** the THEME_VOCAB entry you intend to add, and ask: "Does this look right? I'll generate all four touchpoints once you confirm."
+Before writing any file, print the full manifest JSON, the `mock-data.json` you'll write, **and** the THEME_VOCAB entry you intend to add, and ask: "Does this look right? I'll generate everything once you confirm."
 
 ---
 
@@ -299,7 +299,7 @@ node -e "require('./demo_api_server/services/nlIntentParser.js'); console.log('n
 
 # 3. The manifest + mock-data validate against the Zod schema and the vertical is discoverable,
 #    and every hero dataKey (heroStats.*) actually resolves in mock-data.json
-node -e "const {verticalManifest}=require('./demo_api_server/services/verticalManifest'); verticalManifest.init(); const ids=verticalManifest.list().map(v=>v.id); console.log('Loaded:', ids.join(', ')); if(!ids.includes('<vertical-id>')){console.log('❌ <vertical-id> MISSING'); process.exit(1);} const m=require('./demo_api_server/config/verticals/<vertical-id>/manifest.json'); const fs=require('fs'); const p='./demo_api_server/config/verticals/<vertical-id>/mock-data.json'; const md=fs.existsSync(p)?require(p):{}; const get=(o,path)=>path.split('.').reduce((a,k)=>a&&a[k],o); const missing=(m.dashboard&&m.dashboard.hero?m.dashboard.hero.cards:[]).filter(c=>get(md,c.dataKey)===undefined).map(c=>c.dataKey); console.log(missing.length? '⚠️ hero dataKeys missing in mock-data: '+missing.join(', ') : '✅ <vertical-id> discovered + hero stats resolve');"
+node -e "const {verticalManifest:V}=require('./demo_api_server/services/verticalManifest'); const ID='<vertical-id>'; V.init(); if(!V.list().some(v=>v.id===ID)){console.log('❌ '+ID+' MISSING'); process.exit(1);} const {manifest,mockData}=V.loader.get(ID); const get=(o,p)=>p.split('.').reduce((a,k)=>a&&a[k],o); const cards=manifest.dashboard&&manifest.dashboard.hero?manifest.dashboard.hero.cards:[]; const missing=cards.filter(c=>get(mockData,c.dataKey)===undefined).map(c=>c.dataKey); console.log(missing.length?'⚠️ hero dataKeys missing in mock-data: '+missing.join(', '):'✅ '+ID+' discovered + hero stats resolve');"
 
 # 4. No regressions in BFF / heuristic routing tests
 npm run test:api-server
@@ -332,14 +332,6 @@ Then tell the user:
 
 ## Step 9 — (Optional) Wire the feature-page backend
 
-Only if the user declared a `featurePage` and wants it to return real data. The feature page is served over the **API-key path** through the MCP gateway, NOT by `mock-data.json` and NOT by the MCP server's tool handlers (the `show_*` handlers are registered for visibility but the gateway intercepts the call). To make `show_<noun>` return data you must touch four places — do these as a deliberate, reviewed change, not silently:
+Only if the user declared a `featurePage` and wants it to return real data. The feature page is served over the **API-key path** through the MCP gateway, NOT by `mock-data.json` and NOT by the MCP server's tool handlers (the `show_*` handlers are registered for visibility but the gateway intercepts the call). Until the backend is wired the chip shows the manifest's `scopeError` / empty state — which is correct behavior — so this is safe to defer.
 
-1. **Backend endpoint** — add a `GET /<noun>` route to a backend service (model it on `demo_mortgage_service/server.js`, which already serves `mortgage`, `healthRecord`, `gearOrder`, etc.). It must be X-API-Key protected (constant-time compare) and return `{ "<dataKey>": { …fields the manifest `featurePage.fields[].path` reference… }, "source": "...", "authMechanism": "X-API-Key (shared secret)" }`.
-2. **Gateway disposition** — add `show_<noun>` to the `APIKEY_TOOLS` set in `demo_mcp_gateway/src/router.ts` (~line 50).
-3. **Gateway backend route** — add `show_<noun>` → backend URL/path in `APIKEY_BACKEND_ROUTES` in the same `router.ts` (~line 101).
-4. **Gateway display name** — add `show_<noun>` to `TOOL_DISPLAY_NAMES` in `demo_mcp_gateway/src/apiKeyDispatch.ts` (~line 54).
-5. **MCP registry entry (visibility)** — add `show_<noun>` to the `TOOLS` map in `demo_mcp_server/src/tools/BankingToolRegistry.ts` (~line 616) with its `featureScope`. No handler implementation is needed.
-
-Then `cd demo_mcp_gateway && npm run build` and `cd demo_mcp_server && npm run build` (both compile to `dist/`), restart, and click the feature chip. The `featureScope` must also be provisioned in PingOne (Step 8 item 4) before the agent's token carries it — until then the UI shows the manifest's `scopeError` message, which is correct behavior.
-
-> This step is a cross-service change spanning the gateway, the MCP registry, and a backend service. Treat it as its own task: read the `mcp-gateway` and `mcp-server` skills first, and consult `REGRESSION_PLAN.md` for the gateway/registry files.
+Follow the **"wire the feature-page backend"** section of the `add-vertical` skill — it lists the backend-endpoint + gateway-routing + MCP-registry edit points (with searchable symbol anchors) and the build/provision steps. This is a cross-service change spanning the gateway, the MCP registry, and a backend service: treat it as its own task, read the `mcp-gateway` and `mcp-server` skills first, and consult `REGRESSION_PLAN.md` for the gateway/registry files.
