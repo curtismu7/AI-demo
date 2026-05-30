@@ -80,3 +80,11 @@ describe('verticalDispatch — no plugin (legacy fallback)', () => {
     expect(legacy).toHaveBeenCalledWith('create_transfer', { a: 1 }, {});
   });
 });
+
+describe('executeToolFor — plugin error becomes an {error} result (no reject)', () => {
+  beforeEach(() => { global.__ACTIVE__ = 'health'; verticalManifest.plugins._map.set('health', { ...fakePlugin, executeTool: async () => { throw new Error('boom'); } }); });
+  it('returns {result:{error}} instead of rejecting', async () => {
+    const out = await dispatch.executeToolFor('health', 'book_appointment', {}, {}, () => {});
+    expect(out.result.error).toMatch(/boom/);
+  });
+});

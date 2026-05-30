@@ -89,3 +89,19 @@ describe('createPlugins discovery', () => {
     expect(() => plugins.get('badplugin')).toThrow(/badplugin.*missing required method/);
   });
 });
+
+describe('contract: getSystemPrompt must return a non-empty string', () => {
+  const good = {
+    getManifest: () => ({}), getTools: () => [{ name: 't' }], getHeuristics: () => [{ re: /t/, action: 't' }],
+    getSystemPrompt: () => 'a prompt', getDataStore: () => ({}), executeTool: async () => ({}), getAuthz: () => ({}),
+  };
+  it('rejects an empty system prompt', () => {
+    const bad = { ...good, getSystemPrompt: () => '' };
+    const res = validatePlugin('x', bad);
+    expect(res.ok).toBe(false);
+    expect(res.errors.join(' ')).toMatch(/getSystemPrompt/);
+  });
+  it('accepts a non-empty system prompt', () => {
+    expect(validatePlugin('x', good).ok).toBe(true);
+  });
+});

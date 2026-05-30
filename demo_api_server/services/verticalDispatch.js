@@ -42,9 +42,14 @@ function toolSchemasFor(activeId, legacy) {
   }));
 }
 
-function executeToolFor(activeId, name, params, ctx, legacy) {
+async function executeToolFor(activeId, name, params, ctx, legacy) {
   const p = resolvePlugin(activeId);
-  return p ? p.executeTool(name, params, ctx) : legacy(name, params, ctx);
+  if (!p) return legacy(name, params, ctx);
+  try {
+    return await p.executeTool(name, params, ctx);
+  } catch (e) {
+    return { result: { error: `tool "${name}" failed: ${e.message}` }, render: 'text' };
+  }
 }
 
 function authzFor(activeId, legacy) {

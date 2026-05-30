@@ -486,11 +486,14 @@ function parseHeuristic(message, vertical = 'banking', verticalCtx = null) {
   // No banking fallback — a non-match returns kind:'none', never a banking action.
   if (verticalDispatch.hasPlugin(vertical)) {
     const heuristics = verticalDispatch.heuristicsFor(vertical, () => []);
-    for (const { re, action } of heuristics) {
-      if (re.test(t)) {
-        const amountMatch = t.match(/\$?\s*(\d+(?:\.\d+)?)/);
-        const params = amountMatch ? { amount: parseFloat(amountMatch[1]) } : {};
-        return { kind: 'vertical', vertical, action, params };
+    for (const h of heuristics) {
+      if (h.re.test(t)) {
+        let params = {};
+        if (h.extractsAmount) {
+          const amountMatch = t.match(/\b(\d+(?:\.\d+)?)\b/);
+          if (amountMatch) params = { amount: parseFloat(amountMatch[1]) };
+        }
+        return { kind: 'vertical', vertical, action: h.action, params };
       }
     }
     return { kind: 'none', message: buildCatalogMessage(verticalCtx) };

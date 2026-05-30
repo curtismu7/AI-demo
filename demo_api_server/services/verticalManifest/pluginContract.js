@@ -19,6 +19,13 @@ function validatePlugin(id, plugin) {
       errors.push(`plugin "${id}" is missing required method ${m}()`);
     }
   }
+  if (typeof plugin.getSystemPrompt === 'function') {
+    let prompt;
+    try { prompt = plugin.getSystemPrompt({}); } catch (e) { errors.push(`plugin "${id}" getSystemPrompt() threw: ${e.message}`); }
+    if (typeof prompt !== 'undefined' && (typeof prompt !== 'string' || prompt.trim() === '')) {
+      errors.push(`plugin "${id}" getSystemPrompt() must return a non-empty string`);
+    }
+  }
   // Cross-check: every heuristic action must be a declared tool name.
   if (typeof plugin.getTools === 'function' && typeof plugin.getHeuristics === 'function') {
     let toolNames = [];
