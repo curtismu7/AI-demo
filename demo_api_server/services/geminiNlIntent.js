@@ -12,6 +12,7 @@ const { sanitizeNlResult } = require('./nlIntentSanitize');
 const { callHelixAgent } = require('./helixLlmService');
 const configStore = require('./configStore');
 const { verticalManifest } = require('./verticalManifest');
+const verticalDispatch = require('./verticalDispatch');
 
 const { base: SYSTEM_BASE, themes: THEME_OVERRIDES } =
   require(path.join(__dirname, '../../docs/HELIX_AGENT_DIRECTIVES.json'));
@@ -24,12 +25,19 @@ console.log(`[NL Intent] LLM config: model=${OLLAMA_MODEL} url=${OLLAMA_BASE_URL
 
 
 function buildSystem(vertical) {
+  // Plugin-first: a vertical with an index.js owns its full directive.
+  if (verticalDispatch.hasPlugin(vertical)) {
+    return verticalDispatch.systemPromptFor(vertical, {}, () => '');
+  }
+  // Legacy (no plugin yet): base + per-vertical theme override.
   const override = THEME_OVERRIDES[vertical] || '';
   return SYSTEM_BASE + override;
 }
 
 function buildSystemWithCtx(vertical, context) {
-  const SYSTEM = buildSystem(vertical);
+  const SYSTEM = verticalDispatch.hasPlugin(vertical)
+    ? verticalDispatch.systemPromptFor(vertical, context, () => '')
+    : buildSystem(vertical);
   if (!context.role) return SYSTEM;
   // Use vertical-neutral phrasing. The previous wording said "Admin users can
   // query ALL accounts" / "banking actions apply to their own accounts" — both
@@ -354,4 +362,5 @@ async function parseNaturalLanguage(message, context = {}, provider = 'auto', la
 module.exports = {
   parseNaturalLanguage,
   EDU,
+  __test: { buildSystem, buildSystemWithCtx },
 };
