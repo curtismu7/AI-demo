@@ -188,12 +188,16 @@ export default function AdminSideNav({ user }) {
   const { activeId: activeVerticalId } = useVertical();
 
   // Vertical list for the in-sidebar picker. Same data source as
-  // VerticalSwitcher (/api/verticals/list) and same re-fetch on
-  // 'vertical-list-changed' so clone/delete from the admin editor stays in
-  // sync. Hidden when fewer than 2 verticals exist (matches VerticalSwitcher).
+  // VerticalSwitcher (/api/verticals/list). Fetched LAZILY — only when the
+  // user expands the Vertical section — so it doesn't add a network call
+  // (and OAuth validation) to every dashboard mount. Re-fetches on
+  // 'vertical-list-changed' but only after first expansion, so clone/delete
+  // from the admin editor stays in sync when the user is looking at it.
   const [verticals, setVerticals] = useState([]);
   const [switchingVertical, setSwitchingVertical] = useState(false);
+  const verticalsPickerExpanded = !!expandedSections["vertical-picker"];
   useEffect(() => {
+    if (!verticalsPickerExpanded) return;
     let cancelled = false;
     const load = () => {
       fetch("/api/verticals/list", { credentials: "include" })
@@ -209,7 +213,7 @@ export default function AdminSideNav({ user }) {
       cancelled = true;
       window.removeEventListener("vertical-list-changed", load);
     };
-  }, []);
+  }, [verticalsPickerExpanded]);
 
   const handleSwitchVertical = useCallback(
     async (id) => {
@@ -1038,55 +1042,52 @@ export default function AdminSideNav({ user }) {
         </div>
 
         {/* Vertical picker — same data source as the TopNav VerticalSwitcher
-            (/api/verticals/list + POST /api/verticals/active). Rendered as an
-            expandable section so it uses the existing item/submenu classes
-            and the frozen icon system — no new CSS or renderIcon changes. */}
-        {verticals.length >= 2 && (
-          <>
-            {!collapsed && <div className="admin-side-nav__divider" />}
-            <div className="admin-side-nav__section">
-              <div>
-                <button
-                  type="button"
-                  className="admin-side-nav__item admin-side-nav__item--parent"
-                  onClick={() => toggleSection("vertical-picker")}
-                  title={collapsed ? "Vertical" : undefined}
-                >
-                  <NavIcon name="bld" />
-                  {!collapsed && (
-                    <>
-                      <span className="admin-side-nav__label">Vertical</span>
-                      <span
-                        className={`admin-side-nav__chevron ${expandedSections["vertical-picker"] ? "admin-side-nav__chevron--expanded" : ""}`}
-                      >
-                        ▶
-                      </span>
-                    </>
-                  )}
-                </button>
-                {expandedSections["vertical-picker"] && !collapsed && (
-                  <div className="admin-side-nav__submenu">
-                    {verticals.map((v) => (
-                      <button
-                        key={v.id}
-                        type="button"
-                        onClick={() => void handleSwitchVertical(v.id)}
-                        disabled={switchingVertical}
-                        className={`admin-side-nav__item admin-side-nav__item--child${v.id === activeVerticalId ? " admin-side-nav__item--active" : ""}`}
-                        title={v.displayName}
-                      >
-                        <NavIcon name="*" />
-                        <span className="admin-side-nav__label">
-                          {v.displayName}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                )}
+            (/api/verticals/list + POST /api/verticals/active). Header always
+            renders; the list is fetched lazily on first expansion to avoid
+            adding a network call to every dashboard mount. Uses existing
+            item/submenu classes only — no CSS or renderIcon changes. */}
+        {!collapsed && <div className="admin-side-nav__divider" />}
+        <div className="admin-side-nav__section">
+          <div>
+            <button
+              type="button"
+              className="admin-side-nav__item admin-side-nav__item--parent"
+              onClick={() => toggleSection("vertical-picker")}
+              title={collapsed ? "Vertical" : undefined}
+            >
+              <NavIcon name="bld" />
+              {!collapsed && (
+                <>
+                  <span className="admin-side-nav__label">Vertical</span>
+                  <span
+                    className={`admin-side-nav__chevron ${expandedSections["vertical-picker"] ? "admin-side-nav__chevron--expanded" : ""}`}
+                  >
+                    ▶
+                  </span>
+                </>
+              )}
+            </button>
+            {expandedSections["vertical-picker"] && !collapsed && (
+              <div className="admin-side-nav__submenu">
+                {verticals.map((v) => (
+                  <button
+                    key={v.id}
+                    type="button"
+                    onClick={() => void handleSwitchVertical(v.id)}
+                    disabled={switchingVertical}
+                    className={`admin-side-nav__item admin-side-nav__item--child${v.id === activeVerticalId ? " admin-side-nav__item--active" : ""}`}
+                    title={v.displayName}
+                  >
+                    <NavIcon name="*" />
+                    <span className="admin-side-nav__label">
+                      {v.displayName}
+                    </span>
+                  </button>
+                ))}
               </div>
-            </div>
-          </>
-        )}
+            )}
+          </div>
+        </div>
 
         {/* Stop Agent */}
         {!collapsed && <div className="admin-side-nav__divider" />}
