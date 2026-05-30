@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import './theme/refinedSurface.css';
 import './theme/refinedDashboardV2.css';
+import './theme/refinedTopNav.css';
 import './theme/refinedAgent.css';
 import './theme/globalTheme.css';
 import App from './App';
