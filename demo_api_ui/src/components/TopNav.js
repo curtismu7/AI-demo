@@ -1,4 +1,8 @@
-import { MdAccountBalance, MdLogin, MdSearch } from "react-icons/md";
+import {
+  MdAccountBalance, MdLogin, MdSearch,
+  MdLocalHospital, MdShoppingCart, MdStorefront, MdWork, MdSportsBasketball,
+  MdFlight, MdGavel, MdSchool, MdRestaurant, MdDirectionsCar,
+} from "react-icons/md";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useSessionToken } from "../context/SessionTokenContext";
 import { useVertical } from "../vertical/useVertical";
@@ -9,6 +13,13 @@ import UserMenu from "./UserMenu";
 import VerticalSwitcher from "./VerticalSwitcher";
 import "./TopNav.css";
 
+// Curated react-icons/md set selectable per vertical via manifest identity.icon.
+// Importing by name (not the whole md namespace) keeps the bundle small.
+const BRAND_ICONS = {
+  MdAccountBalance, MdLocalHospital, MdShoppingCart, MdStorefront, MdWork,
+  MdSportsBasketball, MdFlight, MdGavel, MdSchool, MdRestaurant, MdDirectionsCar,
+};
+
 export default function TopNav({ user, onLogout }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -16,6 +27,8 @@ export default function TopNav({ user, onLogout }) {
   const identity = pageManifest?.identity;
   const { tokenSecondsLeft, openTokenModal } = useSessionToken();
   const brandName = (identity && (identity.headerTitle || identity.displayName)) || 'AI Demo';
+  // Per-vertical brand icon (manifest identity.icon); unknown/absent → bank icon.
+  const BrandIcon = (identity && BRAND_ICONS[identity.icon]) || MdAccountBalance;
 
   const isAdminView =
     user?.role === 'admin' &&
@@ -68,7 +81,7 @@ export default function TopNav({ user, onLogout }) {
             onClick={() => navigate(user?.role === 'admin' ? '/admin' : '/dashboard')}
             aria-label="Go to dashboard"
           >
-            <MdAccountBalance className="topnav-brand-icon" />
+            <BrandIcon className="topnav-brand-icon" />
             <span className="topnav-brand-name">{brandName}</span>
           </button>
         </div>

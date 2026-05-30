@@ -26,24 +26,20 @@ export default function VerticalFeaturePage() {
   const fp  = manifest?.featurePage || null;
   const raw = location.state?.featurePayload || null;
 
-  // accentColor is the only accent field in the v3 schema. The remaining shades
-  // are fixed defaults today; Cycle 2 will derive them from accentColor. (The
-  // old fp?.accentBg/Light/Code/Text/AccentText reads were dropped — no manifest
-  // set them, so they always fell through to these literals.)
-  const accentColor     = fp?.accentColor || '#ca8a04';
-  const accentBg        = 'rgba(202,138,4,0.06)';
-  const accentLight     = '#fef3c7';
-  const accentCode      = '#fef9c3';
-  const accentText      = '#713f12';
-  const accentAccentTxt = '#92400e';
+  // accentColor is the only accent field in the v3 schema; the surrounding
+  // shades are derived from it with CSS color-mix() so the feature page is
+  // accent-aware per vertical without a color library or extra manifest fields.
+  // (bg/light/code = pale tints toward white; text/dd = dark shades toward black.)
+  const accentColor = fp?.accentColor || '#ca8a04';
+  const mix = (pct, other) => `color-mix(in srgb, ${accentColor} ${pct}%, ${other})`;
 
   const styles = {
     '--vfp-accent':      accentColor,
-    '--vfp-accent-bg':   accentBg,
-    '--vfp-accent-lt':   accentLight,
-    '--vfp-accent-code': accentCode,
-    '--vfp-accent-text': accentText,
-    '--vfp-accent-dd':   accentAccentTxt,
+    '--vfp-accent-bg':   mix(6, 'white'),
+    '--vfp-accent-lt':   mix(20, 'white'),
+    '--vfp-accent-code': mix(12, 'white'),
+    '--vfp-accent-text': mix(45, 'black'),
+    '--vfp-accent-dd':   mix(60, 'black'),
   };
 
   if (!raw) {

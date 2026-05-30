@@ -21,6 +21,9 @@ const ManifestSchema = z.object({
     logoAlt: z.string().optional(),
     tagline: z.string().optional(),
     logoPath: z.string().optional(),
+    // Optional react-icons/md name (e.g. "MdLocalHospital") for the header brand
+    // icon. Falls back to the default bank icon in the UI when absent/unknown.
+    icon: z.string().optional(),
   }),
 
   theme: z.object({

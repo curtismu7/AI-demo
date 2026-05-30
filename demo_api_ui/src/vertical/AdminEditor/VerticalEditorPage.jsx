@@ -1,10 +1,36 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import Monaco from '@monaco-editor/react';
 import { useVertical } from '../useVertical';
 import { OverlayBadge } from './OverlayBadge';
 import { CloneModal } from './CloneModal';
 
 const PROTECTED = new Set(['banking', 'admin-console']);
+const ID_RE = /^[a-z][a-z0-9-]*$/;
+
+/**
+ * Shallow client-side validation mirroring the manifest schema's hard rules.
+ * The server (Zod) remains the source of truth and rejects subtler problems;
+ * this just gives the admin live feedback and blocks an obviously-invalid Save.
+ * Returns an error string, or null when the JSON looks valid.
+ */
+function validateManifestText(text) {
+  let m;
+  try { m = JSON.parse(text); }
+  catch (e) { return `Invalid JSON: ${e.message}`; }
+  if (!m || typeof m !== 'object') return 'Manifest must be a JSON object';
+  if (typeof m.id !== 'string' || !ID_RE.test(m.id)) return 'id must match ^[a-z][a-z0-9-]*$';
+  if (m.schemaVersion !== 3) return 'schemaVersion must be 3';
+  if (!m.identity || typeof m.identity.displayName !== 'string' || m.identity.displayName.trim() === '') {
+    return 'identity.displayName is required';
+  }
+  if (!m.theme || !m.theme.cssVars || Object.keys(m.theme.cssVars).length === 0) {
+    return 'theme.cssVars must have at least one entry';
+  }
+  if (!m.agent || typeof m.agent.persona !== 'string' || m.agent.persona.trim() === '') {
+    return 'agent.persona is required';
+  }
+  return null;
+}
 
 /**
  * Compute leaf-level differences between `edited` and `seed`. Returns an array
@@ -44,6 +70,10 @@ export function VerticalEditorPage() {
   const id = pageManifest?.id;
   const isProtected = id ? PROTECTED.has(id) : true;
 
+  // Live validation of the editor buffer; drives the Save button's disabled state
+  // and an inline message. Server Zod validation still runs on Save.
+  const validationError = useMemo(() => validateManifestText(editorValue), [editorValue]);
+
   useEffect(() => {
     fetch('/api/verticals/list', { credentials: 'include' })
       .then((r) => (r.ok ? r.json() : []))
@@ -75,9 +105,11 @@ export function VerticalEditorPage() {
 
   const save = useCallback(async () => {
     setError('');
-    let edited;
-    try { edited = JSON.parse(editorValue); }
-    catch (e) { setError(`Invalid JSON: ${e.message}`); return; }
+    // Block save on a known-invalid buffer (the button is also disabled, but
+    // guard here too in case save is invoked programmatically).
+    const invalid = validateManifestText(editorValue);
+    if (invalid) { setError(invalid); return; }
+    const edited = JSON.parse(editorValue);
     const seed = JSON.parse(seedValue);
     // The batch endpoint uses replace-semantics: the overlay becomes exactly
     // diff(seed, edited). An empty diff therefore clears all overrides — so we
@@ -207,8 +239,11 @@ export function VerticalEditorPage() {
             options={{ formatOnPaste: true, formatOnType: true, minimap: { enabled: false } }}
           />
           <div className="vertical-editor__actions">
-            <button onClick={save} type="button">Save</button>
+            <button onClick={save} type="button" disabled={!!validationError}>Save</button>
             <button onClick={() => setEditorValue(seedValue)} type="button">Discard</button>
+            {validationError && (
+              <span className="vertical-editor__validation" role="status">{validationError}</span>
+            )}
           </div>
         </main>
       </div>

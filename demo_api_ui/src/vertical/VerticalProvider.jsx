@@ -22,6 +22,9 @@ function useTrailingThrottle(fn, delay) {
 
 export function VerticalProvider({ children }) {
   const [state, setState] = useState(null);
+  // Keys applied by the last applyThemeTokens call, scoped to this provider
+  // instance (no module-level shared state).
+  const themeKeysRef = useRef(new Set());
 
   const doFetch = useCallback(async () => {
     try {
@@ -41,7 +44,7 @@ export function VerticalProvider({ children }) {
       const data = await res.json();
       setState(data);
       if (data.pageManifest) {
-        applyThemeTokens(data.pageManifest.theme.cssVars);
+        themeKeysRef.current = applyThemeTokens(data.pageManifest.theme.cssVars, themeKeysRef.current);
         document.title = data.pageManifest.identity.documentTitle
           || `${data.pageManifest.identity.displayName} · PingOne AI`;
       }
