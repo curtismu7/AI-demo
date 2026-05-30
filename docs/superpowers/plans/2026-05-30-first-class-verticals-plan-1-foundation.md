@@ -1015,6 +1015,36 @@ independently testable.
   render descriptor resolution, and the no-fallback assertion with healthcare active.
 - This plan establishes the **template** every other vertical copies.
 
+**Carried over from Plan 1 `/code-review` (latent findings — they fire the moment a plugin
+ships, so Plan 2 MUST resolve them as it brings healthcare online):**
+1. **Wire the `kind:'vertical'` consumer (REQUIRED).** Plan 1's `parseHeuristic` now returns
+   `{ kind:'vertical', vertical, action, params }` when a plugin matches, but NOTHING consumes
+   it yet: `geminiNlIntent.parseNaturalLanguage` fast-returns it raw to `/nl`; the agent path in
+   `demoAgentLangGraphService.processAgentMessage` only branches on `heuristic.kind === 'banking'`
+   (so a `vertical` result silently escalates to the LLM instead of executing the tool); and
+   `BankingAgent.js` `dispatchNlResult` has no `'vertical'` case (falls to the "I didn't catch
+   that" default). Plan 2 must add `kind:'vertical'` handling in all three: the `/nl` route/agent
+   loop dispatches it through `verticalDispatch.executeToolFor`, and the UI renders the result via
+   the render descriptor (see #2 of §3). Until this is done, healthcare heuristic matches are dead.
+2. **Scope the plugin amount-regex to amount-taking actions.** `parseHeuristic`'s plugin branch
+   currently runs `/\$?\s*(\d+(?:\.\d+)?)/` for EVERY matched action, attaching a spurious
+   `params.amount` to non-amount tools (e.g. "show my top 5 records" → `{amount:5}`). Legacy
+   `parseTheme` only extracts an amount for transfer-like actions. Plan 2: let the plugin's tool/
+   heuristic declare whether it takes an amount (e.g. an `extractsAmount` flag on the heuristic
+   entry) and only extract then.
+3. **Validate `getSystemPrompt` returns a non-empty string** in `pluginContract.validatePlugin`
+   (today the contract only checks the method exists). An empty/undefined prompt would send an
+   empty system message to the LLM. Add the assertion + a contract-test case.
+4. **Align plugin `executeTool` error contract with `executeBffTool`.** `executeBffTool` returns
+   `JSON.stringify({error})` for unknown tools / catches errors to a string; the plugin path in
+   `verticalDispatch.executeToolFor` lets a throwing `executeTool` reject, aborting the reason-loop
+   turn. Plan 2: wrap the plugin dispatch so a thrown error becomes an `{error}` string result the
+   reason loop can feed back to the model (or document the rejection as intended and handle upstream).
+- The `kind:'vertical'` UI/route wiring (#1) is the BankingAgent.js touch point — coordinate with
+  the UI-redesign ownership rule ([[project_ui_verticals_parallel]]): UI is PAUSED until verticals
+  is done, so verticals may now edit BankingAgent.js directly for the `<VerticalResult>` + the
+  `kind:'vertical'` dispatch case.
+
 ### Plan 3 — Retail (`list_orders`, `order_status`, `checkout`, `rewards_balance`, `show_large_purchase`)
 - Copy the healthcare template; orders/rewards/shipments `seed.json`.
 
