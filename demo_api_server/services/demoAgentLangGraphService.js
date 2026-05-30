@@ -473,6 +473,30 @@ function resolveExecuteTool(activeId, { userId, userToken, req, tokenEvents, ses
   };
 }
 
+// kind:'vertical' heuristic dispatch — runs the active vertical's plugin tool
+// and packages the result both for the chat reply and the UI render descriptor.
+// Mirrors executeHeuristicBanking's return envelope, adding `verticalResult`.
+async function dispatchVerticalIntent(heuristic, { userId, userToken, req, tokenEvents = [], sessionId = '' }) {
+  const { vertical, action, params } = heuristic;
+  const out = await verticalDispatch.executeToolFor(
+    vertical, action, params || {}, { userId, userToken, req, tokenEvents, sessionId },
+    () => ({ result: { error: `no handler for ${action}` }, render: 'text' }),
+  );
+  const data = out && out.result;
+  const isErr = !!(data && data.error);
+  const reply = isErr ? `❌ ${data.error}` : `Done: ${String(action).replace(/_/g, ' ')}.`;
+  return {
+    reply,
+    success: !isErr,
+    toolsCalled: [action],
+    tokensUsed: 0,
+    requiresConsent: false,
+    agentConfigured: true,
+    tokenEvents,
+    verticalResult: { action, render: (out && out.render) || 'text', data },
+  };
+}
+
 /**
  * Execute a tool the SAME way agentBuilder's tool node did:
  * `tool.invoke(args, { configurable: { agentContext: { agentToken, userId, tokenEvents } } })`.
@@ -689,6 +713,14 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
       const _verticalCtx = resolveActiveVerticalCtx();
 
       const heuristic = parseHeuristic(message, _activeVerticalId, _verticalCtx);
+      if (heuristic && heuristic.kind === 'vertical') {
+        const verticalResult = await dispatchVerticalIntent(heuristic, { userId, userToken, req, tokenEvents: [], sessionId: req?.sessionID || '' });
+        if (req) req.agentPath = 'heuristic';
+        try {
+          appEventService.logEvent('agent', 'info', `Heuristic vertical: ${heuristic.action}`, { tag: 'agent/heuristic_vertical' });
+        } catch (e) { /* audit must never break the request path */ }
+        return verticalResult;
+      }
       if (heuristic && heuristic.kind === 'banking') {
         const heuristicResult = await executeHeuristicBanking(heuristic, userId, userToken, req, subjectToken, _verticalCtx);
         if (heuristicResult) {
@@ -913,5 +945,5 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
 module.exports = {
   processAgentMessage,
   buildToolSchemasForAgentForVertical,
-  __test: { resolveToolSchemas, resolveExecuteTool },
+  __test: { resolveToolSchemas, resolveExecuteTool, dispatchVerticalIntent },
 };
