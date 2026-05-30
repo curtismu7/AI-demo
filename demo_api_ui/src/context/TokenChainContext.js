@@ -14,7 +14,6 @@ import React, {
   useEffect,
 } from "react";
 import { isTokenChainRoute } from "../utils/embeddedAgentFabVisibility";
-import { postAppEvent } from "../services/appEventClient";
 
 const TokenChainContext = createContext(null);
 
@@ -145,18 +144,19 @@ export function TokenChainProvider({ children, activePath = "" }) {
         return;
       }
       try {
-        postAppEvent("token_exchange", "info", "Token exchange in flight", {
-          tag: "token_exchange/frontend-exchange-start",
-        });
+        // NOTE: previously emitted two postAppEvent observability pings around
+        // this fetch ("Token exchange in flight" / "complete"). Removed: this
+        // background poller runs every 15s on /dashboard, so each poll spawned
+        // 3 OAuth-validated round-trips (1 GET + 2 POSTs) and the POSTs added
+        // visible latency to dashboard interactions. The real token exchange
+        // is the BFF's RFC 8693 call, which already logs server-side — we
+        // don't need a client-side marker that fires on every poll.
         const res = await fetch("/api/token-chain", {
           credentials: "include",
           _silent: true,
         });
         if (!res.ok) return;
         const data = await res.json();
-        postAppEvent("token_exchange", "info", "Token exchange complete", {
-          tag: "token_exchange/frontend-exchange-end",
-        });
         if (!cancelled) {
           setMCPToolCalls(data.mcpToolCallsChain || []);
           if (data.validationMode) setValidationMode(data.validationMode);
