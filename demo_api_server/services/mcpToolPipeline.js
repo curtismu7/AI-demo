@@ -1,5 +1,7 @@
 'use strict';
 
+const { HITL_CHALLENGE_ARG } = require('./hitlServiceClient');
+
 /**
  * runMcpToolPipeline — pure orchestration of a BFF MCP tool call (ADR-0004).
  * Returns a discriminated Outcome; never touches Express res/req response APIs.
