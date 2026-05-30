@@ -33,6 +33,8 @@ Versions use calendar dates: `YYYY.MM.DD`.
 - `authorize.parity.test.js` — parity contract tests asserting simulated ≡ PingOne enforcement flags for same inputs (14 tests)
 
 ### Fixed
+- NL intent: Helix JSON-router `kind:none`/non-JSON responses now fall through to the conversational `answerWithHelix` fallback (`source: 'helix_fallback'`) instead of short-circuiting to the heuristic — the early `return` made the `helix_fallback` path unreachable whenever Helix was the selected provider. `llm_attempted` is preserved through the fall-through for the UI's "Helix couldn't map this" message. (3 geminiNlIntent tests now pass)
+- Real-API `vertical.test.js` (all 6 verticals) read the obsolete flat `config/verticals/<id>.json` path; updated to the schema-v3 directory layout `config/verticals/<id>/manifest.json` (admin suite also corrected `admin` → `admin-console`)
 - `CLAUDE.md`: corrected `MCP_TOKEN_EXCHANGE_SCOPES` from stale `banking:*` prefixed names to plain `read write`; collapsed duplicate agent behavior rules to a reference to global `~/.claude/CLAUDE.md`
 - `test-evaluate` API now returns both `consentRequired` and `hitlRequired` fields regardless of active engine (was returning only one per engine)
 - Unrecognised PingOne Authorize obligation types now log a `console.warn` instead of silently being discarded

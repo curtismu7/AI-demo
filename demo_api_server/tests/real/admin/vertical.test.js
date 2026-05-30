@@ -4,9 +4,9 @@ const fs = require('fs');
 const path = require('path');
 const { createBffClient, setVertical, restoreVertical } = require('../helpers/bffClient');
 
-const VERTICAL = 'admin';
+const VERTICAL = 'admin-console';
 const STATIC_CONFIG = JSON.parse(
-  fs.readFileSync(path.resolve(__dirname, `../../../config/verticals/${VERTICAL}.json`), 'utf8')
+  fs.readFileSync(path.resolve(__dirname, `../../../config/verticals/${VERTICAL}/manifest.json`), 'utf8')
 );
 
 describe(`Vertical manifest — ${VERTICAL} (real)`, () => {

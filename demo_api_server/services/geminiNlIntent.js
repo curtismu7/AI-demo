@@ -159,6 +159,9 @@ async function parseNaturalLanguage(message, context = {}, provider = 'auto', la
   // not "disable heuristic" — if every LLM falls through, we still want the heuristic
   // answer instead of a canned "I didn't catch that" UI fallback.
   const heuristicEnabled = configStore.getEffective('ff_heuristic_enabled') !== 'false';
+  // Set true once any LLM router call has been made, so heuristic-floor returns
+  // reached after the LLM falls through still report llm_attempted to the UI.
+  let llmAttempted = false;
   const activeVertical = verticalManifest.resolver.activeId();
   const _verticalCtx = resolveActiveVerticalCtx();
   const heuristicResult = parseHeuristic(message, activeVertical, _verticalCtx);
@@ -289,8 +292,11 @@ async function parseNaturalLanguage(message, context = {}, provider = 'auto', la
             console.warn('[nlIntent] Helix retry failed:', e.message);
           }
         }
-        // kind:'none' or still non-JSON — fall through to conversational Helix answer
-        return { source: 'heuristic', result: heuristicResult, llm_attempted: true };
+        // kind:'none' or still non-JSON — fall through to the conversational Helix
+        // answer (LLM-only block below, or Ollama→answerWithHelix in heuristic mode).
+        // Mark that the LLM was attempted so a final heuristic-floor return can tell
+        // the UI "Helix couldn't map this" (BankingAgent.js) vs a never-tried fallback.
+        llmAttempted = true;
       }
     } catch (err) {
       console.warn('[nlIntent] Helix error:', err.message);
@@ -312,9 +318,9 @@ async function parseNaturalLanguage(message, context = {}, provider = 'auto', la
     // still work — never let a UI canned "I didn't catch that" win.
     if (heuristicResult && heuristicResult.kind !== 'none') {
       console.warn('[nlIntent] LLM-only mode: no LLM produced an answer — falling back to heuristic');
-      return { source: 'heuristic', result: heuristicResult };
+      return { source: 'heuristic', result: heuristicResult, llm_attempted: llmAttempted };
     }
-    return { source: 'heuristic', result: heuristicResult };
+    return { source: 'heuristic', result: heuristicResult, llm_attempted: llmAttempted };
   }
 
   // Heuristic mode: try Ollama for unrecognized input
@@ -342,7 +348,7 @@ async function parseNaturalLanguage(message, context = {}, provider = 'auto', la
   // 4. Final fallback: return whatever heuristic gave (recognized result or kind:none).
   // The heuristic always ran at step 1; if it produced kind:none, this is the canonical
   // "no LLM available and heuristic didn't match" outcome — the UI shows its canned hint.
-  return { source: 'heuristic', result: heuristicResult };
+  return { source: 'heuristic', result: heuristicResult, llm_attempted: llmAttempted };
 }
 
 module.exports = {

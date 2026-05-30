@@ -6,7 +6,7 @@ const { createBffClient } = require('../helpers/bffClient');
 
 const VERTICAL = 'banking';
 const STATIC_CONFIG = JSON.parse(
-  fs.readFileSync(path.resolve(__dirname, `../../../config/verticals/${VERTICAL}.json`), 'utf8')
+  fs.readFileSync(path.resolve(__dirname, `../../../config/verticals/${VERTICAL}/manifest.json`), 'utf8')
 );
 
 describe(`Vertical manifest — ${VERTICAL} (real)`, () => {
