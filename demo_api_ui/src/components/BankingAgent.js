@@ -6350,10 +6350,11 @@ export default function BankingAgent({
   useEffect(() => {
     const normalizeAccountRow = (a) => ({
       id: a.id,
-      name:
-        a.name ||
-        (a.accountType === "savings" ? "Savings Account" : "Checking Account"),
-      type: a.accountType || a.account_type || "checking",
+      // Vertical-neutral: prefer the server-stored name, then the actual
+      // account type (e.g. "Pro Member", "Patient Record"). Never hardcode
+      // banking names — absolute rule: render must work for every vertical.
+      name: a.name || a.accountType || a.account_type || a.type || "Account",
+      type: a.accountType || a.account_type || a.type || "Account",
       balance: a.balance || 0,
       accountNumber: a.accountNumber || a.account_number || a.id,
     });
