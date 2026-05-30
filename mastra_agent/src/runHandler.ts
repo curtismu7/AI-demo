@@ -16,6 +16,10 @@ export async function handleRun(req: Request, res: Response): Promise<void> {
   const messages = (body.messages as Array<{ role: string; content: string }> | undefined) ?? [];
   const rawTools = (body.tools as Array<Record<string, unknown>> | undefined) ?? [];
   const ctx = (body.context as Record<string, unknown> | undefined) ?? {};
+  // Vertical persona forwarded by the BFF from the active vertical manifest.
+  // Used to override the default banking system prompt so the agent replies
+  // in the active vertical's language (care, retail, sports, workforce, etc.).
+  const verticalFlavor = (body.vertical_flavor as string | undefined) || undefined;
 
   const toolSchemas: ToolSchema[] = rawTools.map((t) => ({
     name: t.name as string,
@@ -49,7 +53,7 @@ export async function handleRun(req: Request, res: Response): Promise<void> {
       baseUrl: cfg.llmBaseUrl,
       apiKey: cfg.llmApiKey,
       model,
-    });
+    }, verticalFlavor);
     const userMessage =
       [...messages].reverse().find((m) => m.role === 'user')?.content ?? '';
 

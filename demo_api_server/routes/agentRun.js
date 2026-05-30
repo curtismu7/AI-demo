@@ -22,6 +22,7 @@
 const express = require('express');
 const http = require('http');
 const configStore = require('../services/configStore');
+const { verticalManifest } = require('../services/verticalManifest');
 const { agentSessionMiddleware } = require('../middleware/agentSessionMiddleware');
 
 const router = express.Router();
@@ -170,11 +171,32 @@ router.post('/run', async (req, res) => {
   // ---------------------------------------------------------------------------
   // Step D: build the RunAgentInput payload
   // ---------------------------------------------------------------------------
+  // Forward the active vertical's systemPromptFlavor to the agent service.
+  // The agent (LangChain / OpenAI Agents / Mastra / Pydantic AI) injects it
+  // into the first turn so the LLM replies in the active vertical's voice
+  // (e.g. CareConnect uses "appointments / coverage / records" instead of
+  // banking terminology). Without this forwarding the agent falls back to a
+  // generic banking persona regardless of which vertical the user selected.
+  // null when no active vertical resolves so the agent keeps its default.
+  let verticalFlavor = null;
+  try {
+    const activeId = verticalManifest.resolver.activeId();
+    if (activeId) {
+      const resolved = verticalManifest.resolver.resolve(activeId);
+      verticalFlavor = resolved && resolved.agent && resolved.agent.systemPromptFlavor
+        ? resolved.agent.systemPromptFlavor
+        : null;
+    }
+  } catch (_) {
+    /* best-effort — never block /run on a manifest read */
+  }
+
   const agentPayload = {
     threadId,
     runId,
     messages,
     tools,
+    vertical_flavor: verticalFlavor,
     context: {
       bffToolUrl,
       sessionId,

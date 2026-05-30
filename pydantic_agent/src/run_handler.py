@@ -16,6 +16,10 @@ async def handle_run(request: Request) -> StreamingResponse:
     messages: list[dict] = body.get("messages", [])
     tool_schemas: list[dict] = body.get("tools", [])
     ctx_data: dict = body.get("context", {})
+    # Vertical persona forwarded by the BFF from the active vertical manifest.
+    # Used to override the default banking system prompt so the agent replies
+    # in the active vertical's language (care, retail, sports, workforce, etc.).
+    vertical_flavor: str | None = body.get("vertical_flavor") or None
 
     bff_tool_url: str = ctx_data.get("bffToolUrl") or cfg.BFF_INTERNAL_TOOL_URL
     # BFF doesn't include its internal secret in the run context (the secret
@@ -44,6 +48,7 @@ async def handle_run(request: Request) -> StreamingResponse:
         model_name=model,
         base_url=cfg.LLM_BASE_URL,
         api_key=cfg.LLM_API_KEY,
+        system_prompt=vertical_flavor,
     )
 
     async def stream_events() -> AsyncIterator[str]:

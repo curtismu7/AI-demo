@@ -30,6 +30,10 @@ async def agent_run(request: Request) -> StreamingResponse:
     messages: list = body.get("messages", [])
     tool_schemas: list = body.get("tools", [])
     ctx: dict = body.get("context", {})
+    # Vertical persona forwarded by the BFF from the active vertical manifest.
+    # Used to override the default banking system prompt so the agent replies
+    # in the active vertical's language (care, retail, sports, workforce, etc.).
+    vertical_flavor: str | None = body.get("vertical_flavor") or None
 
     bff_tool_url = ctx.get("bffToolUrl", "")
     session_id = ctx.get("sessionId", "")
@@ -46,7 +50,7 @@ async def agent_run(request: Request) -> StreamingResponse:
     }
 
     return StreamingResponse(
-        _stream(run_id, thread_id, messages, tool_schemas, run_ctx, model, cfg.llm_api_key),
+        _stream(run_id, thread_id, messages, tool_schemas, run_ctx, model, cfg.llm_api_key, vertical_flavor),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
@@ -60,6 +64,7 @@ async def _stream(
     run_ctx: dict,
     model: str,
     api_key: str,
+    vertical_flavor: str | None = None,
 ) -> AsyncGenerator[str, None]:
     queue: asyncio.Queue = asyncio.Queue()
 
@@ -76,6 +81,7 @@ async def _stream(
                 run_ctx=run_ctx,
                 model=model,
                 api_key=api_key,
+                system_prompt=vertical_flavor,
             )
             user_input = next(
                 (m["content"] for m in reversed(messages) if m.get("role") == "user"),
