@@ -10,6 +10,24 @@ const ChipSchema = z.object({
 
 const FormatEnum = z.enum(['money', 'count', 'date', 'text', 'percent']);
 
+const RenderFieldSchema = z.object({
+  label: z.string(),
+  path: z.string(),
+  format: FormatEnum.optional(),
+  accent: z.boolean().optional(),
+});
+
+const RenderDescriptorSchema = z.object({
+  type: z.enum(['card', 'fieldList', 'table', 'text']),
+  title: z.string().optional(),
+  fields: z.array(RenderFieldSchema).optional(),
+  columns: z.array(z.object({
+    label: z.string(),
+    path: z.string(),
+    format: FormatEnum.optional(),
+  })).optional(),
+});
+
 const ManifestSchema = z.object({
   id: z.string().regex(/^[a-z][a-z0-9-]*$/),
   schemaVersion: z.literal(3),
@@ -87,6 +105,8 @@ const ManifestSchema = z.object({
     emptyPrompt: z.string().optional(),
     scopeError: z.string().optional(),
   }).optional(),
+
+  render: z.record(z.string(), RenderDescriptorSchema).optional(),
 
   demoUsers: z.object({
     customer: z.object({ hint: z.string(), passwordHint: z.string() }).optional(),
