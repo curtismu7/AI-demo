@@ -210,6 +210,12 @@
     "emptyPrompt": "show large purchase",
     "scopeError": "The agent's access token does not carry the largepurchase:read scope. Sign out and sign back in to consent to large purchase access, then try \"Show Large Purchase\" again."
   },
+  "render": {
+    "list_orders": { "type": "table", "columns": [ { "label": "Product", "path": "product" }, { "label": "Amount", "path": "amount", "format": "money" }, { "label": "Status", "path": "status" } ] },
+    "order_status": { "type": "card", "title": "Order Status", "fields": [ { "label": "Product", "path": "product" }, { "label": "Status", "path": "status" }, { "label": "Date", "path": "date", "format": "date" } ] },
+    "rewards_balance": { "type": "fieldList", "title": "Rewards", "fields": [ { "label": "Points", "path": "points", "format": "count" }, { "label": "Tier", "path": "tier" }, { "label": "Store credit", "path": "storeCredit", "format": "money" } ] },
+    "checkout": { "type": "card", "title": "Order Placed", "fields": [ { "label": "Product", "path": "product" }, { "label": "Amount", "path": "amount", "format": "money" }, { "label": "Status", "path": "status" } ] }
+  },
   "demoUsers": {
     "customer": {
       "hint": "demoUser",
