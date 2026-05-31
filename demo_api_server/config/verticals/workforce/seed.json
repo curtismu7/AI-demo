@@ -1,0 +1,11 @@
+{
+  "pto": { "balance": 14, "sickLeave": 6, "accruedYtd": 18 },
+  "benefits": [
+    { "id": "ben1", "name": "Medical", "planType": "PPO", "enrollmentStatus": "Enrolled", "coverageTier": "Employee + Family" },
+    { "id": "ben2", "name": "Dental", "planType": "DPPO", "enrollmentStatus": "Enrolled", "coverageTier": "Employee Only" },
+    { "id": "ben3", "name": "401(k)", "planType": "Roth", "enrollmentStatus": "Enrolled", "coverageTier": "6% contribution" }
+  ],
+  "expenses": [
+    { "id": "exp1", "category": "Travel", "description": "Q2 Sales Summit", "amount": 1847.5, "status": "Approved", "submittedDate": "2026-05-02" }
+  ]
+}
