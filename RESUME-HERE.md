@@ -7,7 +7,26 @@
   - All write actions (transfer/deposit/withdraw) now throw errors in their catch blocks instead of returning error tuples (WR-07a compliance)
   - Tests: `hitlGateway.regression.test.js` was already failing before changes (pre-existing issue)
 
-## ⚠️ CRITICAL BLOCKERS (found during A2 spike)
+## ✅ BLOCKER STATUS — Most Already Resolved!
+
+### RESOLVED Blockers ✅
+
+**Setup Page** — Already auto-discovers banking
+- UI: `VerticalSwitcher.js` fetches `/api/verticals/list` (dynamic, not hardcoded)
+- Backend: loader scans `/config/verticals/` for directories
+- Banking will appear automatically since manifest.json exists
+- **STATUS:** RESOLVED by existing discovery mechanism
+
+**MCP Display on Dashboard** — Already vertical-aware  
+- `BankingAgent.js` uses `useVertical()` to get `pageManifest` 
+- Reads `pageManifest?.render?.[vr.render]` to find render descriptor
+- Maps `verticalResult.render` key to manifest render block
+- Applies formatting rules (money, date, count) from descriptor
+- **STATUS:** RESOLVED by existing vertical-aware implementation
+
+---
+
+## ⚠️ REMAINING CRITICAL BLOCKERS (found during A2 spike)
 
 ### 1. Bootstrap PingOne setup must configure banking plugin
 **Status:** BLOCKING banking vertical availability at runtime
