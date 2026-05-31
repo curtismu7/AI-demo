@@ -78,7 +78,24 @@
 
 ---
 
-## Next Steps (Phase A Task A2 — COMPLETED)
+## Phase A Complete Summary
+
+**Banking Plugin fully implemented:**
+- ✅ dispatchBankingAction extracted (reusable dispatch function)
+- ✅ banking/index.js created (hybrid plugin, MCP-delegating)
+- ✅ Action aliases added for dispatchVerticalIntent routing (accounts, balance, transfer, etc.)
+- ✅ Render descriptors in banking manifest (accounts→table, transfer→card, etc.)
+
+**Blockers status:**
+- ✅ Setup page auto-discovers banking (dynamic loader, no code changes needed)
+- ✅ Dashboard display already vertical-aware (BankingAgent reads pageManifest.render)
+- ⚠️ Bootstrap needs update (currently hardcoded for banking, must scan plugins)
+- ⚠️ Authorization server needs vertical-scoped authz rules
+- ⚠️ PingOne Authorize needs vertical HITL thresholds
+
+---
+
+## Next Steps (Phase B: Admin Overlay)
 
 ### Create Banking Plugin at `demo_api_server/config/verticals/banking/index.js`
 
