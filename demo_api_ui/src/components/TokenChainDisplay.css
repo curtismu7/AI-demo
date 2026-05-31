@@ -2003,6 +2003,15 @@ pre.tcd-jwt-dump {
   color: #166534;
 }
 
+.tcd-nl-saved-chip {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #166534;
+  background: #dcfce7;
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
 .tcd-nl-source--llm {
   background: #f1f5f9;
   color: #334155;

@@ -39,6 +39,8 @@ const INITIAL_STATE = {
   // Run outcome
   lastOutcome: null,
   error: null,
+  // Token usage emitted by the active agent runtime (null = not reported)
+  lastTokenUsage: null,
 };
 
 export function useAgentState() {
@@ -214,6 +216,18 @@ export function useAgentState() {
 
       case 'RUN_ERROR':
         setState((prev) => ({ ...prev, error: event.message || 'Agent error' }));
+        break;
+
+      case 'CUSTOM':
+        if (event.name === 'token_usage' && event.value) {
+          setState((prev) => ({
+            ...prev,
+            lastTokenUsage: {
+              inputTokens: event.value.inputTokens ?? 0,
+              outputTokens: event.value.outputTokens ?? 0,
+            },
+          }));
+        }
         break;
 
       default:

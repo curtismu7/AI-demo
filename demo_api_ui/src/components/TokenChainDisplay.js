@@ -2094,6 +2094,14 @@ function NlRoutingCard({ event }) {
           <span className="tcd-nl-card__val tcd-nl-card__intent">{intent}</span>
         </div>
       )}
+      {event.heuristicSavedEstimate > 0 && (
+        <div className="tcd-nl-card__row">
+          <span className="tcd-nl-card__key">Cost</span>
+          <span className="tcd-nl-card__val tcd-nl-saved-chip">
+            ~{event.heuristicSavedEstimate} tokens saved (est.) — no LLM call
+          </span>
+        </div>
+      )}
     </div>
   );
 }

@@ -98,6 +98,13 @@ class AGUIEventEmitter:
         await self._emit(StateDelta(delta=result))
         await self._emit(ToolCallEnd(tool_call_id=tc_id))
 
+    async def on_usage(self, input_tokens: int, output_tokens: int) -> None:
+        await self._sink({
+            "type": "CUSTOM",
+            "name": "token_usage",
+            "value": {"inputTokens": input_tokens, "outputTokens": output_tokens},
+        })
+
     async def on_error(self, error: Exception, **kwargs) -> None:
         # RUN_ERROR is the AG-UI terminal-error event the BFF and React hook
         # (useAgentRun.js) actually handle. RUN_FINISHED is NOT emitted after

@@ -91,6 +91,12 @@ async def _stream(
             result = Runner.run_streamed(agent, user_input)
             async for event in result.stream_events():
                 await _handle_sdk_event(event, emitter)
+            usage = getattr(result, "usage", None)
+            if usage:
+                await emitter.on_usage(
+                    getattr(usage, "input_tokens", 0),
+                    getattr(usage, "output_tokens", 0),
+                )
             await emitter.on_run_end()
         except Exception as exc:
             logger.exception("[openai-agent] run error run=%s", run_id)

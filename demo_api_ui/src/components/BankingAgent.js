@@ -1741,7 +1741,7 @@ export default function BankingAgent({
   const edu = useEducationUIOptional();
   const tokenChain = useTokenChainOptional();
   const { chips: customChips, groups: customGroups } = useCustomChips();
-  useLangchainProvider();
+  const { mode: agentProviderMode } = useLangchainProvider();
   const { pageManifest, agentManifest } = useVertical();
   const themeAgent = agentManifest?.agent;
   const themeManifest = pageManifest;
@@ -1815,6 +1815,8 @@ export default function BankingAgent({
   // configured). Drives a persistent banner in the panel header. Cleared as
   // soon as a Helix-sourced answer comes back.
   const [helixDegraded, setHelixDegraded] = useState(false);
+  const [modelAdvisory, setModelAdvisory] = useState(null);
+  const modelAdvisoryTimerRef = useRef(null);
   // Single-slot conversation state for clarification follow-ups.
   // Set when we asked "Which account?"/"How much?" and we're waiting on
   // the user's next message to fill that slot. Shape: { action, slot, asked }.
@@ -2913,6 +2915,20 @@ export default function BankingAgent({
       tokenChain.setTokenEvents('agent', aguiState.tokenEvents);
     }
   }, [aguiEnabled, aguiState.tokenEvents, tokenChain]);
+
+  // AG-UI token usage — accumulate into Token Teller when agent reports counts.
+  useEffect(() => {
+    if (!aguiEnabled) return;
+    const usage = aguiState.lastTokenUsage;
+    if (!usage || (!usage.inputTokens && !usage.outputTokens)) return;
+    const inc = { input: usage.inputTokens ?? 0, output: usage.outputTokens ?? 0 };
+    setSessionTokens((prev) => ({ input: prev.input + inc.input, output: prev.output + inc.output }));
+    setLifetimeTokens((prev) => {
+      const next = { input: prev.input + inc.input, output: prev.output + inc.output };
+      try { localStorage.setItem('ba_tokens_lifetime', JSON.stringify(next)); } catch (_) {}
+      return next;
+    });
+  }, [aguiEnabled, aguiState.lastTokenUsage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // AG-UI Step 5 — push MCP traffic entries into mcpCallStore (live, no polling).
   const onNewMcpEntries = useCallback((newEntries) => {
@@ -5725,6 +5741,7 @@ export default function BankingAgent({
             source: source || "heuristic",
             intent: result,
             timestamp: new Date().toISOString(),
+            heuristicSavedEstimate: (source || "heuristic") === "heuristic" ? 400 : 0,
           });
           return dispatchNlResult(result, source || "heuristic", text);
         })
@@ -5848,6 +5865,20 @@ export default function BankingAgent({
     } else if (activeLlmProvider === "helix" && _source === "heuristic") {
       setHelixDegraded(true);
     }
+
+    // Model advisory: surface mismatches between configured mode and query complexity.
+    if (modelAdvisoryTimerRef.current) clearTimeout(modelAdvisoryTimerRef.current);
+    const _frontierModes = ["claude", "chatgpt"];
+    if (_frontierModes.includes(agentProviderMode) && _source === "heuristic") {
+      setModelAdvisory({ msg: "Tip: simple query matched a pattern — heuristics mode skips the LLM entirely." });
+      modelAdvisoryTimerRef.current = setTimeout(() => setModelAdvisory(null), 6000);
+    } else if (agentProviderMode === "heuristics" && result.kind === "none") {
+      setModelAdvisory({ msg: "Tip: query not understood in heuristics-only mode — enable an LLM provider." });
+      modelAdvisoryTimerRef.current = setTimeout(() => setModelAdvisory(null), 6000);
+    } else {
+      setModelAdvisory(null);
+    }
+
     if (result.kind === "education" && result.ciba) {
       openEducationCommand({ ciba: true, tab: result.tab });
       setIsOpen(false);
@@ -6361,6 +6392,7 @@ export default function BankingAgent({
         source: _nlSource || "heuristic",
         intent: _nlResult,
         timestamp: new Date().toISOString(),
+        heuristicSavedEstimate: (_nlSource || "heuristic") === "heuristic" ? 400 : 0,
       });
       await dispatchNlResult(_nlResult, _nlSource || "heuristic", text);
     } catch (err) {
@@ -6849,6 +6881,21 @@ export default function BankingAgent({
                 </label>
                 {/* Five-mode agent provider selector — shared SSOT with /config */}
                 <AgentModeSelector compact />
+                {modelAdvisory && (
+                  <span
+                    className="ams-degraded-chip ba-model-advisory-chip"
+                    role="note"
+                    title={modelAdvisory.msg}
+                  >
+                    {modelAdvisory.msg}
+                    <button
+                      type="button"
+                      aria-label="Dismiss"
+                      className="ba-model-advisory-dismiss"
+                      onClick={() => setModelAdvisory(null)}
+                    >×</button>
+                  </span>
+                )}
                 {/* Compliance 12-step toggle */}
                 <button
                   type="button"

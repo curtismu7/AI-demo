@@ -50,6 +50,13 @@ class AGUIEmitter:
         await self._emit({"type": "STATE_DELTA", "delta": delta})
         await self._emit({"type": "TOOL_CALL_END", "toolCallId": tool_call_id})
 
+    async def on_usage(self, input_tokens: int, output_tokens: int) -> None:
+        await self._emit({
+            "type": "CUSTOM",
+            "name": "token_usage",
+            "value": {"inputTokens": input_tokens, "outputTokens": output_tokens},
+        })
+
     async def on_error(self, error: Exception) -> None:
         # RUN_ERROR is the AG-UI event the BFF and UI hook (useAgentRun.js) both
         # handle. Emitting ERROR alone leaves the dock empty because the hook

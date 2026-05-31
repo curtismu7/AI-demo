@@ -814,6 +814,8 @@ class MessageProcessor:
         #    call on_llm_start() exactly once per continuous token stream and
         #    on_llm_end() when the stream pauses for a tool call or ends.
         llm_streaming = False
+        total_input_tokens = 0
+        total_output_tokens = 0
 
         async for event in self.agent._graph.astream_events(
             agent_input, config=config, version="v2"
@@ -829,6 +831,13 @@ class MessageProcessor:
                         await emitter.on_llm_start()
                         llm_streaming = True
                     await emitter.on_llm_new_token(token)
+
+            elif event_name == "on_chat_model_end":
+                output = event_data.get("output")
+                usage = getattr(output, "usage_metadata", None) if output else None
+                if usage:
+                    total_input_tokens += getattr(usage, "input_tokens", 0)
+                    total_output_tokens += getattr(usage, "output_tokens", 0)
 
             elif event_name == "on_tool_start":
                 # Close any open LLM message before a tool call.
@@ -859,6 +868,9 @@ class MessageProcessor:
         # 6. Close the LLM message if it was still open at stream end.
         if llm_streaming:
             await emitter.on_llm_end()
+
+        if total_input_tokens or total_output_tokens:
+            await emitter.on_usage(total_input_tokens, total_output_tokens)
 
         logger.info("[AG-UI] process_agui_message complete for session %s", session_id)
 
