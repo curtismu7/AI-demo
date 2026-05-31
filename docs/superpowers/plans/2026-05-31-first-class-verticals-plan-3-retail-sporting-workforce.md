@@ -174,9 +174,83 @@ const HEURISTICS = [
 - [ ] **D5:** Full regression gate: no NEW failures vs baseline. Commit any stragglers.
 - [ ] **D6:** `/code-review <first-plan3-sha>..HEAD` final review.
 
+---
+
+## Task E — Curated 10 chips per vertical (7 heuristic + 3 LLM-only)
+
+**Decision (user, 2026-05-31):** each vertical exposes exactly **10 chips** — 7 backed by the
+vertical's plugin heuristics (work in Heuristics mode AND LLM mode) + 3 **LLM-only** (Heuristics
+mode skips them; they need real language understanding). Mechanism: a `mode` flag on the chip
+(`'both'` default | `'llm'`); the 3 `llm` chips have NO matching `getHeuristics()` entry, so in
+Heuristics mode they resolve to `kind:'none'` → the UI marks/gates them. Chips live in the manifest.
+Approved chip sets below.
+
+### E1 — chip schema + a single curated `chips10` manifest list
+
+- [ ] Add `mode: z.enum(['both', 'llm']).optional().default('both')` to `ChipSchema` in
+  `schema.js`. Add an optional manifest field `dashboard.chips10: z.array(ChipSchema).optional()`
+  (a flat curated list; keeps legacy `chips`/`llmChipGroups` intact for back-compat during rollout).
+  Test: a manifest with a `chips10` of `{id,label,message,mode}` validates; bad `mode` rejected.
+- [ ] Commit: `feat(verticals): chip mode flag + curated chips10 manifest list`.
+
+### E2 — populate `chips10` in all 5 manifests (approved sets)
+
+Each chip: `{ id, label, message, mode }`. The 7 `both` chips' `message` must match the vertical's
+`getHeuristics()` (verify each routes correctly); the 3 `llm` chips are freeform.
+
+- [ ] **healthcare** (heuristics: view_records/view_coverage/list_appointments/book_appointment/release_records):
+  both: "My records"(view records), "Check coverage"(check my coverage), "My appointments"(my appointments),
+  "Book an appointment"(book an appointment), "Release my records"(release my records),
+  "What's my deductible?"(check my coverage→view_coverage), "Upcoming visits"(my appointments→list_appointments).
+  llm: "Which of my providers are in-network?", "Summarize my recent visits", "Do I need a referral for a specialist?".
+- [ ] **retail** (checkout/order_status/list_orders/rewards_balance):
+  both: "List my orders"(list my orders), "Where's my order?"(order status), "My reward points"(my reward points),
+  "Checkout"(checkout), "Order history"(order history→list_orders), "Track my order"(track my order→order_status),
+  "Store credit balance"(store credit→rewards_balance).
+  llm: "What should I buy with my points?", "Compare my last two orders", "Any deals on what I viewed?".
+- [ ] **sporting-goods** (list_gear/list_rentals/gear_order_status/loyalty_balance/extend_rental):
+  both: "My gear"(my gear), "My rentals"(my rentals), "Extend my rental"(extend my rental),
+  "Order status"(order status→gear_order_status), "My loyalty points"(my loyalty points→loyalty_balance),
+  "What's due back?"(due back→list_rentals), "Order history"(order history→list_gear).
+  llm: "What gear matches my recent buys?", "Am I close to the next loyalty tier?", "Recommend trail-ready equipment".
+- [ ] **workforce** (view_benefits/pto_balance/list_expenses/submit_expense/request_time_off):
+  both: "My benefits"(my benefits), "PTO balance"(pto balance), "My expenses"(my expenses),
+  "Submit an expense"(submit an expense), "Request time off"(request time off),
+  "Sick leave balance"(sick leave balance→pto_balance), "Expense history"(expense history→list_expenses).
+  llm: "When should I use my remaining PTO?", "Am I enrolled in the right medical plan?", "Which expenses are still pending approval?".
+- [ ] **banking** (legacy, no plugin — uses THEME_VOCAB/banking actions): pick 10 in the same shape
+  (7 mapped to existing banking heuristic actions: accounts/balance/transactions/transfer/deposit/withdraw/mortgage;
+  3 llm: spend-analysis style). `mode:'both'` for the 7, `'llm'` for the 3. Banking keeps working via THEME_VOCAB.
+- [ ] For each: verify the 7 `both` messages route correctly. For plugin verticals,
+  `parseHeuristic(msg, id)` → `kind:'vertical'` with the expected action. For the 3 `llm`, confirm
+  `parseHeuristic(msg, id)` → `kind:'none'` (no heuristic match → LLM-only as intended).
+- [ ] Commit per vertical: `feat(verticals): <id> curated 10 chips (7 heuristic + 3 LLM-only)`.
+
+### E3 — UI renders the curated 10 + gates the LLM-only in Heuristics mode
+
+- [ ] In `BankingChips.jsx`: when `pageManifest.dashboard.chips10` exists, render THOSE 10 (one
+  section, themed) instead of the legacy HEURISTIC_CHIPS + llmChipGroups split. Read the current
+  agent mode (via `useLangchainProvider()` — `heuristicRouting`/provider). When in Heuristics-only
+  mode (`provider == null` / mode `heuristics`), render the `mode:'llm'` chips **disabled/greyed
+  with a tooltip** ("Needs an LLM — switch to Helix/Claude mode"); in any LLM-enabled mode, render
+  all 10 active. Click routing unchanged: `both` chips send `provider:'heuristic'` (LLM fallback
+  still applies in mixed mode); `llm` chips send the active LLM provider.
+- [ ] BUILD GATE: `cd demo_api_ui && npm run build` → 0; `npx jest App.structure` green.
+- [ ] Test: a focused BankingChips test (or extend existing) — given a manifest with chips10
+  incl. 3 `llm`, in heuristics mode the 3 are disabled; in LLM mode all 10 active.
+- [ ] Commit: `feat(verticals): render curated 10 chips; gate LLM-only chips in heuristics mode`.
+
+### E4 — verify + tidy
+- [ ] Confirm each vertical shows exactly 10 chips; the 3 LLM-only are visually distinct/gated in
+  Heuristics mode and active in LLM mode. Live smoke if a session is available.
+- [ ] (Optional cleanup) once chips10 is the source, the legacy `llmChipGroups` can be removed from
+  the 5 manifests — defer if risky; chips10 takes precedence in the UI regardless.
+
 ## Done-Criteria
 1. retail, sporting-goods, workforce each report `plugin`; banking still `legacy`.
 2. Each has a real domain schema (orders/rentals/benefits/expenses), own tools incl. a novel action, render descriptors, authz on write actions.
 3. Per-vertical no-fallback assertions pass.
 4. `nlIntentParser.chipFull` retail+sporting blocks updated to plugin routing; no banking leakage.
-5. No new failures vs baseline. 4 of 5 verticals first-class; only banking + deletions (Plan 6) remain.
+5. Each vertical exposes exactly 10 themed chips (7 heuristic-backed + 3 LLM-only); the 3 LLM-only
+   are gated in Heuristics mode and the 7 route correctly to plugin actions.
+6. No new failures vs baseline. UI build exits 0; `App.structure` green.
