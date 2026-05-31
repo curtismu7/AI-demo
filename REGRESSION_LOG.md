@@ -5,6 +5,19 @@ Update this file whenever a bug is fixed: add the bug, cause, fix, and test refe
 
 ---
 
+## 2026-05-31 — External agent runtimes: every tool call crashed (`callMcpTool` undefined) + verticals invisible
+
+**Symptoms**: With any external agent runtime active (OpenAI Agents SDK / Mastra / Pydantic AI — i.e. `llm_framework` != `langchain`), every tool call from the agent failed. Separately, in a non-banking vertical, the external runtimes never offered the vertical's tools (e.g. healthcare's `book_appointment`/`view_coverage`) — they only saw the banking catalog while the prompt spoke the vertical's language.
+
+**Root causes**:
+- **Crash**: `routes/agentTool.js` (the `/internal/agent-tool` callback all external runtimes POST to in order to execute a tool) did `const { callMcpTool } = require('../services/mcpWebSocketClient'); await callMcpTool(...)`. `mcpWebSocketClient` exports `mcpCallTool`, not `callMcpTool` — so the call was `await undefined(...)` → `TypeError: callMcpTool is not a function` on every invocation.
+- **Schema gap**: `routes/agentRun.js` built the tool list for external runtimes solely from `agentGatewayClient` (gateway tools or `getLocalToolsCatalog()` — banking only), never consulting the active vertical's plugin. So per-vertical plugin tools were never sent to the LLM.
+- **Dispatch gap**: even if a plugin tool name were called, `/internal/agent-tool` never consulted `verticalDispatch`, so it had no handler for plugin tools.
+
+**Fix**: (crash) `callMcpTool` → `mcpCallTool` in `agentTool.js`. (dispatch) `agentTool.js` now checks `verticalDispatch.resolvePlugin(activeId)` first — if the requested tool belongs to the active vertical's plugin, it executes in-BFF via `verticalDispatch.executeToolFor` (no MCP token needed); otherwise it falls through to the MCP `mcpCallTool` path (token-exchange + 428 handling unchanged). (schema) `agentRun.js` now post-processes its tool list through `resolveAgentRunTools(tools, activeId)` → `verticalDispatch.toolSchemasFor` when a plugin is active. All 4 runtimes now: vertical prompt + vertical tool schemas + vertical tool execution.
+
+**Tests**: `demo_api_server/src/__tests__/agentTool.verticalDispatch.test.js` (plugin-tool detection + dispatch) and `demo_api_server/src/__tests__/agentRun.verticalTools.test.js` (vertical schemas sent when plugin active, banking kept otherwise). Offline e2e confirmed: with healthcare active, agentRun serves healthcare tools and agentTool executes `view_coverage` in-BFF returning real coverage data. `npx jest agentTool agentRun` → 32 pass. Live per-runtime LLM round-trip pending a logged-in session.
+
 ## 2026-05-30 — Banking heuristic help catalog collapsed 10→6 items (themed-branch misfire on the default vertical)
 
 **Symptoms**: In the default banking vertical, the heuristics-only "I can help with:" catalog (shown on an unrecognized phrase / Mode-1 / Helix-unconfigured) dropped from the 10-item hand-authored `CAPABILITY_CATALOG` — losing `deposit`, `withdraw`, `spending summary`, `mortgage` and the example phrasings like "transfer $100 from checking to savings" — down to 6 generic chip-label items. Reply nouns also re-cased ("Your balances" → "Your Balance").
