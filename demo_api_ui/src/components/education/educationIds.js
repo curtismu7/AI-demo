@@ -68,4 +68,8 @@ export const EDU = {
   AGENT_RESTRICTIONS: "agent-restrictions",
   /** TransactionTokens — TraT context binding + mTLS gateway enforcement */
   TRANSACTION_TOKENS: "transaction-tokens",
+  /** Agent Frameworks — LangChain, OpenAI Agents, Mastra, Pydantic AI comparison and how to switch */
+  AGENT_FRAMEWORKS: "agent-frameworks",
+  /** Vertical Setup — Multi-tenancy: manifest-driven verticals, plugin architecture, admin controls */
+  VERTICAL_SETUP: "vertical-setup",
 };

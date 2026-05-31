@@ -4,10 +4,10 @@ const { verticalManifest } = require('../../../services/verticalManifest');
 const { getBankingToolDefinitions } = require('../../../services/agentBuilder');
 const { dispatchBankingAction } = require('../../../services/demoAgentLangGraphService');
 
-// Banking heuristics: phrase → action map
-// Extracted from nlIntentParser.js parseBanking() for consistency
+// Banking heuristics: phrase → action map (mirrors parseBanking() from nlIntentParser.js)
+// Actions must match tool names in getToolsWithActionAliases()
 const HEURISTICS = [
-  // mcp_tools
+  // mcp_tools (must be first to not interfere with other patterns)
   { re: /\b(list|show|get|what).*(mcp.*tools?|tools?.*available|available.*tools?)\b|\btools?\s*(list|available)\b/, action: 'mcp_tools' },
   // sensitive_account_details (must precede general accounts check)
   { re: /\b(sensitive account details|full account|routing number|account number|account details)\b/, action: 'sensitive_account_details' },
@@ -17,17 +17,24 @@ const HEURISTICS = [
   { re: /\bbalances?\b/, action: 'balance' },
   // accounts
   { re: /\b(accounts?|account\s*(list|overview|summary)|my\s*accounts?|check\s*accounts?|view\s*accounts?)\b/, action: 'accounts' },
-  // biggest_purchase / spending_summary
-  { re: /\b(biggest|largest|highest|top)\s*(purchase|spend|transaction)\b|\bwhere.*i.*spend\b/, action: 'biggest_purchase' },
-  { re: /\b(spending|spend)\s*(summary|analysis|breakdown|report)\b|\bmy\s*spending\b/, action: 'spending_summary' },
+  // biggest_purchase
+  { re: /\b(biggest|largest|highest|top)\b.*(purchase|spend|transaction|payment)\b|\b(purchase|spend|transaction|payment).*(biggest|largest|highest)\b|\bmost expensive\b|\bspent the most\b|\bbiggest spend\b/, action: 'biggest_purchase' },
+  // spending_summary
+  { re: /\b(spending summary|total spend|how much.*(spend|spent)|where.*money|breakdown.*spend\w*|spend\w*.*breakdown)\b/, action: 'spending_summary' },
   // transactions
-  { re: /\b(transactions?|activity|history|recent|last)\b|\b(view|show|list)\s*(transactions?|activity)\b/, action: 'transactions' },
+  { re: /\b(transactions?|history|activity|recent)\b/, action: 'transactions' },
   // transfer (must precede deposit/withdraw for specificity)
-  { re: /\btransfer\b|\bmove\s*(money|funds)\b|\bsend\s*(money|funds)\b/, action: 'transfer' },
+  { re: /\btransfer\b/, action: 'transfer' },
   // deposit
-  { re: /\bdeposit\b|\badd\s*(money|funds)\b/, action: 'deposit' },
+  { re: /\bdeposit\b/, action: 'deposit' },
   // withdraw
-  { re: /\bwithdraw\b|\bremove\s*(money|funds)\b/, action: 'withdraw' },
+  { re: /\b(withdraw|withdrawal)\b/, action: 'withdraw' },
+  // logout
+  { re: /\b(logout|log out|sign out|signout)\b/, action: 'logout' },
+  // api_key_demo
+  { re: /(?:show|get|use)?\s*(?:special\s+)?offers?|\bpromotions?\b|\bapi[- ]?key\s+path\b/i, action: 'api_key_demo' },
+  // dual_token_demo
+  { re: /(?:show|view|my)?\s*profile\s*card|\baccess[- ]?(?:and[- ]?)?id[- ]?token\s+path\b|\bdual[- ]?token\s+path\b/i, action: 'dual_token_demo' },
 ];
 
 function getManifest() {
@@ -48,6 +55,7 @@ function getToolsWithActionAliases() {
   const bankingTools = getBankingToolDefinitions();
   // Add action-name aliases for dispatchVerticalIntent authz/validation.
   // When heuristic parser returns action:'accounts', we need a tool def named 'accounts'.
+  // These aliases mirror the heuristic actions from parseBanking().
   const actionAliases = [
     {
       name: 'accounts',
@@ -98,6 +106,62 @@ function getToolsWithActionAliases() {
       scopes: ['read'],
       authz: { consent: true },
     },
+    {
+      name: 'mcp_tools',
+      description: 'List available MCP tools.',
+      inputSchema: { type: 'object', properties: {} },
+      scopes: ['read'],
+      authz: {},
+    },
+    {
+      name: 'mortgage_demo',
+      description: 'Show mortgage information.',
+      inputSchema: { type: 'object', properties: {} },
+      scopes: ['read'],
+      authz: {},
+    },
+    {
+      name: 'biggest_purchase',
+      description: 'Show biggest purchase information.',
+      inputSchema: { type: 'object', properties: {} },
+      scopes: ['read'],
+      authz: {},
+    },
+    {
+      name: 'spending_summary',
+      description: 'Show spending summary.',
+      inputSchema: { type: 'object', properties: {} },
+      scopes: ['read'],
+      authz: {},
+    },
+    {
+      name: 'api_key_demo',
+      description: 'Demo API-key path.',
+      inputSchema: { type: 'object', properties: {} },
+      scopes: ['read'],
+      authz: {},
+    },
+    {
+      name: 'dual_token_demo',
+      description: 'Demo access and ID token path.',
+      inputSchema: { type: 'object', properties: {} },
+      scopes: ['read'],
+      authz: {},
+    },
+    {
+      name: 'logout',
+      description: 'Logout the user.',
+      inputSchema: { type: 'object', properties: {} },
+      scopes: [],
+      authz: {},
+    },
+    {
+      name: 'vertical_feature_demo',
+      description: 'Demo vertical feature.',
+      inputSchema: { type: 'object', properties: {} },
+      scopes: ['read'],
+      authz: {},
+    },
   ];
   // Return both real MCP tool defs + action aliases for dispatchVerticalIntent routing
   return [...bankingTools, ...actionAliases];
@@ -119,11 +183,11 @@ module.exports = {
   getSystemPrompt,
   getDataStore: () => ({ get: () => ({}) }), // MCP-backed, no local store
   executeTool: async (name, params, ctx) => {
-    // Banking actions: delegate to dispatchBankingAction (extracted from executeHeuristicBanking)
-    // These actions are dispatched by the heuristic parser or LLM reasoning
-    const bankingActions = ['accounts', 'balance', 'transactions', 'transfer', 'deposit', 'withdraw', 'sensitive_account_details'];
+    // Banking actions delegated to dispatchBankingAction (extracted from executeHeuristicBanking).
+    // These handle core banking operations that require MCP or store access.
+    const coreActions = ['accounts', 'balance', 'transactions', 'transfer', 'deposit', 'withdraw', 'sensitive_account_details'];
 
-    if (bankingActions.includes(name)) {
+    if (coreActions.includes(name)) {
       // Construct the action context for dispatchBankingAction
       const dispatchCtx = {
         userToken: ctx && ctx.userToken ? ctx.userToken : null,
@@ -134,8 +198,14 @@ module.exports = {
       };
 
       const result = await dispatchBankingAction(name, params || {}, ctx.userId, dispatchCtx);
-      // Map result to plugin execute envelope if needed (or return as-is if compatible)
       return result;
+    }
+
+    // Placeholder actions (demos, etc.) return success with empty result
+    // These are captured by the heuristic path and handled elsewhere
+    const placeholderActions = ['mcp_tools', 'mortgage_demo', 'biggest_purchase', 'spending_summary', 'api_key_demo', 'dual_token_demo', 'logout', 'vertical_feature_demo'];
+    if (placeholderActions.includes(name)) {
+      return { result: { data: {} }, render: 'text' };
     }
 
     // Unknown action

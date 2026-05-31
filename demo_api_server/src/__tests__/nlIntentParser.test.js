@@ -452,26 +452,29 @@ describe('nlIntentParser — Phase 266 Dual-token path demo (dual_token_demo)', 
   // Test 10: "use the access-and-id-token path" → dual_token_demo
   it('Test 10: routes "use the access-and-id-token path" → dual_token_demo', () => {
     const r = parseHeuristic('use the access-and-id-token path');
-    expect(r.kind).toBe('banking');
-    expect(r.banking.action).toBe('dual_token_demo');
+    expect(r.kind).toBe('vertical');
+    expect(r.vertical).toBe('banking');
+    expect(r.action).toBe('dual_token_demo');
   });
 });
 
-// ── Phase 266 — Regression guard (existing actions still work) ────────────────
+// ── Phase 266 — Regression guard (existing actions still work with plugin routing) ────────────────
 
 describe('nlIntentParser — Phase 266 regression guard (existing actions unaffected)', () => {
-  // Test 11: "show my balance" still returns existing balance action
-  it('Test 11: "show my balance" still routes → balance (no regression)', () => {
+  // Test 11: "show my balance" still routes to balance action via banking plugin
+  it('Test 11: "show my balance" still routes → balance via banking plugin', () => {
     const r = parseHeuristic('show my balance');
-    expect(r.kind).toBe('banking');
-    expect(r.banking.action).toBe('balance');
+    expect(r.kind).toBe('vertical');
+    expect(r.vertical).toBe('banking');
+    expect(r.action).toBe('balance');
   });
 
-  // Test 12: "show my accounts" still returns existing accounts action
-  it('Test 12: "show my accounts" still routes → accounts (no regression)', () => {
+  // Test 12: "show my accounts" still routes to accounts action via banking plugin
+  it('Test 12: "show my accounts" still routes → accounts via banking plugin', () => {
     const r = parseHeuristic('show my accounts');
-    expect(r.kind).toBe('banking');
-    expect(r.banking.action).toBe('accounts');
+    expect(r.kind).toBe('vertical');
+    expect(r.vertical).toBe('banking');
+    expect(r.action).toBe('accounts');
   });
 });
 
