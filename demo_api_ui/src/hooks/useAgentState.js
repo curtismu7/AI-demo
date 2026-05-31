@@ -91,7 +91,7 @@ export function useAgentState() {
 
     switch (event.type) {
       case 'RUN_STARTED':
-        setState((prev) => ({ ...prev, lastOutcome: null, error: null, hitlPending: null }));
+        setState((prev) => ({ ...prev, lastOutcome: null, error: null, hitlPending: null, lastTokenUsage: null }));
         break;
 
       case 'TEXT_MESSAGE_START':

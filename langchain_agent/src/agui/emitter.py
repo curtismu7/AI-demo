@@ -99,11 +99,14 @@ class AGUIEventEmitter:
         await self._emit(ToolCallEnd(tool_call_id=tc_id))
 
     async def on_usage(self, input_tokens: int, output_tokens: int) -> None:
-        await self._sink({
-            "type": "CUSTOM",
-            "name": "token_usage",
-            "value": {"inputTokens": input_tokens, "outputTokens": output_tokens},
-        })
+        try:
+            await self._sink({
+                "type": "CUSTOM",
+                "name": "token_usage",
+                "value": {"inputTokens": input_tokens, "outputTokens": output_tokens},
+            })
+        except Exception:
+            logger.exception("AG-UI sink error")
 
     async def on_error(self, error: Exception, **kwargs) -> None:
         # RUN_ERROR is the AG-UI terminal-error event the BFF and React hook

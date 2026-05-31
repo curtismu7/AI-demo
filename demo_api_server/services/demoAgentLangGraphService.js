@@ -160,8 +160,9 @@ async function dispatchBankingAction(action, params, userId, ctx) {
       if (action === 'balance' && params.accountId) {
         const bal = parsed2.balance;
         const acctType = parsed2.accountType || parsed2.account_type || params.accountId;
+        const _balLabel = (_term && _term.balance) || acctType;
         if (bal !== undefined) {
-          return { reply: `Your **${acctType}** balance is **$${Number(bal).toFixed(2)}**.`, success: true, toolsCalled: [toolName], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents, balance: bal };
+          return { reply: `Your **${_balLabel}** balance is **$${Number(bal).toFixed(2)}**.`, success: true, toolsCalled: [toolName], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents, balance: bal };
         }
         // fallback: show accounts list from result
         const accts2 = parsed2.accounts || [];
@@ -169,7 +170,8 @@ async function dispatchBankingAction(action, params, userId, ctx) {
         if (match) {
           const bal2 = Number(match.balance ?? 0).toFixed(2);
           const type2 = match.accountType || match.account_type || match.type || 'Account';
-          return { reply: `Your **${type2}** balance is **$${bal2}**.`, success: true, toolsCalled: [toolName], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents, balance: match.balance };
+          const _balLabel2 = (_term && _term.balance) || type2;
+          return { reply: `Your **${_balLabel2}** balance is **$${bal2}**.`, success: true, toolsCalled: [toolName], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents, balance: match.balance };
         }
         return { reply: 'Balance information is not available right now.', success: false, toolsCalled: [toolName], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents };
       }
@@ -451,10 +453,43 @@ function resolveExecuteTool(activeId, { userId, userToken, req, tokenEvents, ses
   };
 }
 
+// Build a meaningful reply string from vertical plugin result data, themed per vertical terminology.
+function buildVerticalReply(action, data, render, verticalCtx) {
+  const term = verticalCtx && verticalCtx.terminology;
+
+  if (render === 'list_gear' || render === 'list_rentals') {
+    const noun = render === 'list_gear'
+      ? (term && term.transactions || 'orders')
+      : 'rentals';
+    const items = data.orders || data.rentals || [];
+    const count = Array.isArray(items) ? items.length : 0;
+    return `Here are your ${noun} (${count} total).`;
+  }
+  if (render === 'loyalty_balance') {
+    const noun = term && term.balance || 'balance';
+    const pts = data.points != null ? data.points : data.balance;
+    return pts != null ? `Your ${noun}: ${pts}` : `Here is your ${noun}.`;
+  }
+  if (render === 'list_appointments') {
+    const noun = term && term.transactions || 'appointments';
+    const items = data.appointments || [];
+    return `Here are your ${noun} (${Array.isArray(items) ? items.length : 0} total).`;
+  }
+  if (render === 'view_records' || render === 'view_coverage') {
+    const noun = render === 'view_coverage'
+      ? (term && term.balance || 'coverage')
+      : (term && term.accounts || 'records');
+    return `Here is your ${noun}.`;
+  }
+
+  const noun = (term && term.accounts) || action.replace(/_/g, ' ');
+  return `Here are your ${noun}.`;
+}
+
 // kind:'vertical' heuristic dispatch — runs the active vertical's plugin tool
 // and packages the result both for the chat reply and the UI render descriptor.
 // Mirrors executeHeuristicBanking's return envelope, adding `verticalResult`.
-async function dispatchVerticalIntent(heuristic, { userId, userToken, req, tokenEvents = [], sessionId = '', isAdmin = false }) {
+async function dispatchVerticalIntent(heuristic, { userId, userToken, req, tokenEvents = [], sessionId = '', isAdmin = false, verticalCtx = null }) {
   const { vertical, action, params } = heuristic;
 
   // 1. Resolve the plugin tool def to read its required-params + authz.
@@ -518,7 +553,7 @@ async function dispatchVerticalIntent(heuristic, { userId, userToken, req, token
   );
   const data = out && out.result;
   const isErr = !!(data && data.error);
-  const reply = isErr ? `❌ ${data.error}` : `Done: ${String(action).replace(/_/g, ' ')}.`;
+  const reply = isErr ? `❌ ${data.error}` : buildVerticalReply(action, data, out && out.render, verticalCtx);
   return {
     reply,
     success: !isErr,
@@ -749,7 +784,7 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
       const heuristic = parseHeuristic(message, _activeVerticalId, _verticalCtx);
       if (heuristic && heuristic.kind === 'vertical') {
         const isAdmin = req && req.session && req.session.user && req.session.user.role === 'admin';
-        const verticalResult = await dispatchVerticalIntent(heuristic, { userId, userToken, req, tokenEvents: [], sessionId: req?.sessionID || '', isAdmin });
+        const verticalResult = await dispatchVerticalIntent(heuristic, { userId, userToken, req, tokenEvents: [], sessionId: req?.sessionID || '', isAdmin, verticalCtx: _verticalCtx });
         if (req) req.agentPath = 'heuristic';
         try {
           appEventService.logEvent('agent', 'info', `Heuristic vertical: ${heuristic.action}`, { tag: 'agent/heuristic_vertical' });
