@@ -61,6 +61,19 @@ router.post('/active', requireSession, (req, res) => {
   res.status(204).end();
 });
 
+router.put('/:id/user-chips', requireSession, requireValidId, async (req, res) => {
+  const { id } = req.params;
+  if (!verticalManifest.loader.get(id)) return res.status(404).json({ error: 'unknown id' });
+  const { chips } = req.body || {};
+  if (!Array.isArray(chips)) return res.status(400).json({ error: 'chips array required' });
+  try {
+    verticalManifest.resolver.overlay.setField(id, 'dashboard.userChips', chips);
+    res.status(204).end();
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
 router.post('/reset-all', requireAdmin, (_req, res) => {
   for (const id of verticalManifest.store.listOverlayIds()) {
     verticalManifest.resolver.overlay.clearAll(id);

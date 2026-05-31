@@ -82,6 +82,7 @@ const ManifestSchema = z.object({
     }).optional(),
     llmChipGroups: z.record(z.string(), z.array(ChipSchema)).optional(),
     chips10: z.array(ChipSchema).optional(),
+    userChips: z.array(ChipSchema).optional(),
   }).optional(),
 
   scopes: z.object({

@@ -660,6 +660,19 @@ function extractHelixConfig(langchainConfig = {}) {
 
 /**
  * Process incoming user message through the agent
+ *
+ * Response shape:
+ *   {
+ *     reply: string,                    // Natural language response
+ *     success: boolean,                 // Whether execution succeeded
+ *     toolsCalled: string[],            // Which tools were invoked
+ *     intent?: string,                  // [Added by POST /api/agent/invoke] Extracted intent (e.g., "transfer", "view_balance")
+ *     confidence?: number,              // [Added by POST /api/agent/invoke] Confidence score (0–1)
+ *     tokenEvents?: object[],           // Token exchange events for UI display
+ *     requiresConsent?: boolean,        // Whether HITL consent is pending
+ *     agentPath?: string,               // 'heuristic' or 'llm' for attribution
+ *     ... (other fields per tool context)
+ *   }
  */
 async function processAgentMessage({ message, userId, userToken, sessionId, tokenEvents = [], langchainConfig = {}, req = null }) {
   try {

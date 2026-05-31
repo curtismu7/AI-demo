@@ -713,7 +713,7 @@ export function createWithdrawalWithConsent(
  * }>}
  */
 export async function sendAgentMessage(message, consentId = null, { signal } = {}) {
-  const body = { message };
+  const body = { prompt: message };
   if (consentId) body.consentId = consentId;
 
   const opts = {
@@ -726,7 +726,7 @@ export async function sendAgentMessage(message, consentId = null, { signal } = {
     ? anySignal([AbortSignal.timeout(30000), signal])
     : AbortSignal.timeout(30000);
 
-  let res = await fetch("/api/banking-agent/message", opts);
+  let res = await fetch("/api/agent/invoke", opts);
 
   // 401: try session refresh once, then retry — skip for stub-token errors (refresh has no real token to use)
   if (res.status === 401) {

@@ -101,6 +101,8 @@ const mcpDecisionPollingRoutes = require('./routes/mcpDecisionPolling');
 const demoAgentRoutes = require('./routes/demoAgentRoutes');
 const agentRunRoutes = require('./routes/agentRun');
 const demoAgentNlRoutes = require('./routes/demoAgentNl');
+const agentInvokeRoutes = require('./routes/agentInvokeRoute');
+const intentAuthRoutes = require('./routes/intentAuthRoute');
 const langchainConfigRoutes = require('./routes/langchainConfig');
 const lmstudioRoutes = require('./routes/lmstudio');
 const tokenRoutes = require('./routes/tokens');
@@ -849,6 +851,9 @@ app.use('/api/mcp', mcpDecisionPollingRoutes);
 app.use('/api/banking-agent', demoAgentNlRoutes);
 // Authenticated agent routes: /init, /message, /consent — require OAuth session.
 app.use('/api/banking-agent', demoAgentRoutes);
+// Intent authorization and unified agent invocation
+app.use('/', intentAuthRoutes);
+app.use('/', agentInvokeRoutes);
 app.use('/api/agent', agentRunRoutes); // AG-UI Step 2: /api/agent/run
 app.use('/api/agent/langchain', require('./routes/agentLangchainRunRoute')); // AG-UI Phase 2.3: LangChain /run
 app.use('/api/agent', require('./routes/agentConsentRoute')); // AG-UI Phase 4.1: HITL consent
@@ -1009,6 +1014,7 @@ app.use('/api/token-display', authenticateToken, tokenDisplayRoutes);
 app.use('/api/api-calls', apiCallTrackerRoutes);
 app.use('/api/admin/app-config', authenticateToken, appConfigRoutes);
 app.use('/api/verticals', authenticateToken, verticalManifestRoutes);
+app.use('/api/plugin/data', authenticateToken, require('./routes/pluginData'));
 app.use('/api/config/credentials', configCredentialsRoutes);
 app.use('/api/config/thresholds', thresholdsRoutes);
 

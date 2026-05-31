@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useCustomChips } from "../hooks/useCustomChips";
+import { useVertical } from '../vertical/useVertical';
 
 const DEFAULT_GROUP_ID = "custom";
 const DEFAULT_GROUP_LABEL = "Custom Actions";
@@ -133,9 +134,31 @@ const s = {
 export default function CustomChipsTab() {
   const { chips, groups, addChip, removeChip, addGroup, removeGroup } =
     useCustomChips();
+  const { pageManifest } = useVertical();
+  const activeId = pageManifest?.id;
 
   const [newGroup, setNewGroup] = useState("");
   const [groupError, setGroupError] = useState("");
+
+  // Best-effort server sync of chips to the overlay (non-blocking).
+  // localStorage remains the authoritative source for UI state.
+  function syncChipsToServer(chipsToSync) {
+    if (!activeId) return;
+    const formatted = chipsToSync.map((c) => ({
+      id: c.id,
+      label: c.label,
+      message: c.prompt,
+      mode: c.type === 'llm' ? 'llm' : 'both',
+    }));
+    fetch(`/api/verticals/${activeId}/user-chips`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ chips: formatted }),
+    }).catch(() => {
+      // Silently fail — server sync is best-effort; localStorage is authoritative
+    });
+  }
 
   const [form, setForm] = useState({
     label: "",
@@ -186,14 +209,16 @@ export default function CustomChipsTab() {
       return;
     }
     const id = slugify(label) + "_" + Date.now().toString(36);
-    addChip({
+    const newChip = {
       id,
       label,
       desc: form.desc.trim(),
       prompt,
       type: form.type,
       groupId: form.groupId,
-    });
+    };
+    addChip(newChip);
+    syncChipsToServer([...chips, newChip]);
     setForm({
       label: "",
       desc: "",
@@ -304,7 +329,10 @@ export default function CustomChipsTab() {
                   <button
                     type="button"
                     style={{ ...s.btn, ...s.removeBtn }}
-                    onClick={() => removeChip(chip.id)}
+                    onClick={() => {
+                      removeChip(chip.id);
+                      syncChipsToServer(chips.filter((c) => c.id !== chip.id));
+                    }}
                   >
                     Remove
                   </button>

@@ -433,6 +433,12 @@ ff_heuristic_enabled:      { public: true, default: 'true'  }, // Use heuristic 
   // so the shared .env coverage guard can verify they are reachable via configStore.
   gw_introspection_client_id:     { public: true,  default: '' },
   gw_introspection_client_secret: { public: false, default: '' },
+
+  // Intent-based authorization — gate high-risk actions based on user intent confidence
+  ff_intent_authorization_enabled: { public: true,  default: 'false' }, // Enable intent-based authorization checks
+  intent_min_confidence:           { public: true,  default: '0.7' },  // Minimum confidence (0–1) required to authorize any intent
+  intent_requires_consent:         { public: true,  default: 'transfer' },  // Comma-separated list of intents requiring HITL consent
+  intent_max_amount_low_confidence: { public: true, default: '100' },  // USD: block transfers > this amount if confidence < intent_min_confidence
 };
 
 // ---------------------------------------------------------------------------

@@ -216,8 +216,6 @@ export default function BankingChips({
     ? dashboard.chips10
     : null;
 
-  const customHeuristic = customChips.filter((c) => c.type === "heuristic");
-  const customLlm = customChips.filter((c) => c.type === "llm");
 
   const handleChipClick = (chip, requiresLlm = false) => {
     if (onChipClick) {
@@ -311,6 +309,32 @@ export default function BankingChips({
         </div>
       )}
 
+      {/* User-defined custom chips — always shown when present, below curated chips */}
+      {customChips.length > 0 && (
+        <div className="banking-chips-dropdown__section">
+          <div className="banking-chips-dropdown__label">My Actions</div>
+          <div className="banking-chips-dropdown__grid banking-chips-dropdown__grid--heuristic">
+            {customChips.map((chip) => {
+              const isLlm = chip.type === 'llm';
+              const llmDisabled = isLlm && !llmAvailable;
+              return (
+                <button
+                  type="button"
+                  key={chip.id}
+                  className={`banking-chips-dropdown__button banking-chips-dropdown__button--${isLlm ? 'llm' : 'heuristic'}`}
+                  onClick={() => handleChipClick({ message: chip.prompt, label: chip.label, id: chip.id }, isLlm)}
+                  disabled={isLoading || llmDisabled}
+                  title={llmDisabled ? 'Needs an LLM — switch to Helix or Claude mode' : chip.prompt}
+                >
+                  {chip.label}
+                  {isLlm && <span className="banking-chips-dropdown__mcp-badge">LLM</span>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Legacy two-section split — fallback for verticals without chips10. */}
       {!chips10 && (
       <>
@@ -326,18 +350,6 @@ export default function BankingChips({
               onClick={() => handleChipClick(chip, false)}
               disabled={isLoading}
               title={chip.message}
-            >
-              {chip.label}
-            </button>
-          ))}
-          {customHeuristic.map((chip) => (
-            <button
-              type="button"
-              key={chip.id}
-              className="banking-chips-dropdown__button banking-chips-dropdown__button--heuristic"
-              onClick={() => handleChipClick({ message: chip.prompt }, false)}
-              disabled={isLoading}
-              title={chip.prompt}
             >
               {chip.label}
             </button>
@@ -382,39 +394,6 @@ export default function BankingChips({
               )}
             </div>
           ))}
-          {customLlm.length > 0 && (
-            <div className="banking-chips-dropdown__category">
-              <button
-                type="button"
-                className="banking-chips-dropdown__category-header"
-                onClick={() => handleCategoryToggle("__custom__")}
-                disabled={isLoading}
-              >
-                <span className="banking-chips-dropdown__category-toggle">
-                  {expandedCategory === "__custom__" ? "▼" : "▶"}
-                </span>
-                <span className="banking-chips-dropdown__category-name">
-                  Custom
-                </span>
-              </button>
-              {expandedCategory === "__custom__" && (
-                <div className="banking-chips-dropdown__grid banking-chips-dropdown__grid--llm">
-                  {customLlm.map((chip) => (
-                    <button
-                      type="button"
-                      key={chip.id}
-                      className="banking-chips-dropdown__button banking-chips-dropdown__button--llm"
-                      onClick={() => handleChipClick({ message: chip.prompt }, true)}
-                      disabled={isLoading}
-                      title={chip.prompt}
-                    >
-                      {chip.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </div>
       </>
