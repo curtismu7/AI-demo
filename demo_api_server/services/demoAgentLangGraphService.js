@@ -92,19 +92,16 @@ async function _callTransactionsApi(body, userToken) {
 }
 
 /**
- * Execute a banking action identified by the heuristic parser, returning a chat-style reply.
- * Handles Phase 2-3 token exchange if needed.
- * @returns {{ reply: string, success: boolean, toolsCalled: string[], tokensUsed: number, requiresConsent: boolean, agentConfigured: boolean, tokenEvents: any[] } | null}
+ * Dispatch a banking action based on parsed intent.
+ * Reusable by both executeHeuristicBanking and banking plugin executeTool.
+ * @param {string} action - The banking action (accounts, balance, transactions, transfer, deposit, withdraw, sensitive_account_details)
+ * @param {object} params - Action-specific parameters (fromId, toId, amount, etc.)
+ * @param {string} userId - User ID for lookups
+ * @param {object} ctx - Context object with { userToken, req, subjectToken, isAdmin, terminology }
+ * @returns {Promise<{reply, success, toolsCalled, ...} | null>}
  */
-async function executeHeuristicBanking(parsed, userId, userToken, req = null, subjectToken = null, verticalCtx = null) {
-  const action = parsed?.banking?.action;
-  const params = parsed?.banking?.params || {};
-  if (!action) return null;
-
-  const sessionRole = req?.session?.user?.role;
-  const isAdmin = sessionRole === 'admin';
-  // Vertical terminology for reply headings/labels (null for banking → banking wording).
-  const _term = (verticalCtx && verticalCtx.terminology) || null;
+async function dispatchBankingAction(action, params, userId, ctx) {
+  const { userToken, req, subjectToken, isAdmin, terminology: _term } = ctx;
 
   try {
     // READ actions — route through the full token-exchange → gateway → MCP server
@@ -239,7 +236,9 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null, su
         return { reply: `Transferred **$${amount.toFixed(2)}** from ${fromAcct.accountType} to ${toAcct.accountType}.`, success: true, toolsCalled: ['create_transfer'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents };
       } catch (err) {
         // WR-07(a): non-Error throws have no .message — surface the real value.
-        return { reply: `Transfer failed: ${(err && err.message) ? err.message : String(err)}`, success: false, toolsCalled: ['create_transfer'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents };
+        const detail = (err && err.message) ? err.message : String(err);
+        console.warn('[dispatchBankingAction] Error executing transfer:', detail);
+        throw (err instanceof Error) ? err : new Error(`[dispatchBankingAction] transfer failed: ${detail}`);
       }
     }
 
@@ -283,7 +282,9 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null, su
         return { reply: `Deposited **$${amount.toFixed(2)}** into ${toAcct.accountType}.`, success: true, toolsCalled: ['create_deposit'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents };
       } catch (err) {
         // WR-07(a): non-Error throws have no .message — surface the real value.
-        return { reply: `Deposit failed: ${(err && err.message) ? err.message : String(err)}`, success: false, toolsCalled: ['create_deposit'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents };
+        const detail = (err && err.message) ? err.message : String(err);
+        console.warn('[dispatchBankingAction] Error executing deposit:', detail);
+        throw (err instanceof Error) ? err : new Error(`[dispatchBankingAction] deposit failed: ${detail}`);
       }
     }
 
@@ -327,7 +328,9 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null, su
         return { reply: `Withdrew **$${amount.toFixed(2)}** from ${fromAcct.accountType}.`, success: true, toolsCalled: ['create_withdrawal'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents };
       } catch (err) {
         // WR-07(a): non-Error throws have no .message — surface the real value.
-        return { reply: `Withdrawal failed: ${(err && err.message) ? err.message : String(err)}`, success: false, toolsCalled: ['create_withdrawal'], tokensUsed: 0, requiresConsent: false, agentConfigured: true, tokenEvents };
+        const detail = (err && err.message) ? err.message : String(err);
+        console.warn('[dispatchBankingAction] Error executing withdraw:', detail);
+        throw (err instanceof Error) ? err : new Error(`[dispatchBankingAction] withdraw failed: ${detail}`);
       }
     }
 
@@ -374,19 +377,38 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null, su
       };
     }
   } catch (err) {
-    // WR-07(a): non-Error throws (string, MCP-error object without .message)
-    // previously logged `undefined` and were swallowed — the function then
-    // returned null, so the caller fell through to the LLM path which could
-    // RE-EXECUTE a write tool (transfer/deposit/withdraw) a second time.
-    // Log the real value, and re-throw for write actions so a partially
-    // executed mutation is surfaced instead of silently double-run.
+    // WR-07(a): non-Error throws have no .message — surface the real value.
     const detail = (err && err.message) ? err.message : String(err);
-    console.warn('[heuristicBanking] Error executing action:', action, detail);
+    console.warn('[dispatchBankingAction] Unhandled error in action:', action, detail);
+    // Write actions (transfer, deposit, withdraw) already throw in their catch blocks above.
+    // Read actions fall through and return an error reply above.
+    // Only re-throw if we haven't already handled it.
     if (['transfer', 'deposit', 'withdraw'].includes(action)) {
-      throw (err instanceof Error) ? err : new Error(`[heuristicBanking] ${action} failed: ${detail}`);
+      throw err; // Already wrapped in the action's catch block
     }
   }
   return null;
+}
+
+/**
+ * Execute a banking action identified by the heuristic parser, returning a chat-style reply.
+ * Thin wrapper around dispatchBankingAction.
+ * @returns {{ reply: string, success: boolean, toolsCalled: string[], tokensUsed: number, requiresConsent: boolean, agentConfigured: boolean, tokenEvents: any[] } | null}
+ */
+async function executeHeuristicBanking(parsed, userId, userToken, req = null, subjectToken = null, verticalCtx = null) {
+  const action = parsed?.banking?.action;
+  const params = parsed?.banking?.params || {};
+  if (!action) return null;
+
+  const ctx = {
+    userToken,
+    req,
+    subjectToken,
+    isAdmin: req?.session?.user?.role === 'admin',
+    terminology: (verticalCtx && verticalCtx.terminology) || null,
+  };
+
+  return dispatchBankingAction(action, params, userId, ctx);
 }
 
 /**
@@ -999,5 +1021,6 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
 module.exports = {
   processAgentMessage,
   buildToolSchemasForAgentForVertical,
+  dispatchBankingAction,
   __test: { resolveToolSchemas, resolveExecuteTool, dispatchVerticalIntent },
 };
