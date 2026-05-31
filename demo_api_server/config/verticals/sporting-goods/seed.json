@@ -1,0 +1,11 @@
+{
+  "orders": [
+    { "id": "o1", "product": "Nike Pegasus 41", "sku": "SS-NK-RUN", "amount": 140, "status": "Delivered", "date": "2026-04-18" },
+    { "id": "o2", "product": "Garmin Forerunner 265", "sku": "SS-GRM-WCH", "amount": 449, "status": "Shipped", "date": "2026-04-25" }
+  ],
+  "rentals": [
+    { "id": "r1", "item": "Trek Marlin 8 Mountain Bike", "sku": "SS-TREK-MB8", "dueDate": "2026-05-30", "dailyRate": 45, "status": "Active" },
+    { "id": "r2", "item": "Rossignol Ski Set", "sku": "SS-RS-SKI", "dueDate": "2026-06-01", "dailyRate": 60, "status": "Active" }
+  ],
+  "loyalty": { "points": 4500, "tier": "Gold" }
+}
