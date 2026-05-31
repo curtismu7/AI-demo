@@ -155,6 +155,13 @@
     "transfer": "transfer",
     "featureScope": "expense:read"
   },
+  "render": {
+    "view_benefits": { "type": "table", "columns": [ { "label": "Benefit", "path": "name" }, { "label": "Plan", "path": "planType" }, { "label": "Status", "path": "enrollmentStatus" } ] },
+    "pto_balance": { "type": "fieldList", "title": "PTO", "fields": [ { "label": "Balance", "path": "balance", "format": "count" }, { "label": "Sick leave", "path": "sickLeave", "format": "count" }, { "label": "Accrued YTD", "path": "accruedYtd", "format": "count" } ] },
+    "list_expenses": { "type": "table", "columns": [ { "label": "Category", "path": "category" }, { "label": "Amount", "path": "amount", "format": "money" }, { "label": "Status", "path": "status" } ] },
+    "submit_expense": { "type": "card", "title": "Expense Submitted", "fields": [ { "label": "Category", "path": "category" }, { "label": "Amount", "path": "amount", "format": "money" }, { "label": "Status", "path": "status" } ] },
+    "request_time_off": { "type": "card", "title": "Time Off Requested", "fields": [ { "label": "Days", "path": "days", "format": "count" }, { "label": "Remaining", "path": "remaining", "format": "count" } ] }
+  },
   "featurePage": {
     "mcpTool": "show_expense_report",
     "pageTitle": "Expense Report",
