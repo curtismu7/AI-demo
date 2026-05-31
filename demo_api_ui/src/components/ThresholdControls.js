@@ -45,9 +45,17 @@ export default function ThresholdControls() {
   const [status, setStatus] = useState(null);
   const [, setFlagError] = useState(null);
   const [, setIsAdmin] = useState(false);
-  const [openSections, setOpenSections] = useState({ thresholds: true, flags: true, tokenExchange: false });
+  const [openSections, setOpenSections] = useState({ thresholds: true, verticalThresholds: false, flags: true, tokenExchange: false });
   const btnRef = useRef(null);
   const panelRef = useRef(null);
+
+  // Per-vertical thresholds
+  const [verticals, setVerticals] = useState([]);
+  const [selectedVertical, setSelectedVertical] = useState('');
+  const [vertConfirm, setVertConfirm] = useState('');
+  const [vertMfa, setVertMfa] = useState('');
+  const [vertSaving, setVertSaving] = useState(false);
+  const [vertStatus, setVertStatus] = useState(null);
 
   const toggleSection = (key) => setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
 
@@ -57,8 +65,15 @@ export default function ThresholdControls() {
       const threshRes = await fetch('/api/config/thresholds', { credentials: 'include' });
       if (threshRes.ok) {
         const data = await threshRes.json();
-        setConfirm(String(data.confirm_threshold_usd ?? 250)); // HITL threshold default $250
-        setMfa(String(data.mfa_threshold_usd ?? 500)); // MFA threshold default $500
+        setConfirm(String(data.confirm_threshold_usd ?? 250));
+        setMfa(String(data.mfa_threshold_usd ?? 500));
+      }
+
+      // Load vertical list for per-vertical threshold section
+      const vertRes = await fetch('/api/verticals/list', { credentials: 'include' });
+      if (vertRes.ok) {
+        const list = await vertRes.json();
+        setVerticals(list || []);
       }
 
       // Load feature flags
@@ -78,6 +93,19 @@ export default function ThresholdControls() {
       // silent
     }
   }, []);
+
+  // When selected vertical changes, load its thresholds
+  useEffect(() => {
+    if (!selectedVertical) { setVertConfirm(''); setVertMfa(''); return; }
+    fetch(`/api/config/thresholds?vertical=${encodeURIComponent(selectedVertical)}`, { credentials: 'include' })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (!data) return;
+        setVertConfirm(data[`confirm_threshold_usd_${selectedVertical}`] || '');
+        setVertMfa(data[`mfa_threshold_usd_${selectedVertical}`] || '');
+      })
+      .catch(() => {});
+  }, [selectedVertical]);
 
   useEffect(() => {
     if (open) loadAll();
@@ -103,6 +131,36 @@ export default function ThresholdControls() {
       });
     }
     setOpen((p) => !p);
+  };
+
+  const saveVerticalThresholds = async () => {
+    if (!selectedVertical) return;
+    setVertSaving(true);
+    setVertStatus(null);
+    try {
+      const body = { vertical: selectedVertical };
+      if (vertConfirm) body.confirm_threshold_usd = Number(vertConfirm);
+      if (vertMfa) body.mfa_threshold_usd = Number(vertMfa);
+      const res = await fetch('/api/config/thresholds', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(body),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setVertConfirm(data[`confirm_threshold_usd_${selectedVertical}`] || '');
+        setVertMfa(data[`mfa_threshold_usd_${selectedVertical}`] || '');
+        setVertStatus('saved');
+        setTimeout(() => setVertStatus(null), 2000);
+      } else {
+        setVertStatus('error');
+      }
+    } catch (_) {
+      setVertStatus('error');
+    } finally {
+      setVertSaving(false);
+    }
   };
 
   const saveThresholds = async () => {
@@ -241,6 +299,80 @@ export default function ThresholdControls() {
           </>
         )}
       </div>
+
+      {/* Per-vertical thresholds */}
+      {verticals.length > 0 && (
+        <div className="thresh-ctrl__section">
+          <button type="button" className="thresh-ctrl__section-toggle" onClick={() => toggleSection('verticalThresholds')}>
+            <span className="thresh-ctrl__section-title">Per-Vertical Thresholds</span>
+            <span className="thresh-ctrl__chevron">{openSections.verticalThresholds ? '▲' : '▼'}</span>
+          </button>
+          {openSections.verticalThresholds && (
+            <>
+              <div className="thresh-ctrl__field">
+                <label className="thresh-ctrl__label">
+                  Vertical
+                  <select
+                    className="thresh-ctrl__input"
+                    value={selectedVertical}
+                    onChange={(e) => setSelectedVertical(e.target.value)}
+                  >
+                    <option value="">— select —</option>
+                    {verticals.map((v) => (
+                      <option key={v.id} value={v.id}>{v.displayName}</option>
+                    ))}
+                  </select>
+                </label>
+                <span className="thresh-ctrl__help">Override thresholds for this vertical only</span>
+              </div>
+              {selectedVertical && (
+                <>
+                  <div className="thresh-ctrl__field">
+                    <label className="thresh-ctrl__label">
+                      Confirm (consent) $
+                      <input
+                        className="thresh-ctrl__input"
+                        type="number"
+                        min="1"
+                        step="50"
+                        placeholder={confirm}
+                        value={vertConfirm}
+                        onChange={(e) => setVertConfirm(e.target.value)}
+                      />
+                    </label>
+                    <span className="thresh-ctrl__help">Leave blank to use global default ({confirm})</span>
+                  </div>
+                  <div className="thresh-ctrl__field">
+                    <label className="thresh-ctrl__label">
+                      MFA step-up $
+                      <input
+                        className="thresh-ctrl__input"
+                        type="number"
+                        min="1"
+                        step="50"
+                        placeholder={mfa}
+                        value={vertMfa}
+                        onChange={(e) => setVertMfa(e.target.value)}
+                      />
+                    </label>
+                    <span className="thresh-ctrl__help">Leave blank to use global default ({mfa})</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="thresh-ctrl__save"
+                    onClick={saveVerticalThresholds}
+                    disabled={vertSaving}
+                  >
+                    {vertSaving ? 'Saving…' : `Save for ${selectedVertical}`}
+                  </button>
+                  {vertStatus === 'saved' && <span className="thresh-ctrl__ok">✓ Saved</span>}
+                  {vertStatus === 'error' && <span className="thresh-ctrl__err">Error</span>}
+                </>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       {/* Feature Flags — important flags only */}
       {flags.filter((f) => IMPORTANT_FLAG_IDS.includes(f.id)).length > 0 && (

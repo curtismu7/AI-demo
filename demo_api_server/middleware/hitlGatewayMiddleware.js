@@ -8,7 +8,15 @@ const crypto = require('crypto');
 
 // Configuration
 const configStore = require('../services/configStore');
-function getHitlThreshold() {
+const { verticalManifest } = require('../services/verticalManifest');
+
+// Returns the effective MFA threshold for the given vertical (falls back to global).
+function getHitlThreshold(verticalId) {
+  const vid = verticalId || verticalManifest.resolver.activeId();
+  const vertKey = vid ? `mfa_threshold_usd_${vid}` : null;
+  const vertRaw = vertKey ? configStore.getEffective(vertKey) : null;
+  const vertN = Number(vertRaw);
+  if (vertRaw && !isNaN(vertN) && vertN > 0) return vertN;
   const v = configStore.getEffective('mfa_threshold_usd');
   const n = Number(v);
   return (v && !isNaN(n)) ? n : 500;

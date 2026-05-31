@@ -19,7 +19,13 @@ const mfaService = require('./mfaService');
 const recognizeService = require('./recognizeService');
 
 const HIGH_VALUE_CONSENT_USD_DEFAULT = 250;
-function getConfirmThreshold() {
+function getConfirmThreshold(verticalId) {
+  const { verticalManifest } = require('./verticalManifest');
+  const vid = verticalId || verticalManifest.resolver.activeId();
+  const vertKey = vid ? `confirm_threshold_usd_${vid}` : null;
+  const vertRaw = vertKey ? configStore.getEffective(vertKey) : null;
+  const vertN = Number(vertRaw);
+  if (vertRaw && !isNaN(vertN) && vertN > 0) return vertN;
   const v = configStore.getEffective('confirm_threshold_usd');
   const n = Number(v);
   return (v && !isNaN(n) && n > 0) ? n : HIGH_VALUE_CONSENT_USD_DEFAULT;
