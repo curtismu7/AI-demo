@@ -31,7 +31,13 @@ function validatePlugin(id, plugin) {
     let toolNames = [];
     let heuristics = [];
     try { toolNames = plugin.getTools().map((t) => t && t.name); } catch (e) { errors.push(`plugin "${id}" getTools() threw: ${e.message}`); }
-    try { heuristics = plugin.getHeuristics(); } catch (e) { errors.push(`plugin "${id}" getHeuristics() threw: ${e.message}`); }
+    try {
+      heuristics = plugin.getHeuristics();
+      if (!Array.isArray(heuristics)) {
+        errors.push(`plugin "${id}" getHeuristics() must return an array, got ${typeof heuristics}`);
+        heuristics = [];
+      }
+    } catch (e) { errors.push(`plugin "${id}" getHeuristics() threw: ${e.message}`); }
     for (const h of heuristics) {
       if (h && h.action && !toolNames.includes(h.action)) {
         errors.push(`plugin "${id}" heuristic action "${h.action}" is not a declared tool name`);

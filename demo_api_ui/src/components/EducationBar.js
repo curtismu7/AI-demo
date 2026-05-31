@@ -187,6 +187,7 @@ export default function EducationBar() {
             <button type="button" className="edu-bar-panel__btn" onClick={go(EDU.INTENT_DELEGATION, 'overview')}>Intent delegation</button>
             <button type="button" className="edu-bar-panel__btn" onClick={go(EDU.ARCHITECTURE_DIAGRAM, 'context')}>Architecture diagram</button>
             <button type="button" className="edu-bar-panel__btn" onClick={go(EDU.CUA, 'what')}>Computer use agents</button>
+            <button type="button" className="edu-bar-panel__btn" onClick={go(EDU.VERTICAL_SETUP, 'overview')}>Vertical setup</button>
           </div>
 
           <div className="edu-bar-panel__section">

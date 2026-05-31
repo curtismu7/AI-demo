@@ -441,10 +441,10 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null, su
 // Plugin-first executeTool. Returns a function with the reason-loop signature
 // (name, args) => Promise<string>. Plugin results are JSON-stringified so the
 // reason loop sees a string, matching executeBffTool's contract.
-function resolveExecuteTool(activeId, { userId, userToken, req, tokenEvents, sessionId }) {
+function resolveExecuteTool(activeId, { userId, userToken, req, tokenEvents, sessionId, isAdmin = false }) {
   return async (name, args) => {
     const out = await verticalDispatch.executeToolFor(
-      activeId, name, args, { userId, userToken, req, tokenEvents, sessionId },
+      activeId, name, args, { userId, userToken, req, tokenEvents, sessionId, isAdmin },
       (n, a) => executeBffTool({ name: n, args: a, userId, userToken, req, tokenEvents, sessionId }),
     );
     return typeof out === 'string' ? out : JSON.stringify(out);
@@ -865,7 +865,8 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
 
     const activeId = verticalManifest.resolver.activeId();
     const activeManifest = verticalManifest.resolver.resolve(activeId);
-    const toolSchemas = verticalDispatch.toolSchemasFor(activeId, { isAdmin: req?.session?.user?.role === 'admin' }, () => []);
+    const isAdminUser = req?.session?.user?.role === 'admin';
+    const toolSchemas = verticalDispatch.toolSchemasFor(activeId, { isAdmin: isAdminUser }, () => []);
     const systemPrompt = verticalDispatch.hasPlugin(activeId)
       ? verticalDispatch.systemPromptFor(activeId, {}, () => activeManifest?.agent?.systemPromptFlavor)
       : activeManifest?.agent?.systemPromptFlavor;
@@ -886,7 +887,7 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
       ollamaBaseUrl: langchainConfig && langchainConfig.ollama_base_url,
       anthropicApiKey: process.env.ANTHROPIC_API_KEY,
       maxIterations: MAX_TOOL_ITERATIONS,
-      executeTool: resolveExecuteTool(activeId, { userId, userToken, req, tokenEvents, sessionId }),
+      executeTool: resolveExecuteTool(activeId, { userId, userToken, req, tokenEvents, sessionId, isAdmin: isAdminUser }),
     });
 
     console.log('[processAgentMessage] Reason loop completed');

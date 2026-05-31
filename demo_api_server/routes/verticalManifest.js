@@ -51,9 +51,11 @@ router.get('/stream', requireSession, (req, res) => {
 // Switching the active vertical is open to any authenticated user (not admin-only):
 // it's a demo affordance and the change is global + broadcast over SSE. The id is
 // still validated against the loaded set. The remaining write endpoints stay admin-only.
+// Hidden verticals (admin overlay, deprecated admin-console) cannot be activated.
 router.post('/active', requireSession, (req, res) => {
   const { id } = req.body || {};
   if (!id) return res.status(400).json({ error: 'id required' });
+  if (verticalManifest.HIDDEN_IDS.has(id)) return res.status(403).json({ error: 'cannot activate hidden vertical' });
   if (!verticalManifest.loader.get(id)) return res.status(404).json({ error: 'unknown id' });
   verticalManifest.resolver.setActive(id);
   res.status(204).end();

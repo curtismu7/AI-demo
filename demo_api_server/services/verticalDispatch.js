@@ -42,8 +42,8 @@ function toolSchemasFor(activeId, ctx, legacy) {
     inputSchema: t.inputSchema || { type: 'object', properties: {} },
   }));
 
-  // Merge admin overlay tools if user is admin
-  if (ctx && ctx.isAdmin) {
+  // Merge admin overlay tools if user is admin (admin tools override vertical tools with same name)
+  if (ctx?.isAdmin) {
     const adminOverlay = resolvePlugin('admin');
     if (adminOverlay) {
       const adminTools = adminOverlay.getTools().map((t) => ({
@@ -51,7 +51,10 @@ function toolSchemasFor(activeId, ctx, legacy) {
         description: t.description || '',
         inputSchema: t.inputSchema || { type: 'object', properties: {} },
       }));
-      tools = [...tools, ...adminTools];
+      // Deduplicate by name: create a map, add vertical tools, then override with admin tools
+      const toolMap = new Map(tools.map(t => [t.name, t]));
+      adminTools.forEach(t => toolMap.set(t.name, t));
+      tools = Array.from(toolMap.values());
     }
   }
 
