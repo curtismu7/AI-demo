@@ -42,6 +42,7 @@ def test_run_returns_sse_with_run_started_and_finished():
             yield  # make it an async generator
 
         mock_result.stream_events = fake_stream_events
+        mock_result.usage = None  # prevent MagicMock auto-attr from triggering on_usage
         mock_runner_cls.run_streamed.return_value = mock_result
 
         from src.main import app
