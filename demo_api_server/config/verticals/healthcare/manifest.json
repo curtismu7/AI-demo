@@ -98,6 +98,18 @@
         }
       ]
     },
+    "chips10": [
+      { "id": "hc1", "label": "My records", "message": "my records", "mode": "both" },
+      { "id": "hc2", "label": "Check coverage", "message": "check my coverage", "mode": "both" },
+      { "id": "hc3", "label": "My appointments", "message": "my appointments", "mode": "both" },
+      { "id": "hc4", "label": "Book an appointment", "message": "book an appointment", "mode": "both" },
+      { "id": "hc5", "label": "Release my records", "message": "release my records", "mode": "both" },
+      { "id": "hc6", "label": "What's my deductible?", "message": "check my deductible", "mode": "both" },
+      { "id": "hc7", "label": "Upcoming visits", "message": "upcoming visits", "mode": "both" },
+      { "id": "hc8", "label": "Which providers are in-network?", "message": "Which providers are in-network?", "mode": "llm" },
+      { "id": "hc9", "label": "Summarize my recent visits", "message": "Summarize my recent visits", "mode": "llm" },
+      { "id": "hc10", "label": "Do I need a referral?", "message": "Do I need a referral?", "mode": "llm" }
+    ],
     "llmChipGroups": {
       "Appointments": [
         {
