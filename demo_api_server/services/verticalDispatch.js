@@ -32,29 +32,68 @@ function systemPromptFor(activeId, ctx, legacy) {
   return p ? p.getSystemPrompt(ctx) : legacy(ctx);
 }
 
-function toolSchemasFor(activeId, legacy) {
+function toolSchemasFor(activeId, ctx, legacy) {
   const p = resolvePlugin(activeId);
   if (!p) return legacy();
-  return p.getTools().map((t) => ({
+
+  let tools = p.getTools().map((t) => ({
     name: t.name,
     description: t.description || '',
     inputSchema: t.inputSchema || { type: 'object', properties: {} },
   }));
+
+  // Merge admin overlay tools if user is admin
+  if (ctx && ctx.isAdmin) {
+    const adminOverlay = resolvePlugin('admin');
+    if (adminOverlay) {
+      const adminTools = adminOverlay.getTools().map((t) => ({
+        name: t.name,
+        description: t.description || '',
+        inputSchema: t.inputSchema || { type: 'object', properties: {} },
+      }));
+      tools = [...tools, ...adminTools];
+    }
+  }
+
+  return tools;
 }
 
 async function executeToolFor(activeId, name, params, ctx, legacy) {
   const p = resolvePlugin(activeId);
   if (!p) return legacy(name, params, ctx);
+
+  // First try the vertical's tools
   try {
     return await p.executeTool(name, params, ctx);
   } catch (e) {
+    // If tool not found in vertical and user is admin, try admin overlay
+    if (ctx?.isAdmin) {
+      const adminOverlay = resolvePlugin('admin');
+      if (adminOverlay) {
+        try {
+          return await adminOverlay.executeTool(name, params, ctx);
+        } catch (adminErr) {
+          return { result: { error: `tool "${name}" failed: ${adminErr.message}` }, render: 'text' };
+        }
+      }
+    }
     return { result: { error: `tool "${name}" failed: ${e.message}` }, render: 'text' };
   }
 }
 
-function authzFor(activeId, legacy) {
+function authzFor(activeId, ctx, legacy) {
   const p = resolvePlugin(activeId);
-  return p ? p.getAuthz() : legacy();
+  let authz = p ? p.getAuthz() : legacy();
+
+  // Merge admin overlay authz rules if user is admin
+  if (ctx && ctx.isAdmin) {
+    const adminOverlay = resolvePlugin('admin');
+    if (adminOverlay) {
+      authz = { ...authz, ...adminOverlay.getAuthz() };
+    }
+  }
+
+  return authz;
 }
 
 module.exports = {

@@ -10,7 +10,7 @@ const { createSnapshot } = require('./snapshot');
 const { createPlugins } = require('./plugins');
 const store = require('../lmdb/verticalStore.lmdb');
 
-const HIDDEN_IDS = new Set(['admin-console']);
+const HIDDEN_IDS = new Set(['admin-console', 'admin']); // admin-console: deprecated; admin: role-based overlay
 
 function build() {
   const root = process.env.VERTICAL_SEED_ROOT

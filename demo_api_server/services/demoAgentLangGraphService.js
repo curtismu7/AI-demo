@@ -498,12 +498,14 @@ function resolveExecuteTool(activeId, { userId, userToken, req, tokenEvents, ses
 // kind:'vertical' heuristic dispatch — runs the active vertical's plugin tool
 // and packages the result both for the chat reply and the UI render descriptor.
 // Mirrors executeHeuristicBanking's return envelope, adding `verticalResult`.
-async function dispatchVerticalIntent(heuristic, { userId, userToken, req, tokenEvents = [], sessionId = '' }) {
+async function dispatchVerticalIntent(heuristic, { userId, userToken, req, tokenEvents = [], sessionId = '', isAdmin = false }) {
   const { vertical, action, params } = heuristic;
 
   // 1. Resolve the plugin tool def to read its required-params + authz.
+  // If user is admin, tools from the admin overlay are also available (merged by verticalDispatch).
   const plugin = verticalDispatch.resolvePlugin(vertical);
-  const toolDef = plugin && plugin.getTools().find((t) => t.name === action);
+  const allTools = verticalDispatch.toolSchemasFor(vertical, { isAdmin }, () => []);
+  const toolDef = allTools.find((t) => t.name === action);
 
   // 2. Missing-params check — clarify WITHOUT executing.
   const required = (toolDef && toolDef.inputSchema && toolDef.inputSchema.required) || [];
@@ -522,7 +524,7 @@ async function dispatchVerticalIntent(heuristic, { userId, userToken, req, token
   }
 
   // 3. Authz gate — enforce BEFORE executing. stepUp takes precedence over consent.
-  const authz = (verticalDispatch.authzFor(vertical, () => ({}))[action]) || {};
+  const authz = (verticalDispatch.authzFor(vertical, { isAdmin }, () => ({}))[action]) || {};
   const hitlEnabled = configStore.getEffective('ff_hitl_enabled') !== 'false';
   if (hitlEnabled && authz.stepUp) {
     return {
@@ -555,7 +557,7 @@ async function dispatchVerticalIntent(heuristic, { userId, userToken, req, token
 
   // 4. Execute.
   const out = await verticalDispatch.executeToolFor(
-    vertical, action, params || {}, { userId, userToken, req, tokenEvents, sessionId },
+    vertical, action, params || {}, { userId, userToken, req, tokenEvents, sessionId, isAdmin },
     () => ({ result: { error: `no handler for ${action}` }, render: 'text' }),
   );
   const data = out && out.result;
@@ -790,7 +792,8 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
 
       const heuristic = parseHeuristic(message, _activeVerticalId, _verticalCtx);
       if (heuristic && heuristic.kind === 'vertical') {
-        const verticalResult = await dispatchVerticalIntent(heuristic, { userId, userToken, req, tokenEvents: [], sessionId: req?.sessionID || '' });
+        const isAdmin = req && req.session && req.session.user && req.session.user.role === 'admin';
+        const verticalResult = await dispatchVerticalIntent(heuristic, { userId, userToken, req, tokenEvents: [], sessionId: req?.sessionID || '', isAdmin });
         if (req) req.agentPath = 'heuristic';
         try {
           appEventService.logEvent('agent', 'info', `Heuristic vertical: ${heuristic.action}`, { tag: 'agent/heuristic_vertical' });
