@@ -29,7 +29,7 @@ import { buildApiKeyToolResult } from './apiKeyDispatch';
 import { McpTokenExchangeClient } from './auth/McpTokenExchangeClient';
 import { proxyJsonRpc, JsonRpcRequest, JsonRpcResponse } from './proxy';
 import { guardToolsList, guardToolCall } from './pingAuthorizeGuard';
-import { createHitlChallenge, getHitlChallengeStatus, verifyHitlReceipt } from './hitlClient';
+import { createHitlChallenge, getHitlChallengeStatus, verifyHitlReceipt, ReceiptVerification } from './hitlClient';
 import { GatewayServer } from './server/GatewayServer';
 import { buildAuthorizeMcpRequest } from './middleware/authorizeMcpRequest';
 import { getScopesForGatewayTool, getChallengeTypeForTool } from './auth/toolScopes';
@@ -489,6 +489,7 @@ async function handleMessage(
     // the binding check, an approved receipt from {userA, toolA} can be
     // replayed by {userB, toolB} — the downstream PingAuthorize evaluation
     // is not sufficient because some tools may re-permit on the second pass.
+    let verification: ReceiptVerification | null = null;
     if (hitlChallengeId) {
       if (!config.hitlServiceUrl) {
         send(jsonRpcError(id, -32500, 'HITL service not configured'));
@@ -501,7 +502,7 @@ async function handleMessage(
         send(jsonRpcError(id, -32500, 'Failed to verify HITL challenge'));
         return;
       }
-      const verification = verifyHitlReceipt(
+      verification = verifyHitlReceipt(
         status,
         decoded.sub,
         decoded.act?.sub,
@@ -516,11 +517,28 @@ async function handleMessage(
       }
     }
 
+    // Derive hitlApproved from the verified receipt: pass it into guardToolCall
+    // and PingAuthorize so the policy can PERMIT when approval is already recorded.
+    const hitlApproved = hitlChallengeId != null && verification?.ok === true;
+
     // WR-02: forward the same transaction params the HTTP path sends so an
     // amount-conditioned PingAuthorize policy fires identically on WS.
-    const authz = await guardToolCall(toolName, decoded, config, toolArgs);
+    const authz = await guardToolCall(toolName, decoded, config, toolArgs, undefined, hitlApproved);
     if (!authz.permitted) {
       if (authz.reason === 'HITL_REQUIRED') {
+        // Anti-loop: if a receipt was verified OK but the policy still returned
+        // INDETERMINATE, fail with a distinct error instead of re-issuing a
+        // challenge. This prevents an infinite loop if the policy is misconfigured.
+        if (hitlApproved) {
+          send(jsonRpcError(id, -32002, 'HITL receipt accepted but policy still requires approval', {
+            hitl: true,
+            error: 'mcp_hitl_receipt_rejected',
+            tool: toolName,
+            challengeId: hitlChallengeId,
+          }));
+          return;
+        }
+
         // Create a challenge in HITL service and return the challengeId to the agent
         if (config.hitlServiceUrl) {
           try {

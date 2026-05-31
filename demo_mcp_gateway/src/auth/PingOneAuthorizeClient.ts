@@ -69,6 +69,7 @@ export function buildAuthorizeParameters(
   toolName?: string,
   toolArgs?: ToolArgs,
   tratClaims?: TratClaims | null,
+  hitlApproved?: boolean,
 ): Record<string, string> {
   const decisionContext = method === 'tools/call' ? 'McpToolCall' : 'McpRequest';
   const tokenScopes = (decoded.scope ?? '').split(' ').filter(Boolean);
@@ -93,6 +94,10 @@ export function buildAuthorizeParameters(
     base['TratSim'] = String(tratClaims.trat_sim ?? false);
   }
 
+  if (hitlApproved) {
+    base['HitlApproved'] = 'true';
+  }
+
   return base;
 }
 
@@ -111,6 +116,7 @@ export class PingOneAuthorizeClient {
     method: string,
     toolName?: string,
     toolArgs?: ToolArgs,
+    hitlApproved?: boolean,
   ): Promise<AuthzDecision> {
     // No P1AZ configured or flag off — apply the local scope decision so the
     // gateway behaves the SAME as it would with a PingOne Authorize policy
@@ -132,6 +138,8 @@ export class PingOneAuthorizeClient {
         this.config.gatewayResourceUri,
         toolName,
         toolArgs,
+        null,
+        hitlApproved,
       ),
     };
 
