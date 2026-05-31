@@ -6,6 +6,7 @@ const ChipSchema = z.object({
   message: z.string(),
   group: z.string().optional(),
   scope: z.string().optional(),
+  mode: z.enum(['both', 'llm']).optional().default('both'),
 });
 
 const FormatEnum = z.enum(['money', 'count', 'date', 'text', 'percent']);
@@ -80,6 +81,7 @@ const ManifestSchema = z.object({
       })),
     }).optional(),
     llmChipGroups: z.record(z.string(), z.array(ChipSchema)).optional(),
+    chips10: z.array(ChipSchema).optional(),
   }).optional(),
 
   scopes: z.object({
