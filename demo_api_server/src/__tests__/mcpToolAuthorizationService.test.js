@@ -400,6 +400,44 @@ describe('mcpToolAuthorizationService', () => {
       await evaluateMcpFirstToolGate({ ...baseReq, hitlChallengeId: 'c1' });
       expect(SIM()).toHaveBeenCalledWith(expect.objectContaining({ hitlApproved: false }));
     });
+
+    it('returns 403 mcp_hitl_receipt_rejected when hitlApproved=true but engine still requires HITL (simulated)', async () => {
+      hitlServiceClient.getChallengeStatus.mockResolvedValue({ status: 'approved', userId: 'u1', agentId: 'agent-1', tool: 'create_transfer' });
+      hitlServiceClient.verifyHitlReceipt.mockReturnValue({ ok: true });
+      SIM().mockResolvedValue({
+        decision: 'INDETERMINATE',
+        hitlRequired: true,
+        stepUpRequired: false,
+        path: 'simulated',
+        decisionId: 's1',
+        raw: {},
+      });
+      const result = await evaluateMcpFirstToolGate({ ...baseReq, hitlChallengeId: 'c1' });
+      expect(result.ran).toBe(true);
+      expect(result.block.status).toBe(403);
+      expect(result.block.body.error).toBe('mcp_hitl_receipt_rejected');
+      expect(result.block.body.error_description).toContain('HITL receipt accepted but authorization engine still requires approval');
+    });
+
+    it('returns 403 mcp_hitl_receipt_rejected when hitlApproved=true but engine still requires HITL (PingOne live)', async () => {
+      simulatedAuthorizeService.isSimulatedModeEnabled.mockReturnValue(false);
+      hitlServiceClient.getChallengeStatus.mockResolvedValue({ status: 'approved', userId: 'u1', agentId: 'agent-1', tool: 'create_transfer' });
+      hitlServiceClient.verifyHitlReceipt.mockReturnValue({ ok: true });
+      pingOneAuthorizeService.isMcpDelegationDecisionReady.mockReturnValue(true);
+      pingOneAuthorizeService.evaluateMcpToolDelegation.mockResolvedValue({
+        decision: 'INDETERMINATE',
+        hitlRequired: true,
+        stepUpRequired: false,
+        path: 'decision-endpoint',
+        decisionId: 'p1',
+        raw: {},
+      });
+      const result = await evaluateMcpFirstToolGate({ ...baseReq, hitlChallengeId: 'c1' });
+      expect(result.ran).toBe(true);
+      expect(result.block.status).toBe(403);
+      expect(result.block.body.error).toBe('mcp_hitl_receipt_rejected');
+      expect(result.block.body.error_description).toContain('HITL receipt accepted but authorization engine still requires approval');
+    });
   });
 
   describe('getMcpFirstToolGateStatus', () => {

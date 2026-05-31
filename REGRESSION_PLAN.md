@@ -4276,3 +4276,28 @@ cd ..
 **Fix:** Manifest-driven heuristics. `buildCatalogMessage(verticalCtx)` and `parseHeuristic(message, vertical, verticalCtx)` accept the active vertical's `{ terminology, chips }`; non-banking verticals derive the catalog + reply headings from manifest terminology/chip labels. `demoAgentLangGraphService` resolves the active manifest once and threads `verticalCtx` into `parseHeuristic`, `executeHeuristicBanking`, the Mode-1 no-match catalog, and the Helix-unconfigured floor. Banking (terminology=null) → original wording, byte-identical. UI `normalizeAccountRow` fallback made vertical-neutral.
 
 **Guard:** `tests/nlIntentParser.catalog.test.js` — vertical-aware cases assert sporting-goods/healthcare catalogs contain vertical terms and leak no `checking|savings|mortgage`, banking unchanged (229 parser tests pass). UI: 21 `BankingAgent.terminology` tests pass; `npm run build` exit 0. Files: `nlIntentParser.js` (§1 protected), `demoAgentLangGraphService.js`, `demo_api_ui/src/components/BankingAgent.js`. Absolute rule: every agent path (heuristics + all LLMs) must work with every vertical.
+
+---
+
+### BF-2026-05-31-01 — HITL receipt-aware PERMIT: anti-loop guards (BFF + gateway)
+
+**Symptom:** When an agent retried a HITL-gated MCP tool call after human approval, the authorization engine (both mock and live PingAuthorize) received the verified receipt but had no way to act on it. The BFF gate extracted and verified `_hitl_challenge_id` for binding checks but then silently discarded the `verification.ok` result — never passed it to the engines, never to PingAuthorize as a decision parameter. If the TF policy was misconfigured (missing the `HitlApproved` rule), the engine would still return INDETERMINATE, and the system would re-issue a fresh 428 challenge instead of failing clean — risk of infinite loop.
+
+**Root cause:** Commit 2026-05-29 wired `hitlApproved` acceptance into both engines (simulated and live), but left the gateway and anti-loop safety valves incomplete. The receipt verification existed but the result was never threaded through the call stack.
+
+**Fix — four changes across BFF + gateway:**
+1. **BFF anti-loop guard** (`mcpToolAuthorizationService.js`): In both simulated and live engine paths, add a guard before the existing `if (r.hitlRequired) → 428` block. When `hitlApproved=true` but the engine still returns `hitlRequired=true`, return `403 mcp_hitl_receipt_rejected` (distinct from 428) to signal a policy misconfiguration instead of re-challenging.
+2. **Gateway param forwarding** (`PingOneAuthorizeClient.ts` + `pingAuthorizeGuard.ts`): Add `hitlApproved?: boolean` param to `buildAuthorizeParameters` and `guardToolCall`. Emit `HitlApproved: 'true'` (string) in the decision payload when true; omit when false (conditional-spread, matching `Acr` style).
+3. **Gateway receipt verification passthrough** (`index.ts`): Hoist the `verification` variable so it's in scope after the HITL receipt binding check. Derive `hitlApproved = hitlChallengeId != null && verification?.ok === true`. Pass it as 6th param to `guardToolCall`.
+4. **Gateway anti-loop guard** (`index.ts`): In the `HITL_REQUIRED` branch, before calling `createHitlChallenge`, add a guard: if `hitlApproved=true` and auth returned INDETERMINATE, send `mcp_hitl_receipt_rejected` instead of creating a fresh challenge.
+
+**Load-bearing invariants (both engines, both paths):**
+- Step-up NOT dischargeable by a HITL receipt (approval ≠ MFA)
+- Audience-mismatch DENY still wins first before `HitlApproved` is considered
+- `HitlApproved` emitted only when true — never `HitlApproved: 'false'` (conditional-spread)
+- Binding check (user + agent + tool) ALWAYS runs before `hitlApproved=true` is set — never skip it
+- Existing 428 → challenge flow unchanged when no receipt present
+
+**Guard:** `demo_api_server/src/__tests__/mcpToolAuthorizationService.test.js` — added 2 new anti-loop test cases (one per engine path): `hitlApproved=true + engine still hitlRequired → 403 mcp_hitl_receipt_rejected`. All 22 tests pass. Gateway: `npm run build` → exit 0 (tsc clean). Files: `demo_api_server/services/mcpToolAuthorizationService.js`, `demo_mcp_gateway/src/auth/PingOneAuthorizeClient.ts`, `demo_mcp_gateway/src/auth/pingAuthorizeGuard.ts`, `demo_mcp_gateway/src/index.ts`, `demo_api_server/src/__tests__/mcpToolAuthorizationService.test.js`.
+
+**Remaining (external, not in repo):** Trust Framework policy must add `HitlApproved` attribute (sourced from decision `parameters`) and rule: when `amount >= threshold AND HitlApproved == 'true'`, PERMIT (instead of INDETERMINATE). Without this policy edit, the code's anti-loop guards fail clean (403 mcp_hitl_receipt_rejected) instead of looping.

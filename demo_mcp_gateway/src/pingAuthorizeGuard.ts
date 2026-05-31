@@ -63,6 +63,7 @@ export async function guardToolCall(
   config: GatewayConfig,
   toolArgs?: ToolArgs,
   xTratContext?: string,
+  hitlApproved?: boolean,
 ): Promise<AuthzDecision> {
   // Extract TraT claims from X-TraT-Context header for Authorize enrichment
   let tratClaims: TratClaims | null = null;
@@ -99,6 +100,7 @@ export async function guardToolCall(
         toolName,
         toolArgs,
         tratClaims,
+        hitlApproved,
       ),
     };
 
