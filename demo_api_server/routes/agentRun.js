@@ -23,6 +23,7 @@ const express = require('express');
 const http = require('http');
 const configStore = require('../services/configStore');
 const { verticalManifest } = require('../services/verticalManifest');
+const verticalDispatch = require('../services/verticalDispatch');
 const { agentSessionMiddleware } = require('../middleware/agentSessionMiddleware');
 
 const router = express.Router();
@@ -54,6 +55,14 @@ function resolveAgentTarget() {
 
 function getInternalSecret() {
   return process.env.BFF_INTERNAL_SECRET || 'dev-shared-secret-change-me';
+}
+
+// When the active vertical ships a plugin, external runtimes must see the
+// vertical's own tool schemas (e.g. book_appointment), not the banking catalog.
+function resolveAgentRunTools(currentTools, activeId) {
+  return verticalDispatch.hasPlugin(activeId)
+    ? verticalDispatch.toolSchemasFor(activeId, () => currentTools)
+    : currentTools;
 }
 
 // ---------------------------------------------------------------------------
@@ -126,6 +135,8 @@ router.post('/run', async (req, res) => {
       description: t.description || '',
       inputSchema: t.inputSchema || { type: 'object', properties: {} },
     }));
+
+    tools = resolveAgentRunTools(tools, verticalManifest.resolver.activeId());
 
     // Merge any token events from tools/list
     initialTokenEvents = [...initialTokenEvents, ...(toolsResult.tokenEvents || [])];
@@ -298,3 +309,4 @@ module.exports = router;
 // Exported for the framework-routing test so it asserts against the actual
 // constants instead of a re-declared copy that can silently drift.
 module.exports.FRAMEWORK_PORTS = FRAMEWORK_PORTS;
+module.exports.__test = { resolveAgentRunTools };
