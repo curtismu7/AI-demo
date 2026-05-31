@@ -74,6 +74,18 @@
         "label": "Show Expense Report"
       }
     ],
+    "chips10": [
+      { "id": "wf1", "label": "My benefits", "message": "my benefits", "mode": "both" },
+      { "id": "wf2", "label": "PTO balance", "message": "pto balance", "mode": "both" },
+      { "id": "wf3", "label": "My expenses", "message": "my expenses", "mode": "both" },
+      { "id": "wf4", "label": "Submit an expense", "message": "submit an expense", "mode": "both" },
+      { "id": "wf5", "label": "Request time off", "message": "request time off", "mode": "both" },
+      { "id": "wf6", "label": "Sick leave balance", "message": "sick leave balance", "mode": "both" },
+      { "id": "wf7", "label": "Expense history", "message": "expense history", "mode": "both" },
+      { "id": "wf8", "label": "When should I use my PTO?", "message": "What's the best time of year for a sabbatical?", "mode": "llm" },
+      { "id": "wf9", "label": "Right medical plan?", "message": "Do I have the right insurance plan for my needs?", "mode": "llm" },
+      { "id": "wf10", "label": "Which expenses are pending?", "message": "What's still waiting on my manager's sign-off?", "mode": "llm" }
+    ],
     "hero": {
       "cards": [
         {
