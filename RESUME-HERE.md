@@ -9,7 +9,30 @@
 
 ## ⚠️ CRITICAL BLOCKERS (found during A2 spike)
 
-### 1. Dashboard MCP display section must understand verticals
+### 1. Bootstrap PingOne setup must configure banking plugin
+**Status:** BLOCKING banking vertical availability at runtime
+**Issue:** The bootstrap script (`npm run pingone:bootstrap`) provisions PingOne apps and scopes for banking, but:
+- Does NOT recognize banking is now a plugin (was hardcoded as "the banking vertical")
+- May skip or misconfigure banking scopes/tools registration in PingOne
+- MCP gateway may not have banking in its routing table if bootstrap skips it
+**Fix needed:**
+- Check `demo_api_server/scripts/bootstrapPingOne.js` (or wherever bootstrap lives)
+- Ensure it iterates over all plugins (including banking) and registers them in PingOne
+- Verify scopes (read, write, transfer) are created for banking resource server
+- Verify banking tools are registered in MCP server scopes
+**Files to check:** `demo_api_server/scripts/` (bootstrap scripts), `demo_mcp_server/` (MCP bootstrap)
+
+### 2. Setup page must show banking as a vertical option
+**Status:** BLOCKING user-facing vertical selection
+**Issue:** The `/setup` page (or vertical switcher) may hardcode vertical list and skip banking as a plugin.
+**Fix needed:**
+- Find where setup page renders vertical chooser (probably `demo_api_ui/src/pages/Setup*` or similar)
+- Ensure it fetches verticals from manifest resolver (not hardcoded list)
+- Verify banking appears as an option alongside sporting-goods/healthcare/retail/workforce
+- Verify setup page can switch TO banking and reseed accounts correctly (uses existing accounts.js reseed logic)
+**Files to check:** `demo_api_ui/src/pages/` (Setup page), `demo_api_ui/src/services/manifestService.js` (if it exists)
+
+### 3. Dashboard MCP display section must understand verticals
 **Status:** BLOCKING Phase B and beyond
 **Issue:** The dashboard's MCP results panel doesn't know about render descriptors from banking/other verticals. It assumes banking render (AccountsTable, etc.).
 **Fix needed:** 
@@ -74,6 +97,34 @@ The **kind:'vertical' routing spike** is critical:
 - **ACTION:** After creating banking plugin, test end-to-end: switch to banking vertical, heuristics mode, click "Show My Accounts" — confirm response + sidebar chip visibility
 
 ## Blocker Investigation (next session)
+
+### Bootstrap Investigation
+```bash
+# Find bootstrap script entry points
+grep -r "bootstrapPingOne\|bootstrap.*vertical" demo_api_server/scripts/ | head -5
+grep -r "banking.*scope\|register.*vertical" demo_api_server/scripts/ | head -5
+
+# Check if banking is hardcoded as the only vertical
+grep -n "banking" demo_api_server/scripts/bootstrapPingOne.js | head -20
+
+# Verify MCP server bootstrap includes all plugins
+grep -r "verticalDispatch\|plugin\|registerTool" demo_mcp_server/src/ | grep -i bootstrap
+```
+
+### Setup Page Investigation
+```bash
+# Find setup/vertical chooser page
+find demo_api_ui/src -name "*Setup*" -o -name "*Vertical*" -o -name "*Chooser*"
+
+# Check for hardcoded vertical list
+grep -r "sporting-goods.*healthcare\|verticals.*=.*\[" demo_api_ui/src/pages/ | head -10
+
+# Check how current vertical is determined
+grep -r "activeVertical\|currentVertical\|verticalId" demo_api_ui/src/pages/ | head -10
+
+# Verify reseed integration (accounts.js must support banking switching)
+grep -n "reseed\|vertical.*change" demo_api_ui/src/pages/ | head -10
+```
 
 ### Dashboard MCP Display Investigation
 ```bash
