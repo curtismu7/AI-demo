@@ -7,7 +7,36 @@
   - All write actions (transfer/deposit/withdraw) now throw errors in their catch blocks instead of returning error tuples (WR-07a compliance)
   - Tests: `hitlGateway.regression.test.js` was already failing before changes (pre-existing issue)
 
-## Next Steps (Phase A Task A2)
+## ⚠️ CRITICAL BLOCKERS (found during A2 spike)
+
+### 1. Dashboard MCP display section must understand verticals
+**Status:** BLOCKING Phase B and beyond
+**Issue:** The dashboard's MCP results panel doesn't know about render descriptors from banking/other verticals. It assumes banking render (AccountsTable, etc.).
+**Fix needed:** 
+- Check `demo_api_ui/src/components/BankingAgent.js` or MCP results panel
+- Read `verticalResult.render` (new field from dispatchVerticalIntent)
+- Map render descriptor key to the right UI component (table/card/fieldList/text)
+- Apply format rules (money, date, count, percent) from manifest.render
+**Files to audit:** `demo_api_ui/src/components/` (search for MCP result rendering, AccountsTable)
+
+### 2. Authorization server (PingAuthorize) must evaluate vertical-scoped transfers
+**Status:** BLOCKING transfers in banking vertical
+**Issue:** When user executes "transfer $5000 from checking to savings" in banking vertical, PingAuthorize gate must:
+- Recognize it's a `create_transfer` in the banking vertical
+- Apply banking's HITL threshold ($250+)
+- NOT apply sporting-goods transfer thresholds (if any)
+**Fix needed:** Verify PingAuthorize policy recognizes `aud=banking-mcp-server` and applies correct consent threshold
+**Files to check:** `PINGONE_CONFIG.md` (authorization policies), MCP gateway token exchange
+
+### 3. PingOne Authorize scope validation for verticals
+**Status:** BLOCKING if other verticals add write actions
+**Issue:** When banking transfers require `write` scope, other verticals might need different scopes (e.g., sporting-goods "extend_rental" might need `rentals:write`)
+**Fix needed:** Verify scope requirements in tool definitions match PingOne policy
+**Files to check:** BankingToolRegistry (scopes list), PingOne resource server scope definitions
+
+---
+
+## Next Steps (Phase A Task A2 — COMPLETED)
 
 ### Create Banking Plugin at `demo_api_server/config/verticals/banking/index.js`
 
@@ -43,6 +72,29 @@ The **kind:'vertical' routing spike** is critical:
 - `processAgentMessage` (line ~650) dispatches this to `dispatchVerticalIntent`
 - `BankingAgent.js` must handle banking results OR the result must thread through existing UI render path
 - **ACTION:** After creating banking plugin, test end-to-end: switch to banking vertical, heuristics mode, click "Show My Accounts" — confirm response + sidebar chip visibility
+
+## Blocker Investigation (next session)
+
+### Dashboard MCP Display Investigation
+```bash
+# Find where MCP results are rendered in dashboard
+grep -r "AccountsTable\|MCP.*result\|verticalResult" demo_api_ui/src/components/ | head -20
+grep -r "render.*accounts\|render.*balance" demo_api_ui/src/
+
+# Check if BankingAgent.js reads render descriptors
+grep -A 10 "renderKey\|render:\|descriptor" demo_api_ui/src/components/BankingAgent.js
+```
+
+### PingAuthorize Verification
+```bash
+# Check current transfer consent rule in PingOne
+docs/PINGONE_CONFIG.md | grep -A 5 "transfer.*threshold\|create_transfer\|HITL"
+
+# Verify banking resource server is configured
+mcp__banking-dev__pingone_get_resource_scopes "banking-mcp-resource-id"
+```
+
+---
 
 ## Uncommitted Changes
 - `demo_api_server/routes/accounts.js` — `waitForReseed()` guard added (for concurrent reseed safety during vertical switches)
