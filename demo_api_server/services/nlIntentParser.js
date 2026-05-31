@@ -373,65 +373,6 @@ function parseBanking(t) {
 
 // Theme-aware vocabulary maps — keyed by vertical id.
 // Each entry maps a regex to the banking action it should route to.
-const THEME_VOCAB = {
-  admin: [
-    { re: /\b(look\s*up|find|search\s*for)\s*(customer|user)\b|\blookup\s*customer\b/, action: 'accounts' },
-    { re: /\bview\s*(transactions?|activity)\b|\bcustomer\s*(transactions?|activity)\b/, action: 'transactions' },
-    { re: /\bview\s*profile\b|\bcustomer\s*profile\b|\baccount\s*details\b/, action: 'accounts' },
-    { re: /\b(freeze|suspend|lock)\s*(the\s*)?(account|user)\b/, action: 'transfer' },
-    { re: /\badjust\s*balance\b|\bchange\s*balance\b/, action: 'transfer' },
-    { re: /\bget\s*customer\s*accounts?\b|\bview\s*accounts?\b/, action: 'accounts' },
-  ],
-  healthcare: [
-    { re: /\b(release|share|send)\s*(my\s*)?records?\b/, action: 'transfer' },
-    { re: /\b(my\s*)?(patient\s*)?records?\b|\bshow\s*(my\s*)?records?\b/, action: 'accounts' },
-    { re: /\b(check\s*|my\s*|view\s*)?coverage\b|\binsurance\s*(coverage|details)\b/, action: 'balance' },
-    { re: /\b(my\s*|show\s*|view\s*|upcoming\s*)?appointments?\b|\bvisit\s*(history|list)\b|\brecent\s*visits?\b/, action: 'transactions' },
-    { re: /\b(total\s*costs?|what.*paid|my\s*costs?)\b/, action: 'spending_summary' },
-  ],
-  retail: [
-    { re: /\b(biggest|most\s*expensive|highest)\s*(purchase|order|spend)\b/, action: 'biggest_purchase' },
-    { re: /\b(my\s*|check\s*|view\s*)?rewards?\s*points?\b|\bhow\s*many\s*points\b|\bpoint\s*balance\b/, action: 'balance' },
-    { re: /\b(my\s*|list\s*|show\s*)?orders?\b|\border\s*(history|status|list)\b/, action: 'accounts' },
-    { re: /\b(purchase|buying|order)\s*history\b|\bwhat.*(?:buy|bought|purchased)\b|\brecent\s*purchases?\b/, action: 'transactions' },
-    { re: /\bcheckout\b|\bplace\s*(an?\s*)?order\b|\bbuy\s*now\b/, action: 'transfer' },
-    { re: /\b(return|refund)\s*(history|list)?\b|\bmy\s*returns?\b/, action: 'transactions' },
-    { re: /\bhow\s*much.*spent\b|\btotal\s*purchases?\b|\bspending\s*breakdown\b/, action: 'spending_summary' },
-  ],
-  'sporting-goods': [
-    { re: /\b(biggest|most\s*expensive|highest)\s*(purchase|order|spend)\b/, action: 'biggest_purchase' },
-    { re: /\bplace\s*(an?\s*)?order\b|\bcheckout\b|\bbuy\s*now\b/, action: 'transfer' },
-    { re: /\b(my\s*|check\s*|view\s*)?rewards?\s*points?\b|\bhow\s*many\s*points\b|\bpoint\s*balance\b/, action: 'balance' },
-    { re: /\b(my\s*|list\s*|show\s*)?gear\b|\bmy\s*equipment\b|\bmy\s*loyalty\s*account\b/, action: 'accounts' },
-    { re: /\b(purchase|buying)\s*history\b|\bwhat.*(?:buy|bought|purchased)\b|\brecent\s*purchases?\b/, action: 'transactions' },
-    { re: /\b(my\s*|show\s*)?purchases?\b|\bpurchase\s*list\b/, action: 'transactions' },
-    { re: /\b(return|refund)\s*(history|list)?\b|\bmy\s*returns?\b/, action: 'transactions' },
-    { re: /\bhow\s*much.*spent\b|\btotal\s*purchases?\b|\bspending\s*breakdown\b/, action: 'spending_summary' },
-  ],
-  workforce: [
-    { re: /\bsubmit\s*(a\s*)?(request|expense|time\s*off|reimbursement|claim)\b|\brequest\s*time\s*off\b|\bfile\s*(an?\s*)?expense\b/, action: 'transfer' },
-    { re: /\b(my\s*|check\s*|view\s*)?(pto|benefits?|allowance|expense\s*budget)\s*balance\b|\bhow\s*much\s*pto\b/, action: 'balance' },
-    { re: /\b(my\s*|list\s*|show\s*|view\s*)?(benefits?|pto|allowance|enrollments?)\b/, action: 'accounts' },
-    { re: /\b(request|submission)\s*history\b|\bmy\s*(requests?|submissions?|expense\s*reports?|claims?)\b|\brecent\s*requests?\b/, action: 'transactions' },
-  ],
-};
-
-function parseTheme(t, vertical) {
-  const vocab = THEME_VOCAB[vertical];
-  if (!vocab) return null;
-  for (const { re, action } of vocab) {
-    if (re.test(t)) {
-      // Extract amount for transfer actions where a dollar figure is present
-      if (action === 'transfer') {
-        const amountMatch = t.match(/\$?\s*(\d+(?:\.\d+)?)/);
-        const params = amountMatch ? { fromId: 'checking', toId: 'savings', amount: parseFloat(amountMatch[1]) } : {};
-        return { kind: 'banking', banking: { action, params } };
-      }
-      return { kind: 'banking', banking: { action } };
-    }
-  }
-  return null;
-}
 
 /**
  * Resolve the active vertical's heuristic context — `{ terminology, chips }` —
@@ -475,9 +416,9 @@ function parseHeuristic(message, vertical = 'banking', verticalCtx = null) {
     return { kind: 'banking', banking: { action: 'mcp_tools' } };
   }
 
-  // Vertical feature chip phrases — must precede parseTheme because theme vocabs
-  // have broad rules (e.g. healthcare "records?" → accounts) that would swallow
-  // these more specific vertical-feature intents first.
+  // Vertical feature chip phrases — must precede heuristic matching because some
+  // verticals have broad rules (e.g. healthcare "records?" → accounts) that would
+  // swallow these more specific vertical-feature intents first.
   if (VERTICAL_FEATURE_RE.test(t)) {
     return { kind: 'banking', banking: { action: 'vertical_feature_demo' } };
   }
@@ -499,12 +440,6 @@ function parseHeuristic(message, vertical = 'banking', verticalCtx = null) {
     return { kind: 'none', message: buildCatalogMessage(verticalCtx) };
   }
 
-  // Legacy theme-aware vocabulary (no plugin yet) — runs before banking/education
-  // so themed phrases route correctly regardless of which LLM is active.
-  if (vertical !== 'banking') {
-    const themed = parseTheme(t, vertical);
-    if (themed) return themed;
-  }
 
   // Prefer education if user explicitly asks to explain / learn
   if (/\b(what is|how does|explain|learn about|show me (the )?(doc|guide|topic))\b/.test(t)) {
@@ -523,7 +458,6 @@ function parseHeuristic(message, vertical = 'banking', verticalCtx = null) {
 
 module.exports = {
   parseHeuristic,
-  parseTheme,
   EDU,
   CAPABILITY_CATALOG,
   buildCatalogMessage,

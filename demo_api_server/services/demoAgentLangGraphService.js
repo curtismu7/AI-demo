@@ -428,59 +428,15 @@ async function executeHeuristicBanking(parsed, userId, userToken, req = null, su
  * @param {object|null} terminology - manifest.terminology
  * @returns {string|null}
  */
-function _buildVerticalToolDescription(toolName, terminology) {
-  if (!terminology) return null;
-  const t = terminology;
-  switch (toolName) {
-    case 'get_my_accounts':
-      return `Retrieve list of all user ${t.accounts || 'accounts'} with ${t.balance || 'balances'} and details. Call this when the user asks to "show my ${t.accounts || 'accounts'}", "what ${t.accounts || 'accounts'} do I have", or "check my ${t.balance || 'balance'}".`;
-    case 'create_transfer':
-      return `Transfer between ${t.accounts || 'accounts'}. Requires user confirmation for ${t.highValueAction || 'large transfers'}. Call this when the user wants to send funds between ${t.accounts || 'accounts'}.`;
-    case 'create_deposit':
-      return `Add funds to a ${t.account || 'account'}. Requires user confirmation for ${t.highValueAction || 'large amounts'}. Call this when the user wants to deposit or add to their ${t.balance || 'balance'}.`;
-    case 'create_withdrawal':
-      return `Remove funds from a ${t.account || 'account'}. Requires user confirmation for ${t.highValueAction || 'large amounts'}. Call this when the user wants to withdraw or reduce their ${t.balance || 'balance'}.`;
-    default:
-      return null;
-  }
-}
-
 /**
- * Build tool schemas for the reason loop at :3006, with per-vertical description
- * overrides for the 4 shared core tools. Other tools retain their original
- * descriptions from getBankingToolDefinitions().
+ * Build tool schemas for the reason loop. Plugins provide their own tool definitions
+ * with descriptions already customized per vertical. This is delegated to verticalDispatch.
+ * Legacy fallback (no plugin) uses getBankingToolDefinitions().
  *
- * @param {object} manifest - Full vertical manifest from getActiveManifest().
- *   Pass null or a manifest with no terminology to get unmodified descriptions.
+ * @param {string} activeId - Active vertical ID.
+ * @param {object} activeManifest - Active vertical manifest (for legacy fallback).
  * @returns {Array<{ name: string, description: string, inputSchema: object }>}
  */
-function buildToolSchemasForAgentForVertical(manifest) {
-  const tools = getBankingToolDefinitions();
-  const terminology = manifest && manifest.terminology ? manifest.terminology : null;
-  return tools.map((tool) => {
-    let inputSchema;
-    try {
-      inputSchema = tool.schema ? z.toJSONSchema(tool.schema) : { type: 'object', properties: {} };
-    } catch (_e) {
-      inputSchema = { type: 'object', properties: {} };
-    }
-    const overrideDesc = _buildVerticalToolDescription(tool.name, terminology);
-    return {
-      name: tool.name,
-      description: overrideDesc !== null ? overrideDesc : (tool.description || ''),
-      inputSchema,
-    };
-  });
-}
-
-// Plugin-first tool schema resolution. Legacy builder is used only when the
-// active vertical has no plugin yet.
-function resolveToolSchemas(activeId, activeManifest) {
-  const legacy = () => buildToolSchemasForAgentForVertical(activeManifest);
-  return verticalDispatch.hasPlugin(activeId)
-    ? verticalDispatch.toolSchemasFor(activeId, legacy)
-    : legacy();
-}
 
 // Plugin-first executeTool. Returns a function with the reason-loop signature
 // (name, args) => Promise<string>. Plugin results are JSON-stringified so the
@@ -909,7 +865,7 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
 
     const activeId = verticalManifest.resolver.activeId();
     const activeManifest = verticalManifest.resolver.resolve(activeId);
-    const toolSchemas = resolveToolSchemas(activeId, activeManifest);
+    const toolSchemas = verticalDispatch.toolSchemasFor(activeId, { isAdmin: req?.session?.user?.role === 'admin' }, () => []);
     const systemPrompt = verticalDispatch.hasPlugin(activeId)
       ? verticalDispatch.systemPromptFor(activeId, {}, () => activeManifest?.agent?.systemPromptFlavor)
       : activeManifest?.agent?.systemPromptFlavor;
@@ -1023,7 +979,6 @@ async function processAgentMessage({ message, userId, userToken, sessionId, toke
 
 module.exports = {
   processAgentMessage,
-  buildToolSchemasForAgentForVertical,
   dispatchBankingAction,
-  __test: { resolveToolSchemas, resolveExecuteTool, dispatchVerticalIntent },
+  __test: { resolveExecuteTool, dispatchVerticalIntent },
 };
