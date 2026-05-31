@@ -200,6 +200,13 @@
     "emptyPrompt": "show gear order",
     "scopeError": "The agent's access token does not carry the gear:read scope. Sign out and sign back in to consent to gear order access, then try \"Show Gear Order\" again."
   },
+  "render": {
+    "list_gear": { "type": "table", "columns": [ { "label": "Product", "path": "product" }, { "label": "Amount", "path": "amount", "format": "money" }, { "label": "Status", "path": "status" } ] },
+    "list_rentals": { "type": "table", "columns": [ { "label": "Item", "path": "item" }, { "label": "Due", "path": "dueDate", "format": "date" }, { "label": "Status", "path": "status" } ] },
+    "gear_order_status": { "type": "card", "title": "Order Status", "fields": [ { "label": "Product", "path": "product" }, { "label": "Status", "path": "status" }, { "label": "Date", "path": "date", "format": "date" } ] },
+    "loyalty_balance": { "type": "fieldList", "title": "Loyalty", "fields": [ { "label": "Points", "path": "points", "format": "count" }, { "label": "Tier", "path": "tier" } ] },
+    "extend_rental": { "type": "card", "title": "Rental Extended", "fields": [ { "label": "Item", "path": "item" }, { "label": "Due", "path": "dueDate", "format": "date" }, { "label": "Status", "path": "status" } ] }
+  },
   "demoUsers": {
     "customer": {
       "hint": "demoUser",
