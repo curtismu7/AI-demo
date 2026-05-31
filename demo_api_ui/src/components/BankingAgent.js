@@ -6097,6 +6097,13 @@ export default function BankingAgent({
           }
           return;
         }
+        // Non-success vertical response (e.g. needsParams). sendAgentMessage already
+        // surfaces hitl_required / step_up_required via its own modal; for any other
+        // vertical reply, show the vertical's message rather than the banking default.
+        if (response && response.reply) {
+          addMessage("assistant", response.reply, null, { source: _source });
+          return;
+        }
       } catch (e) { /* fall through to default below */ }
     }
     // Prefer the server's message (heuristic / LLM produces a useful one).

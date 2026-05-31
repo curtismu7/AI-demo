@@ -478,6 +478,60 @@ function resolveExecuteTool(activeId, { userId, userToken, req, tokenEvents, ses
 // Mirrors executeHeuristicBanking's return envelope, adding `verticalResult`.
 async function dispatchVerticalIntent(heuristic, { userId, userToken, req, tokenEvents = [], sessionId = '' }) {
   const { vertical, action, params } = heuristic;
+
+  // 1. Resolve the plugin tool def to read its required-params + authz.
+  const plugin = verticalDispatch.resolvePlugin(vertical);
+  const toolDef = plugin && plugin.getTools().find((t) => t.name === action);
+
+  // 2. Missing-params check — clarify WITHOUT executing.
+  const required = (toolDef && toolDef.inputSchema && toolDef.inputSchema.required) || [];
+  const missing = required.filter((k) => params == null || params[k] == null || params[k] === '');
+  if (missing.length) {
+    return {
+      reply: `To ${String(action).replace(/_/g, ' ')}, I need: ${missing.join(', ')}. Please provide ${missing.length > 1 ? 'these details' : 'this detail'}.`,
+      success: false,
+      needsParams: { action, missing },
+      toolsCalled: [],
+      tokensUsed: 0,
+      requiresConsent: false,
+      agentConfigured: true,
+      tokenEvents,
+    };
+  }
+
+  // 3. Authz gate — enforce BEFORE executing. stepUp takes precedence over consent.
+  const authz = (verticalDispatch.authzFor(vertical, () => ({}))[action]) || {};
+  const hitlEnabled = configStore.getEffective('ff_hitl_enabled') !== 'false';
+  if (hitlEnabled && authz.stepUp) {
+    return {
+      error: 'step_up_required',
+      step_up_required: true,
+      reply: 'This action requires step-up verification.',
+      success: false,
+      action,
+      toolsCalled: [],
+      tokensUsed: 0,
+      requiresConsent: false,
+      agentConfigured: true,
+      tokenEvents,
+    };
+  }
+  if (hitlEnabled && authz.consent) {
+    return {
+      error: 'hitl_required',
+      hitl: { type: 'consent' },
+      reply: 'This action requires your approval.',
+      success: false,
+      action,
+      requiresConsent: true,
+      toolsCalled: [],
+      tokensUsed: 0,
+      agentConfigured: true,
+      tokenEvents,
+    };
+  }
+
+  // 4. Execute.
   const out = await verticalDispatch.executeToolFor(
     vertical, action, params || {}, { userId, userToken, req, tokenEvents, sessionId },
     () => ({ result: { error: `no handler for ${action}` }, render: 'text' }),

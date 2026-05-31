@@ -11,8 +11,8 @@ function buildHealthcareTools(store) {
     { name: 'view_records', description: 'List the patient\'s medical records.', inputSchema: { type: 'object', properties: {} }, scopes: ['read'], authz: {} },
     { name: 'view_coverage', description: 'Show the patient\'s insurance coverage summary.', inputSchema: { type: 'object', properties: {} }, scopes: ['read'], authz: {} },
     { name: 'list_appointments', description: 'List the patient\'s appointments.', inputSchema: { type: 'object', properties: {} }, scopes: ['read'], authz: {} },
-    { name: 'book_appointment', description: 'Book a new appointment with a provider.', inputSchema: { type: 'object', properties: { provider: { type: 'string' }, clinic: { type: 'string' }, when: { type: 'string' }, reason: { type: 'string' } } }, scopes: ['write'], authz: {} },
-    { name: 'release_records', description: 'Release medical records to a third party (requires step-up + consent).', inputSchema: { type: 'object', properties: { recordId: { type: 'string' } } }, scopes: ['write'], authz: { stepUp: true, consent: true } },
+    { name: 'book_appointment', description: 'Book a new appointment with a provider.', inputSchema: { type: 'object', properties: { provider: { type: 'string' }, clinic: { type: 'string' }, when: { type: 'string' }, reason: { type: 'string' } }, required: ['provider', 'when'] }, scopes: ['write'], authz: {} },
+    { name: 'release_records', description: 'Release medical records to a third party (requires step-up + consent).', inputSchema: { type: 'object', properties: { recordId: { type: 'string' } }, required: ['recordId'] }, scopes: ['write'], authz: { stepUp: true, consent: true } },
   ];
 
   async function execute(name, params, ctx) {
