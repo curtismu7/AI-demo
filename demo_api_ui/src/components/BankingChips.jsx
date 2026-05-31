@@ -203,12 +203,14 @@ export default function BankingChips({
   isLoading,
   customChips = [],
   user,
+  llmAvailable = true,
 }) {
   const [expandedCategory, setExpandedCategory] = useState(null);
   const { pageManifest } = useVertical();
   const dashboard = pageManifest?.dashboard;
   const heuristicChips = applyChipLabels(HEURISTIC_CHIPS, dashboard && dashboard.chips);
   const llmChipGroups = dashboard?.llmChipGroups || LLM_CHIPS;
+  const chips10 = Array.isArray(dashboard?.chips10) ? dashboard.chips10 : null;
 
   const customHeuristic = customChips.filter((c) => c.type === "heuristic");
   const customLlm = customChips.filter((c) => c.type === "llm");
@@ -265,6 +267,49 @@ export default function BankingChips({
           </div>
         </div>
       )}
+      {/* Curated 10-chip Suggestions section (vertical manifest chips10).
+          Renders INSTEAD of the legacy Quick Actions + Advanced Analysis split.
+          `both` chips → heuristic-eligible (requiresLlm=false). `llm` chips →
+          requiresLlm=true and are disabled when no LLM provider is available. */}
+      {chips10 && (
+        <div className="banking-chips-dropdown__section">
+          <div className="banking-chips-dropdown__label">Suggestions</div>
+          <div className="banking-chips-dropdown__grid banking-chips-dropdown__grid--heuristic">
+            {chips10.map((chip) => {
+              const isLlm = chip.mode === "llm";
+              const llmDisabled = isLlm && !llmAvailable;
+              return (
+                <button
+                  type="button"
+                  key={chip.id}
+                  className={`banking-chips-dropdown__button banking-chips-dropdown__button--${isLlm ? "llm" : "heuristic"}`}
+                  onClick={() =>
+                    handleChipClick(
+                      { id: chip.id, label: chip.label, message: chip.message },
+                      isLlm,
+                    )
+                  }
+                  disabled={isLoading || llmDisabled}
+                  title={
+                    llmDisabled
+                      ? "Needs an LLM — switch to Helix or Claude mode"
+                      : chip.message
+                  }
+                >
+                  {chip.label}
+                  {isLlm && (
+                    <span className="banking-chips-dropdown__mcp-badge">LLM</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Legacy two-section split — fallback for verticals without chips10. */}
+      {!chips10 && (
+      <>
       {/* Heuristic Chips Section */}
       <div className="banking-chips-dropdown__section">
         <div className="banking-chips-dropdown__label">Quick Actions</div>
@@ -368,6 +413,8 @@ export default function BankingChips({
           )}
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }

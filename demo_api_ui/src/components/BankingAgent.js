@@ -7038,6 +7038,7 @@ export default function BankingAgent({
                   <BankingChips
                     customChips={customChips}
                     user={user}
+                    llmAvailable={!!activeLlmProvider}
                     onChipClick={({ message, label, requiresLlm, chipId }) => {
                       setShowDiscovery(false);
                       if (isAgentBlockedByConsentDecline()) {
