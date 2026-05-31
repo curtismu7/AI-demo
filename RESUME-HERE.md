@@ -111,20 +111,22 @@ grep -n "banking" demo_api_server/scripts/bootstrapPingOne.js | head -20
 grep -r "verticalDispatch\|plugin\|registerTool" demo_mcp_server/src/ | grep -i bootstrap
 ```
 
-### Setup Page Investigation
-```bash
-# Find setup/vertical chooser page
-find demo_api_ui/src -name "*Setup*" -o -name "*Vertical*" -o -name "*Chooser*"
+### Setup Page Investigation — GOOD NEWS ✅
+**VerticalSwitcher already discovers banking automatically!**
+- UI: `demo_api_ui/src/components/VerticalSwitcher.js` fetches from `/api/verticals/list` (dynamic, not hardcoded)
+- Backend: `demo_api_server/routes/verticalManifest.js` handles `/list` endpoint
+- Loader: `demo_api_server/services/verticalManifest/loader.js` scans `/config/verticals/` for directories
+- Banking will be discovered because:
+  1. `/config/verticals/banking/` exists ✓
+  2. `manifest.json` exists ✓ 
+  3. `loader.loadAll()` reads all directories (line 34-38)
+  4. `list()` filters out HIDDEN_IDS (only 'admin-console'), banking passes through ✓
 
-# Check for hardcoded vertical list
-grep -r "sporting-goods.*healthcare\|verticals.*=.*\[" demo_api_ui/src/pages/ | head -10
+**Still need to verify:**
+- Does reseed work when switching TO banking vertical? (accounts.js must support it)
+- Check if `/api/verticals/active` POST works correctly for banking
 
-# Check how current vertical is determined
-grep -r "activeVertical\|currentVertical\|verticalId" demo_api_ui/src/pages/ | head -10
-
-# Verify reseed integration (accounts.js must support banking switching)
-grep -n "reseed\|vertical.*change" demo_api_ui/src/pages/ | head -10
-```
+**Status:** Setup page blocker is LIKELY RESOLVED by existing dynamic discovery!
 
 ### Dashboard MCP Display Investigation
 ```bash
