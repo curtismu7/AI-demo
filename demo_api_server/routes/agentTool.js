@@ -39,6 +39,16 @@ if (process.env.NODE_ENV === 'production' && INTERNAL_SECRET === DEFAULT_INTERNA
   process.exit(1);
 }
 
+// Returns the plugin if the active vertical has one AND `tool` is one of its tools, else null.
+function resolvePluginToolOwner(tool) {
+  const { verticalManifest } = require('../services/verticalManifest');
+  const verticalDispatch = require('../services/verticalDispatch');
+  const activeId = verticalManifest.resolver.activeId();
+  const plugin = verticalDispatch.resolvePlugin(activeId);
+  if (plugin && plugin.getTools().some((t) => t.name === tool)) return { activeId, verticalDispatch };
+  return null;
+}
+
 function checkSecret(req, res) {
   const presented = req.headers['x-internal-gateway-secret'];
   const buf = typeof presented === 'string' ? Buffer.from(presented) : null;
@@ -63,6 +73,22 @@ router.post('/agent-tool', async (req, res) => {
   }
   if (!sessionId || typeof sessionId !== 'string') {
     return res.status(400).json({ error: 'sessionId_required' });
+  }
+
+  // Per-vertical plugin tool: execute in-BFF over the vertical's own data store.
+  // No MCP token needed (plugin reads local data), so this precedes the RFC 8693 exchange.
+  const pluginOwner = resolvePluginToolOwner(tool);
+  if (pluginOwner) {
+    try {
+      const out = await pluginOwner.verticalDispatch.executeToolFor(
+        pluginOwner.activeId, tool, args || {}, { sessionId },
+        () => ({ result: { error: `unknown tool: ${tool}` }, render: 'text' }),
+      );
+      return res.json({ result: out && out.result, render: out && out.render, tokenEvents: [] });
+    } catch (err) {
+      console.error('[agent-tool] vertical plugin tool failed:', err.message);
+      return res.status(502).json({ error: 'vertical_tool_failed', message: err.message, tokenEvents: [] });
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -124,8 +150,8 @@ router.post('/agent-tool', async (req, res) => {
   // ---------------------------------------------------------------------------
   let result;
   try {
-    const { callMcpTool } = require('../services/mcpWebSocketClient');
-    result = await callMcpTool(tool, args || {}, mcpToken);
+    const { mcpCallTool } = require('../services/mcpWebSocketClient');
+    result = await mcpCallTool(tool, args || {}, mcpToken);
   } catch (err) {
     console.error('[agent-tool] MCP tool call failed:', err.message);
     // Check for HITL signal (428 shape from MCP gateway)
@@ -156,3 +182,4 @@ router.post('/agent-tool', async (req, res) => {
 });
 
 module.exports = router;
+module.exports.__test = { resolvePluginToolOwner };
