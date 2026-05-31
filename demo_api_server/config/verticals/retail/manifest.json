@@ -79,6 +79,18 @@
         "label": "Show Large Purchase"
       }
     ],
+    "chips10": [
+      { "id": "rt1", "label": "List my orders", "message": "list my orders", "mode": "both" },
+      { "id": "rt2", "label": "Where's my order?", "message": "order status", "mode": "both" },
+      { "id": "rt3", "label": "My reward points", "message": "my reward points", "mode": "both" },
+      { "id": "rt4", "label": "Checkout", "message": "checkout", "mode": "both" },
+      { "id": "rt5", "label": "Order history", "message": "order history", "mode": "both" },
+      { "id": "rt6", "label": "Track my order", "message": "track my order", "mode": "both" },
+      { "id": "rt7", "label": "Store credit balance", "message": "store credit balance", "mode": "both" },
+      { "id": "rt8", "label": "What should I buy with my points?", "message": "What should I buy with my points?", "mode": "llm" },
+      { "id": "rt9", "label": "Compare my last two orders", "message": "Compare my recent purchases side by side", "mode": "llm" },
+      { "id": "rt10", "label": "Any deals on what I viewed?", "message": "Any deals on what I viewed?", "mode": "llm" }
+    ],
     "hero": {
       "cards": [
         {
