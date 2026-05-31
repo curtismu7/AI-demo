@@ -858,3 +858,45 @@ curl -sk -X POST https://api.ping.demo:3001/api/verticals/active ... -d '{"id":"
 5. No-fallback assertion passes with healthcare active; the shared layer surfaces only healthcare content.
 6. Review findings #2/#3/#4 resolved. UI build exits 0; `App.structure` green.
 7. No new failures vs baseline; this plan is the template Plans 3–5 copy.
+
+---
+
+## Task 11 — Write-action support (added after Plan 2 final review, user: "full support now")
+
+The final `/code-review` of Plan 2 found the WRITE actions broken while READ actions
+(view_coverage/view_records/list_appointments) work end-to-end:
+- **#1/#3 params never extracted** — the heuristic dispatch passes `params:{}`, so
+  `release_records` → "record not found" and `book_appointment` stores all-undefined fields.
+- **#4 authz declared but never enforced** — `getAuthz()` exists but nothing on the dispatch
+  path gates `release_records` (stepUp+consent).
+- **#2 failed-action UX** — a failed vertical action falls through to the banking
+  "I didn't catch that. Try show my accounts…" message inside a healthcare vertical.
+
+This task wires full write-action support (the contract all verticals inherit):
+- **Slot-filling via the agent/LLM path:** write tools declare required params in their
+  `inputSchema`; when a heuristic matches a write action with missing required params, the
+  dispatch returns a structured `needsParams` clarifying prompt (listing the missing fields)
+  instead of executing with empties. The LLM/tool-call path fills params from the inputSchema
+  as it already does for banking write tools.
+- **Authz enforcement:** `dispatchVerticalIntent` consults `verticalDispatch.authzFor(vertical)`
+  for the action; if `stepUp`/`consent` is required, route through the EXISTING HITL/step-up
+  machinery (the same 428/consent-challenge path banking uses — see `hitl-consent` skill), not
+  a new gate. Reuse `transactionConsentChallenge` / the 428 enforcement already in the stack.
+- **Error UX:** a failed/blocked vertical action returns a vertical-appropriate message
+  (never the banking fallback string).
+- Tests: write-action slot-fill prompt, authz gate triggers consent/step-up, error message is
+  vertical-flavored. Update the healthcare e2e to cover a successful gated `release_records`
+  (with recordId) and a `book_appointment` with real fields.
+
+## Deferred — robustness hardening pass (from Plan 2 review, user: defer)
+
+Capture, fix in a dedicated follow-up (not blocking Plan 2 close-out; read-action path is correct):
+- **#7** `VerticalResult.formatValue('money')` → guard with `Number.isFinite` (avoid "$NaN").
+- **#8** table renderer picks the first array via `Object.values(...).find(isArray)` — add an
+  explicit `arrayKey` option on the table descriptor for multi-array payloads.
+- **#5** `dispatchNlResult` vertical branch `sendAgentMessage(nlUserText || result.action)` —
+  the `result.action` fallback would mis-route (literal "view_coverage" matches nothing); add a
+  guard/comment, since it's dormant (all callers pass non-empty text).
+- **#6** plugin tools intentionally do NOT perform RFC 8693 token exchange (they read local
+  per-vertical data), so the Token Chain panel is empty for vertical actions — document this as
+  a deliberate design choice; decide later whether write actions should surface a delegation event.
