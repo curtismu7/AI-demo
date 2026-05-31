@@ -240,9 +240,37 @@ Each chip: `{ id, label, message, mode }`. The 7 `both` chips' `message` must ma
   incl. 3 `llm`, in heuristics mode the 3 are disabled; in LLM mode all 10 active.
 - [ ] Commit: `feat(verticals): render curated 10 chips; gate LLM-only chips in heuristics mode`.
 
-### E4 — verify + tidy
-- [ ] Confirm each vertical shows exactly 10 chips; the 3 LLM-only are visually distinct/gated in
-  Heuristics mode and active in LLM mode. Live smoke if a session is available.
+### E4 — user-added chips on the setup page (auto-wired as LLM-only)
+
+**Decision (user, 2026-05-31):** the setup/verticals-admin page can add a chip (label + message) to
+the active vertical's `chips10` — auto-wired as `mode:'llm'`. An LLM chip needs NO code (its message
+goes to the LLM, which already has the vertical's tool schemas), so it renders + works immediately.
+Heuristic (`both`) chips remain curated/code-defined (they need a `getHeuristics()` regex) — the form
+does NOT offer to create those.
+
+- [ ] Add a "verticalManifest overlay" write path for chips: the existing verticals-admin route
+  (`/api/verticals/*` overlay edits via `verticalManifest.overlay.setField/replaceBatch`) gains the
+  ability to append a chip to `dashboard.chips10`. New user chips are forced `mode:'llm'` server-side
+  (a user cannot create a heuristic chip — it wouldn't work without code). Validate label+message
+  non-empty; generate an id (`user_<n>`).
+- [ ] Setup-page UI — **show the existing chips first, then the add form** (user, 2026-05-31):
+  Above the "Add a chip" form, render a read-only list of the active vertical's existing `chips10`
+  as **`label → message`** (the prompt text each sends), each tagged **heuristic** (`mode:'both'`)
+  or **LLM-only** (`mode:'llm'`). This is "show them the ones that exist already and their response"
+  = the prompt message each chip sends (NOT a live agent run — static reference so the author sees
+  the pattern and avoids duplicating an existing prompt). Then the "Add a chip" form (label +
+  message) posts to the route above; on success the SSE `vertical-edited` event refetches the
+  manifest so both the existing-list and the dashboard chips update live. Cap user chips (e.g. ≤10
+  extra); show user-added chips marked "LLM" alongside the curated 10. Optional future: a per-chip
+  "Preview" button that runs the chip and shows the live response — deferred (needs session/LLM).
+- [ ] Test: posting a user chip appends it to chips10 overlay with mode:'llm'; it has no heuristic so
+  `parseHeuristic(message, vertical)` → kind:'none' (LLM-only, as intended). The existing-chips list
+  renders each chip's label + message + mode tag. Build gate + App.structure.
+- [ ] Commit: `feat(verticals): setup-page user chips — list existing (label→message) + add form, auto-wired LLM-only`.
+
+### E5 — verify + tidy
+- [ ] Confirm each vertical shows exactly 10 curated chips (+ any user-added LLM chips); the LLM-only
+  chips are visually distinct/gated in Heuristics mode and active in LLM mode. Live smoke if a session.
 - [ ] (Optional cleanup) once chips10 is the source, the legacy `llmChipGroups` can be removed from
   the 5 manifests — defer if risky; chips10 takes precedence in the UI regardless.
 
