@@ -100,6 +100,9 @@ import { appendAuthorizeDecision } from "../services/authorizeDecisionStore";
 /** NL message to replay after customer OAuth redirect from marketing agent (sessionStorage). */
 const BX_AGENT_PENDING_NL_KEY = "bx_agent_pending_nl";
 
+/** Agent modes that invoke a frontier LLM on every query — used for the model advisory. */
+const FRONTIER_MODES = ["claude", "chatgpt"];
+
 /** Session expiry countdown timer component */
 function SessionExpiryTimer({ sessionInfo, className = "" }) {
   const [timeRemaining, setTimeRemaining] = useState(null);
@@ -2921,10 +2924,9 @@ export default function BankingAgent({
     if (!aguiEnabled) return;
     const usage = aguiState.lastTokenUsage;
     if (!usage || (!usage.inputTokens && !usage.outputTokens)) return;
-    const inc = { input: usage.inputTokens ?? 0, output: usage.outputTokens ?? 0 };
-    setSessionTokens((prev) => ({ input: prev.input + inc.input, output: prev.output + inc.output }));
+    setSessionTokens((prev) => ({ input: prev.input + usage.inputTokens, output: prev.output + usage.outputTokens }));
     setLifetimeTokens((prev) => {
-      const next = { input: prev.input + inc.input, output: prev.output + inc.output };
+      const next = { input: prev.input + usage.inputTokens, output: prev.output + usage.outputTokens };
       try { localStorage.setItem('ba_tokens_lifetime', JSON.stringify(next)); } catch (_) {}
       return next;
     });
@@ -5741,7 +5743,7 @@ export default function BankingAgent({
             source: source || "heuristic",
             intent: result,
             timestamp: new Date().toISOString(),
-            heuristicSavedEstimate: (source || "heuristic") === "heuristic" ? 400 : 0,
+            heuristicSaved: !source || source === "heuristic",
           });
           return dispatchNlResult(result, source || "heuristic", text);
         })
@@ -5868,15 +5870,15 @@ export default function BankingAgent({
 
     // Model advisory: surface mismatches between configured mode and query complexity.
     if (modelAdvisoryTimerRef.current) clearTimeout(modelAdvisoryTimerRef.current);
-    const _frontierModes = ["claude", "chatgpt"];
-    if (_frontierModes.includes(agentProviderMode) && _source === "heuristic") {
-      setModelAdvisory({ msg: "Tip: simple query matched a pattern — heuristics mode skips the LLM entirely." });
-      modelAdvisoryTimerRef.current = setTimeout(() => setModelAdvisory(null), 6000);
+    let _advisoryMsg = null;
+    if (FRONTIER_MODES.includes(agentProviderMode) && _source === "heuristic") {
+      _advisoryMsg = "Tip: simple query matched a pattern — heuristics mode skips the LLM entirely.";
     } else if (agentProviderMode === "heuristics" && result.kind === "none") {
-      setModelAdvisory({ msg: "Tip: query not understood in heuristics-only mode — enable an LLM provider." });
+      _advisoryMsg = "Tip: query not understood in heuristics-only mode — enable an LLM provider.";
+    }
+    setModelAdvisory(_advisoryMsg);
+    if (_advisoryMsg) {
       modelAdvisoryTimerRef.current = setTimeout(() => setModelAdvisory(null), 6000);
-    } else {
-      setModelAdvisory(null);
     }
 
     if (result.kind === "education" && result.ciba) {
@@ -6392,7 +6394,7 @@ export default function BankingAgent({
         source: _nlSource || "heuristic",
         intent: _nlResult,
         timestamp: new Date().toISOString(),
-        heuristicSavedEstimate: (_nlSource || "heuristic") === "heuristic" ? 400 : 0,
+        heuristicSaved: !_nlSource || _nlSource === "heuristic",
       });
       await dispatchNlResult(_nlResult, _nlSource || "heuristic", text);
     } catch (err) {
@@ -6885,9 +6887,9 @@ export default function BankingAgent({
                   <span
                     className="ams-degraded-chip ba-model-advisory-chip"
                     role="note"
-                    title={modelAdvisory.msg}
+                    title={modelAdvisory}
                   >
-                    {modelAdvisory.msg}
+                    {modelAdvisory}
                     <button
                       type="button"
                       aria-label="Dismiss"

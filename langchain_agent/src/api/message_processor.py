@@ -834,8 +834,7 @@ class MessageProcessor:
 
             elif event_name == "on_chat_model_end":
                 output = event_data.get("output")
-                usage = getattr(output, "usage_metadata", None) if output else None
-                if usage:
+                if output and (usage := getattr(output, "usage_metadata", None)):
                     total_input_tokens += getattr(usage, "input_tokens", 0)
                     total_output_tokens += getattr(usage, "output_tokens", 0)
 

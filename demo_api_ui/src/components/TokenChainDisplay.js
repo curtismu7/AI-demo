@@ -2051,6 +2051,9 @@ function intentLabel(intent) {
   return intent.kind ?? null;
 }
 
+// Conservative mid-range estimate of tokens a typical NL query would consume via an LLM.
+const HEURISTIC_SAVED_ESTIMATE = 400;
+
 function NlRoutingCard({ event }) {
   if (!event) return null;
   const src = SOURCE_LABELS[event.source] || {
@@ -2094,11 +2097,11 @@ function NlRoutingCard({ event }) {
           <span className="tcd-nl-card__val tcd-nl-card__intent">{intent}</span>
         </div>
       )}
-      {event.heuristicSavedEstimate > 0 && (
+      {event.heuristicSaved && (
         <div className="tcd-nl-card__row">
           <span className="tcd-nl-card__key">Cost</span>
           <span className="tcd-nl-card__val tcd-nl-saved-chip">
-            ~{event.heuristicSavedEstimate} tokens saved (est.) — no LLM call
+            ~{HEURISTIC_SAVED_ESTIMATE} tokens saved (est.) — no LLM call
           </span>
         </div>
       )}
