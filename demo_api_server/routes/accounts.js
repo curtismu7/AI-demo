@@ -9,7 +9,17 @@ const configStore = require('../services/configStore');
 const { verticalManifest } = require('../services/verticalManifest');
 
 // Guard: only one reseed can run at a time to prevent concurrent duplicate-account creation.
+// waitForReseed() lets concurrent requests block instead of returning stale wrong-vertical data.
 const _reseedGuard = { inProgress: false };
+function waitForReseed(ms = 3000) {
+  const deadline = Date.now() + ms;
+  return new Promise((resolve) => {
+    const check = () => _reseedGuard.inProgress
+      ? (Date.now() < deadline ? setTimeout(check, 50) : resolve())
+      : resolve();
+    check();
+  });
+}
 
 /**
  * Rebuild a user's accounts from a snapshot saved in demoScenarioStore (Redis/KV).
@@ -259,7 +269,10 @@ router.get('/my', authenticateToken, async (req, res) => {
       const stillMismatched = userAccounts.length === 0 ||
         (expectedLower && restoredPrimary !== expectedLower);
 
-      if (stillMismatched && !_reseedGuard.inProgress) {
+      if (stillMismatched && _reseedGuard.inProgress) {
+        await waitForReseed();
+        userAccounts = dataStore.getAccountsByUserId(req.user.id);
+      } else if (stillMismatched) {
         _reseedGuard.inProgress = true;
         try {
           // Wipe stale accounts and reseed all customers for the active vertical.
