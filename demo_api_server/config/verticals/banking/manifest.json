@@ -202,6 +202,19 @@
     "emptyPrompt": "show mortgage data",
     "scopeError": "The agent's access token does not carry the mortgage:read scope, so the gateway refused the API key swap. Sign out and sign back in to consent to mortgage access, then try \"Show Mortgage Data\" again."
   },
+  "render": {
+    "accounts": { "type": "table", "columns": [ { "label": "Account Type", "path": "accountType" }, { "label": "Number", "path": "accountNumber" }, { "label": "Balance", "path": "balance", "format": "money" }, { "label": "Currency", "path": "currency" } ] },
+    "balance": { "type": "fieldList", "title": "Account Balance", "fields": [ { "label": "Account Type", "path": "accountType" }, { "label": "Balance", "path": "balance", "format": "money" } ] },
+    "transactions": { "type": "table", "columns": [ { "label": "Type", "path": "type" }, { "label": "Amount", "path": "amount", "format": "money" }, { "label": "Description", "path": "description" }, { "label": "Date", "path": "date", "format": "date" } ] },
+    "transfer": { "type": "card", "title": "Transfer Completed", "fields": [ { "label": "From", "path": "fromAccountType" }, { "label": "To", "path": "toAccountType" }, { "label": "Amount", "path": "amount", "format": "money" } ] },
+    "deposit": { "type": "card", "title": "Deposit Completed", "fields": [ { "label": "Account", "path": "accountType" }, { "label": "Amount", "path": "amount", "format": "money" } ] },
+    "withdraw": { "type": "card", "title": "Withdrawal Completed", "fields": [ { "label": "Account", "path": "accountType" }, { "label": "Amount", "path": "amount", "format": "money" } ] },
+    "sensitive_account_details": { "type": "fieldList", "title": "Sensitive Account Details", "fields": [ { "label": "Account Type", "path": "accountType" }, { "label": "Account Number", "path": "accountNumberFull" }, { "label": "Routing Number", "path": "routingNumber" }, { "label": "SWIFT Code", "path": "swiftCode" } ] },
+    "mortgage_demo": { "type": "card", "title": "Mortgage Information", "fields": [ { "label": "Property", "path": "propertyAddress" }, { "label": "Loan Amount", "path": "loanAmount", "format": "money" }, { "label": "Interest Rate", "path": "interestRate", "format": "percent" }, { "label": "Monthly Payment", "path": "monthlyPayment", "format": "money" } ] },
+    "spending_summary": { "type": "fieldList", "title": "Spending Summary", "fields": [ { "label": "Total Spent", "path": "totalSpent", "format": "money" }, { "label": "Average Transaction", "path": "averageTransaction", "format": "money" }, { "label": "Top Category", "path": "topCategory" } ] },
+    "biggest_purchase": { "type": "card", "title": "Biggest Purchase", "fields": [ { "label": "Description", "path": "description" }, { "label": "Amount", "path": "amount", "format": "money" }, { "label": "Date", "path": "date", "format": "date" } ] },
+    "vertical_feature_demo": { "type": "text", "title": "Feature Data" }
+  },
   "demoUsers": {
     "customer": {
       "hint": "demoUser",
