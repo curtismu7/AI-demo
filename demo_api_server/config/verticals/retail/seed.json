@@ -1,0 +1,9 @@
+{
+  "orders": [
+    { "id": "o1", "product": "AirPods Pro", "sku": "BB-APP3", "amount": 249, "status": "Delivered", "date": "2026-04-20" },
+    { "id": "o2", "product": "MacBook Pro 14\"", "sku": "BB-MBP14", "amount": 1999, "status": "Shipped", "date": "2026-04-22" },
+    { "id": "o3", "product": "Bose SoundLink", "sku": "BB-BOSE-SL", "amount": 149, "status": "Processing", "date": "2026-04-23" }
+  ],
+  "rewards": { "points": 4820, "tier": "Gold", "storeCredit": 150.0 },
+  "wishlist": [ { "id": "p9", "product": "iPhone 16 Pro", "price": 999 } ]
+}
