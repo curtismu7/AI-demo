@@ -210,7 +210,11 @@ export default function BankingChips({
   const dashboard = pageManifest?.dashboard;
   const heuristicChips = applyChipLabels(HEURISTIC_CHIPS, dashboard && dashboard.chips);
   const llmChipGroups = dashboard?.llmChipGroups || LLM_CHIPS;
-  const chips10 = Array.isArray(dashboard?.chips10) ? dashboard.chips10 : null;
+  // Require a non-empty array: an empty chips10 would otherwise render an empty
+  // "Suggestions" header AND suppress the legacy fallback (since [] is truthy).
+  const chips10 = Array.isArray(dashboard?.chips10) && dashboard.chips10.length
+    ? dashboard.chips10
+    : null;
 
   const customHeuristic = customChips.filter((c) => c.type === "heuristic");
   const customLlm = customChips.filter((c) => c.type === "llm");
