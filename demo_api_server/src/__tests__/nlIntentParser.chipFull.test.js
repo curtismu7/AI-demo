@@ -424,115 +424,27 @@ describe('nlIntentParser — healthcare plugin routing (first-class, not transla
   });
 });
 
-// ── Sporting-goods theme chips ────────────────────────────────────────────────
-// THEME_VOCAB['sporting-goods'] maps sport-retail phrases to banking actions.
-
-describe('nlIntentParser — sporting-goods theme chips', () => {
+// ── Sporting-goods plugin routing (first-class, not THEME_VOCAB) ──────────────
+// sporting-goods ships index.js, so parseHeuristic routes its phrases to
+// { kind:'vertical', action:<sporting-goods action> }, not banking translation.
+describe('nlIntentParser — sporting-goods plugin routing (first-class)', () => {
   const V = 'sporting-goods';
+  function vertical(msg) {
+    const r = parseHeuristic(msg, V);
+    expect(r.kind).toBe('vertical');
+    expect(r.vertical).toBe('sporting-goods');
+    return r;
+  }
 
-  it('"my gear" → accounts (gear list = account list)', () => {
-    expect(bank('my gear', V).banking.action).toBe('accounts');
-  });
-
-  it('"my equipment" → accounts', () => {
-    expect(bank('my equipment', V).banking.action).toBe('accounts');
-  });
-
-  it('"my loyalty account" → accounts', () => {
-    expect(bank('my loyalty account', V).banking.action).toBe('accounts');
-  });
-
-  it('"my rewards points" → balance (points balance = account balance)', () => {
-    expect(bank('my rewards points', V).banking.action).toBe('balance');
-  });
-
-  it('"how many points" → balance', () => {
-    expect(bank('how many points', V).banking.action).toBe('balance');
-  });
-
-  it('"point balance" → balance', () => {
-    expect(bank('point balance', V).banking.action).toBe('balance');
-  });
-
-  it('"purchase history" → transactions (purchase history = transaction history)', () => {
-    expect(bank('purchase history', V).banking.action).toBe('transactions');
-  });
-
-  it('"what did I buy" → transactions', () => {
-    expect(bank('what did I buy', V).banking.action).toBe('transactions');
-  });
-
-  it('"what have I bought" → transactions', () => {
-    expect(bank('what have I bought', V).banking.action).toBe('transactions');
-  });
-
-  it('"recent purchases" → transactions', () => {
-    expect(bank('recent purchases', V).banking.action).toBe('transactions');
-  });
-
-  it('"my purchases" → transactions', () => {
-    expect(bank('my purchases', V).banking.action).toBe('transactions');
-  });
-
-  it('"my returns" → transactions (returns = transaction history)', () => {
-    expect(bank('my returns', V).banking.action).toBe('transactions');
-  });
-
-  it('"return history" → transactions', () => {
-    expect(bank('return history', V).banking.action).toBe('transactions');
-  });
-
-  it('"refund history" → transactions', () => {
-    expect(bank('refund history', V).banking.action).toBe('transactions');
-  });
-
-  it('"place an order" → transfer (checkout = fund transfer action)', () => {
-    expect(bank('place an order', V).banking.action).toBe('transfer');
-  });
-
-  it('"checkout" → transfer', () => {
-    expect(bank('checkout', V).banking.action).toBe('transfer');
-  });
-
-  it('"buy now" → transfer', () => {
-    expect(bank('buy now', V).banking.action).toBe('transfer');
-  });
-
-  it('"biggest purchase" → biggest_purchase', () => {
-    expect(bank('biggest purchase', V).banking.action).toBe('biggest_purchase');
-  });
-
-  it('"most expensive order" → biggest_purchase', () => {
-    expect(bank('most expensive order', V).banking.action).toBe('biggest_purchase');
-  });
-
-  it('"how much have I spent" → spending_summary', () => {
-    expect(bank('how much have I spent', V).banking.action).toBe('spending_summary');
-  });
-
-  it('"total purchases" → transactions (purchases? theme rule fires before spending_summary)', () => {
-    // The sporting-goods theme maps `purchases?` → transactions;
-    // "total purchases" contains "purchases" so the theme rule wins.
-    expect(bank('total purchases', V).banking.action).toBe('transactions');
-  });
-
-  it('"spending breakdown" → spending_summary', () => {
-    expect(bank('spending breakdown', V).banking.action).toBe('spending_summary');
-  });
-
-  // Education and core banking fall through correctly
-  it('education phrases still work in sporting-goods theme', () => {
-    const r = parseHeuristic('what is mcp', V);
-    expect(r.kind).toBe('education');
-    expect(r.education.panel).toBe('mcp-protocol');
-  });
-
-  it('"Log Out" still routes to logout in sporting-goods theme', () => {
-    expect(bank('Log Out', V).banking.action).toBe('logout');
-  });
-
-  it('"list mcp tools" still routes to mcp_tools in sporting-goods theme', () => {
-    expect(bank('list mcp tools', V).banking.action).toBe('mcp_tools');
+  it('"my gear" → list_gear', () => { expect(vertical('my gear').action).toBe('list_gear'); });
+  it('"order history" → list_gear', () => { expect(vertical('order history').action).toBe('list_gear'); });
+  it('"my rentals" → list_rentals (novel domain)', () => { expect(vertical('my rentals').action).toBe('list_rentals'); });
+  it('"what is due back" → list_rentals', () => { expect(vertical('what is due back').action).toBe('list_rentals'); });
+  it('"extend my rental" → extend_rental (novel write)', () => { expect(vertical('extend my rental').action).toBe('extend_rental'); });
+  it('"order status" → gear_order_status', () => { expect(vertical('order status').action).toBe('gear_order_status'); });
+  it('"my loyalty points" → loyalty_balance', () => { expect(vertical('my loyalty points').action).toBe('loyalty_balance'); });
+  it('a non-matching phrase → kind:none (no banking fallback)', () => {
+    expect(parseHeuristic('the weather is nice', V).kind).toBe('none');
   });
 });
 
@@ -594,70 +506,25 @@ describe('nlIntentParser — admin theme chips', () => {
   });
 });
 
-// ── Retail theme chips ────────────────────────────────────────────────────────
-
-describe('nlIntentParser — retail theme chips', () => {
+// ── Retail plugin routing (first-class, not THEME_VOCAB) ──────────────────────
+describe('nlIntentParser — retail plugin routing (first-class)', () => {
   const V = 'retail';
+  function vertical(msg) {
+    const r = parseHeuristic(msg, V);
+    expect(r.kind).toBe('vertical');
+    expect(r.vertical).toBe('retail');
+    return r;
+  }
 
-  it('"my orders" → accounts', () => {
-    expect(bank('my orders', V).banking.action).toBe('accounts');
-  });
-
-  it('"order history" → accounts', () => {
-    expect(bank('order history', V).banking.action).toBe('accounts');
-  });
-
-  it('"order status" → accounts', () => {
-    expect(bank('order status', V).banking.action).toBe('accounts');
-  });
-
-  it('"my rewards points" → balance', () => {
-    expect(bank('my rewards points', V).banking.action).toBe('balance');
-  });
-
-  it('"point balance" → balance', () => {
-    expect(bank('point balance', V).banking.action).toBe('balance');
-  });
-
-  it('"purchase history" → transactions', () => {
-    expect(bank('purchase history', V).banking.action).toBe('transactions');
-  });
-
-  it('"what did I buy" → transactions', () => {
-    expect(bank('what did I buy', V).banking.action).toBe('transactions');
-  });
-
-  it('"recent purchases" → transactions', () => {
-    expect(bank('recent purchases', V).banking.action).toBe('transactions');
-  });
-
-  it('"my returns" → transactions', () => {
-    expect(bank('my returns', V).banking.action).toBe('transactions');
-  });
-
-  it('"checkout" → transfer', () => {
-    expect(bank('checkout', V).banking.action).toBe('transfer');
-  });
-
-  it('"place an order" → accounts (orders? theme rule fires before place.*order → transfer)', () => {
-    // The retail theme's `orders?` rule (action: accounts) is listed before the
-    // `place.*order` rule (action: transfer) and matches "order" in "place an order".
-    expect(bank('place an order', V).banking.action).toBe('accounts');
-  });
-
-  it('"buy now" → transfer', () => {
-    expect(bank('buy now', V).banking.action).toBe('transfer');
-  });
-
-  it('"biggest purchase" → biggest_purchase', () => {
-    expect(bank('biggest purchase', V).banking.action).toBe('biggest_purchase');
-  });
-
-  it('"how much have I spent" → spending_summary', () => {
-    expect(bank('how much have I spent', V).banking.action).toBe('spending_summary');
-  });
-
-  it('"spending breakdown" → spending_summary', () => {
-    expect(bank('spending breakdown', V).banking.action).toBe('spending_summary');
+  it('"my orders" → list_orders', () => { expect(vertical('my orders').action).toBe('list_orders'); });
+  it('"order history" → list_orders', () => { expect(vertical('order history').action).toBe('list_orders'); });
+  it('"order status" → order_status', () => { expect(vertical('order status').action).toBe('order_status'); });
+  it('"track my order" → order_status', () => { expect(vertical('track my order').action).toBe('order_status'); });
+  it('"my reward points" → rewards_balance', () => { expect(vertical('my reward points').action).toBe('rewards_balance'); });
+  it('"store credit" → rewards_balance', () => { expect(vertical('store credit').action).toBe('rewards_balance'); });
+  it('"checkout" → checkout', () => { expect(vertical('checkout').action).toBe('checkout'); });
+  it('"place an order" → checkout', () => { expect(vertical('place an order').action).toBe('checkout'); });
+  it('a non-matching phrase → kind:none (no banking fallback)', () => {
+    expect(parseHeuristic('the weather is nice', V).kind).toBe('none');
   });
 });
